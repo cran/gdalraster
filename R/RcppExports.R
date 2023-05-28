@@ -70,7 +70,7 @@ get_config_option <- function(key) {
 #' @param value Character value to set for the option. 
 #' `value = ""` (empty string) will unset a value previously set by 
 #' `set_config_option()`.
-#' @returns Nothing.
+#' @returns No return value, called for side effects.
 #' @seealso
 #' [get_config_option()]
 #' @examples
@@ -285,9 +285,17 @@ warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL) {
     .Call(`_gdalraster__combine`, src_files, var_names, bands, dst_filename, fmt, dataType, options)
 }
 
-#' @noRd
-.has_geos <- function() {
-    .Call(`_gdalraster__has_geos`)
+#' Is GEOS available?
+#'
+#' `has_geos()` returns a logical value indicating whether GDAL was built
+#' against the GEOS library.
+#'
+#' @return Logical. `TRUE` if GEOS is available, otherwise `FALSE`.
+#'
+#' @examples
+#' has_geos()
+has_geos <- function() {
+    .Call(`_gdalraster_has_geos`)
 }
 
 #' @noRd
@@ -429,6 +437,7 @@ warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL) {
 #' pt_file <- system.file("extdata/storml_pts.csv", package="gdalraster")
 #' ## id, x, y in NAD83 / UTM zone 12N
 #' pts <- read.csv(pt_file)
+#' print(pts)
 #' inv_project(as.matrix(pts[,-1]), epsg_to_wkt(26912))
 #' inv_project(as.matrix(pts[,-1]), epsg_to_wkt(26912), "NAD27")
 inv_project <- function(pts, srs, well_known_gcs = "") {
@@ -457,6 +466,7 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #' @examples
 #' pt_file <- system.file("extdata/storml_pts.csv", package="gdalraster")
 #' pts <- read.csv(pt_file)
+#' print(pts)
 #' ## id, x, y in NAD83 / UTM zone 12N
 #' ## transform to NAD83 / CONUS Albers
 #' transform_xy( pts = as.matrix(pts[,-1]), 
@@ -515,7 +525,7 @@ epsg_to_wkt <- function(epsg, pretty = FALSE) {
 #'   * `WKT` - to convert WKT versions (see below)
 #'   * `EPSG:n` - EPSG code n
 #'   * \code{AUTO:proj_id,unit_id,lon0,lat0} - WMS auto projections
-#'   * `urn:ogc:def:crs:EPSG::n` - OGC urns
+#'   * `urn:ogc:def:crs:EPSG::n` - OGC URNs
 #'   * PROJ.4 definitions
 #'   * `filename` - file read for WKT, XML or PROJ.4 definition
 #'   * well known name such as `NAD27`, `NAD83`, `WGS84` or `WGS72`
@@ -597,6 +607,27 @@ srs_is_projected <- function(srs) {
     .Call(`_gdalraster_srs_is_projected`, srs)
 }
 
+#' Do these two spatial references describe the same system?
+#'
+#' `srs_is_same()` returns `TRUE` if these two spatial references describe 
+#' the same system. This is a wrapper for `OSRIsSame()` in the GDAL Spatial 
+#' Reference System C API.
+#'
+#' @param srs1 Character OGC WKT string for a spatial reference system
+#' @param srs2 Character OGC WKT string for a spatial reference system
+#' @return Logical. `TRUE` if these two spatial references describe the same 
+#' system, otherwise `FALSE`.
+#'
+#' @examples
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#' ds <- new(GDALRaster, elev_file, TRUE)
+#' srs_is_same(ds$getProjectionRef(), epsg_to_wkt(26912))
+#' srs_is_same(ds$getProjectionRef(), epsg_to_wkt(5070))
+#' ds$close()
+srs_is_same <- function(srs1, srs2) {
+    .Call(`_gdalraster_srs_is_same`, srs1, srs2)
+}
+
 #' Get the bounding box of a geometry specified in OGC WKT format.
 #'
 #' `bbox_from_wkt()` returns the bounding box of a WKT 2D geometry 
@@ -621,10 +652,12 @@ bbox_from_wkt <- function(wkt) {
 #' Convert a bounding box to POLYGON in OGC WKT format.
 #'
 #' `bbox_to_wkt()` returns a WKT POLYGON string for the given bounding box.
+#' This function requires GDAL built with the GEOS library.
 #'
 #' @param bbox Numeric vector of length four containing xmin, ymin, 
 #' xmax, ymax.
-#' @return Character string for an OGC WKT polygon.
+#' @return Character string for an OGC WKT polygon. An empty string is 
+#' returned if GDAL was built without the GEOS library.
 #'
 #' @seealso
 #' [bbox_from_wkt()]

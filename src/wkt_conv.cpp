@@ -87,7 +87,7 @@ std::string epsg_to_wkt(int epsg, bool pretty = false) {
 //'   * `WKT` - to convert WKT versions (see below)
 //'   * `EPSG:n` - EPSG code n
 //'   * \code{AUTO:proj_id,unit_id,lon0,lat0} - WMS auto projections
-//'   * `urn:ogc:def:crs:EPSG::n` - OGC urns
+//'   * `urn:ogc:def:crs:EPSG::n` - OGC URNs
 //'   * PROJ.4 definitions
 //'   * `filename` - file read for WKT, XML or PROJ.4 definition
 //'   * well known name such as `NAD27`, `NAD83`, `WGS84` or `WGS72`
@@ -212,6 +212,42 @@ bool srs_is_projected(std::string srs) {
 	return OSRIsProjected(hSRS);
 }
 
+//' Do these two spatial references describe the same system?
+//'
+//' `srs_is_same()` returns `TRUE` if these two spatial references describe 
+//' the same system. This is a wrapper for `OSRIsSame()` in the GDAL Spatial 
+//' Reference System C API.
+//'
+//' @param srs1 Character OGC WKT string for a spatial reference system
+//' @param srs2 Character OGC WKT string for a spatial reference system
+//' @return Logical. `TRUE` if these two spatial references describe the same 
+//' system, otherwise `FALSE`.
+//'
+//' @examples
+//' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+//' ds <- new(GDALRaster, elev_file, TRUE)
+//' srs_is_same(ds$getProjectionRef(), epsg_to_wkt(26912))
+//' srs_is_same(ds$getProjectionRef(), epsg_to_wkt(5070))
+//' ds$close()
+// [[Rcpp::export]]
+bool srs_is_same(std::string srs1, std::string srs2) {
+
+	OGRSpatialReferenceH hSRS1 = OSRNewSpatialReference(NULL);
+	OGRSpatialReferenceH hSRS2 = OSRNewSpatialReference(NULL);
+
+	char* pszWKT1;
+	pszWKT1 = (char*) srs1.c_str();
+	if (OSRImportFromWkt(hSRS1, &pszWKT1) != OGRERR_NONE)
+		Rcpp::stop("Error importing SRS from user input.");
+		
+	char* pszWKT2;
+	pszWKT2 = (char*) srs2.c_str();
+	if (OSRImportFromWkt(hSRS2, &pszWKT2) != OGRERR_NONE)
+		Rcpp::stop("Error importing SRS from user input.");
+	
+	return OSRIsSame(hSRS1, hSRS2);
+}
+
 //' Get the bounding box of a geometry specified in OGC WKT format.
 //'
 //' `bbox_from_wkt()` returns the bounding box of a WKT 2D geometry 
@@ -254,10 +290,12 @@ Rcpp::NumericVector bbox_from_wkt(std::string wkt) {
 //' Convert a bounding box to POLYGON in OGC WKT format.
 //'
 //' `bbox_to_wkt()` returns a WKT POLYGON string for the given bounding box.
+//' This function requires GDAL built with the GEOS library.
 //'
 //' @param bbox Numeric vector of length four containing xmin, ymin, 
 //' xmax, ymax.
-//' @return Character string for an OGC WKT polygon.
+//' @return Character string for an OGC WKT polygon. An empty string is 
+//' returned if GDAL was built without the GEOS library.
 //'
 //' @seealso
 //' [bbox_from_wkt()]
@@ -271,6 +309,11 @@ Rcpp::NumericVector bbox_from_wkt(std::string wkt) {
 std::string bbox_to_wkt(Rcpp::NumericVector bbox) {
 	if (bbox.size() != 4)
 		Rcpp::stop("Invalid bounding box.");
+		
+	if (!has_geos()) {
+		Rcpp::Rcout << "bbox_to_wkt() requires GEOS.\n";
+		return "";
+	}
 
 	Rcpp::NumericMatrix poly_xy(5, 2);
 	poly_xy.row(0) = Rcpp::NumericVector::create(bbox(0), bbox(3));

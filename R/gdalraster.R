@@ -305,33 +305,27 @@
 #' region will be read (typically the same value as xsize).
 #' \code{out_ysize} is the height of the output array into which the desired 
 #' region will be read (typically the same value as ysize).
-#' Returns an array of pixel values (out_ysize, out_xsize). 
-#' The returned array will be numeric or complex depending on the raster data
-#' type. NA will be returned in place of the nodata value if the 
+#' Returns a numeric or complex vector containing the values that were read.
+#' It is organized in left to right, top to bottom pixel order. 
+#' NA will be returned in place of the nodata value if the 
 #' raster dataset has a nodata value defined for this band. No rescaling of the
 #' data is performed (see \code{$getScale()} and \code{$getOffset()} above).
 #' An error is raised if the read operation fails.
 #'
 #' \code{$write(band, xoff, yoff, xsize, ysize, rasterData)}
-#' Writes a region of raster data to \code{band}. The method takes care of
-#' pixel decimation / replication if the data size (\code{length(rasterData)})
-#' is different than the size of the region being accessed 
-#' (\code{xsize * ysize}).
+#' Writes a region of raster data to \code{band}.
 #' \code{xoff} is the pixel (column) offset to the top left corner of the
 #' region of the band to be accessed (zero to start from the left side).
 #' \code{yoff} is the line (row) offset to the top left corner of the region of
 #' the band to be accessed (zero to start from the top).
 #' \emph{Note that raster row/column offsets use 0-based indexing.}
-#' \code{xsize} is the width in pixels of the region to be accessed.
-#' This will typically be the same as `ncol(rasterData)`.
-#' \code{ysize} is the height in pixels of the region to be accessed.
-#' This will typically be the same as `nrow(rasterData)`.
-#' \code{rasterData} is a numeric or complex array containing values to write.
+#' \code{xsize} is the width in pixels of the region to write.
+#' \code{ysize} is the height in pixels of the region to write.
+#' \code{rasterData} is a numeric or complex vector containing values to write.
 #' It is organized in left to right, top to bottom pixel order. NA in 
 #' \code{rasterData} should be replaced with a suitable nodata value prior to
 #' writing (see \code{$getNoDataValue()} and \code{$setNoDataValue()} above).
-#' An error is raised if the operation fails (no return value, called for side 
-#' effects).
+#' An error is raised if the operation fails (no return value).
 #'
 #' \code{$fillRaster(band, value, ivalue)}
 #' Fills \code{band} with a constant value. Used to clear a band to a specified
@@ -408,7 +402,7 @@
 #'                     xsize=ncols, ysize=1, 
 #'                     out_xsize=ncols, out_ysize=1)
 #' dim(rowdata)
-#' head(as.vector(rowdata))
+#' head(rowdata)
 #'
 #' ds$close()
 #'
@@ -459,6 +453,7 @@
 #'
 #' ds_url <- new(GDALRaster, web_file, read_only=TRUE)
 #' ds_url$info()
+#' ds_url$close()
 #' }
 NULL
 

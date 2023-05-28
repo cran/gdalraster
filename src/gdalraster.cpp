@@ -7,7 +7,7 @@
 #include <cmath>
 #include <limits>
 
-#include "gdal.h"
+#include "gdal_priv.h"
 #include "cpl_conv.h"
 #include "cpl_string.h"
 #include "gdal_utils.h"
@@ -21,18 +21,6 @@
 void _gdal_init(DllInfo *dll) {
     GDALAllRegister();
     CPLSetConfigOption("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", "YES");
-}
-
-/*	ARE_REAL_EQUAL() from gdal_priv.h
-	That header is not needed otherwise so copying here
-	Copyright (c) 1998, Frank Warmerdam
-	Copyright (c) 2007-2014, Even Rouault <even dot rouault at spatialys.com>
-	License: MIT */
-template <class T> inline bool ARE_REAL_EQUAL(T fVal1, T fVal2, int ulp = 2)
-{
-    return fVal1 == fVal2 || /* Should cover infinity */
-           std::abs(fVal1 - fVal2) < std::numeric_limits<float>::epsilon() *
-                                         std::abs(fVal1 + fVal2) * ulp;
 }
 
 GDALRaster::GDALRaster() : 
@@ -454,7 +442,7 @@ SEXP GDALRaster::read(int band, int xoff, int yoff, int xsize, int ysize,
 			Rcpp::stop("Read raster failed.");
 
 		Rcpp::ComplexVector v = Rcpp::wrap(buf);
-		v.attr("dim") = Rcpp::Dimension(out_ysize, out_xsize);
+		//v.attr("dim") = Rcpp::Dimension(out_xsize, out_ysize);
 		return v;
 
 	}
@@ -495,56 +483,47 @@ SEXP GDALRaster::read(int band, int xoff, int yoff, int xsize, int ysize,
 		}
 		
 		Rcpp::NumericVector v = Rcpp::wrap(buf);
-		v.attr("dim") = Rcpp::Dimension(out_ysize, out_xsize);
+		//v.attr("dim") = Rcpp::Dimension(out_xsize, out_ysize);
 		return v;
 	}
 }
 
 void GDALRaster::write(int band, int xoff, int yoff, int xsize, int ysize,
 		Rcpp::RObject rasterData) {
-							
+
 	if (!this->isOpen())
 		Rcpp::stop("Raster dataset is not open.");
 		
 	if (GDALGetAccess(hDataset) == GA_ReadOnly)
 		Rcpp::stop("Dataset is read-only.");
 	
-	if (!Rf_isMatrix(rasterData))
-		Rcpp::stop("Data must be an array of numeric or complex.");
-	
 	GDALDataType eBufType;
 	CPLErr err;
 	if (Rcpp::is<Rcpp::NumericVector>(rasterData)) {
 	// real data types
-		Rcpp::NumericMatrix buf = Rcpp::as<Rcpp::NumericMatrix>(rasterData);
 		eBufType = GDT_Float64;
 		GDALRasterBandH hBand = GDALGetRasterBand(hDataset, band);
-		int buf_xsize = buf.ncol();
-		int buf_ysize = buf.nrow();
-		// get Rcpp matrix as std::vector to access the underlying array
-		std::vector<double> buf_ = Rcpp::as<std::vector<double>>(buf);
-		
+		std::vector<double> buf_ = Rcpp::as<std::vector<double>>(rasterData);
+		if (buf_.size() != ((std::size_t) (xsize * ysize)))
+			Rcpp::stop("Size of input data is not the same as region size.");
 		err = GDALRasterIO(hBand, GF_Write, xoff, yoff, xsize, ysize,
-					buf_.data(), buf_xsize, buf_ysize, eBufType, 0, 0);
+					buf_.data(), xsize, ysize, eBufType, 0, 0);
 	}
 	else if (Rcpp::is<Rcpp::ComplexVector>(rasterData)) {
 	// complex data types
-		Rcpp::ComplexMatrix buf = Rcpp::as<Rcpp::ComplexMatrix>(rasterData);
 		eBufType = GDT_CFloat64;
 		GDALRasterBandH hBand = GDALGetRasterBand(hDataset, band);
-		int buf_xsize = buf.ncol();
-		int buf_ysize = buf.nrow();
-		// get Rcpp matrix as std::vector to access the underlying array
 		std::vector<std::complex<double>> buf_ = 
-			Rcpp::as<std::vector<std::complex<double>>>(buf);
-		
+			Rcpp::as<std::vector<std::complex<double>>>(rasterData);
+		if (buf_.size() != ((std::size_t) (xsize * ysize)))
+			Rcpp::stop("Size of input data is not the same as region size.");
 		err = GDALRasterIO(hBand, GF_Write, xoff, yoff, xsize, ysize,
-					buf_.data(), buf_xsize, buf_ysize, eBufType, 0, 0);
+					buf_.data(), xsize, ysize, eBufType, 0, 0);
 	}
 	else {
-		Rcpp::stop("Data must be an array of numeric or complex.");
+		Rcpp::stop("Data must be numeric or complex vector.");
 	}
-		
+
 	if (err == CE_Failure)
 		Rcpp::stop("Write to raster failed.");
 }
