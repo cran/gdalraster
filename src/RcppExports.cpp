@@ -43,6 +43,16 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// get_cache_used
+int get_cache_used();
+RcppExport SEXP _gdalraster_get_cache_used() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(get_cache_used());
+    return rcpp_result_gen;
+END_RCPP
+}
 // create
 bool create(std::string format, std::string dst_filename, int xsize, int ysize, int nbands, std::string dataType, Rcpp::Nullable<Rcpp::CharacterVector> options);
 RcppExport SEXP _gdalraster_create(SEXP formatSEXP, SEXP dst_filenameSEXP, SEXP xsizeSEXP, SEXP ysizeSEXP, SEXP nbandsSEXP, SEXP dataTypeSEXP, SEXP optionsSEXP) {
@@ -95,6 +105,21 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Rcpp::NumericMatrix >::type xy(xySEXP);
     Rcpp::traits::input_parameter< const std::vector<double> >::type gt(gtSEXP);
     rcpp_result_gen = Rcpp::wrap(get_pixel_line(xy, gt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fillNodata
+bool fillNodata(std::string filename, int band, std::string mask_file, double max_dist, int smooth_iterations);
+RcppExport SEXP _gdalraster_fillNodata(SEXP filenameSEXP, SEXP bandSEXP, SEXP mask_fileSEXP, SEXP max_distSEXP, SEXP smooth_iterationsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type filename(filenameSEXP);
+    Rcpp::traits::input_parameter< int >::type band(bandSEXP);
+    Rcpp::traits::input_parameter< std::string >::type mask_file(mask_fileSEXP);
+    Rcpp::traits::input_parameter< double >::type max_dist(max_distSEXP);
+    Rcpp::traits::input_parameter< int >::type smooth_iterations(smooth_iterationsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fillNodata(filename, band, mask_file, max_dist, smooth_iterations));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -479,10 +504,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_gdal_version", (DL_FUNC) &_gdalraster_gdal_version, 0},
     {"_gdalraster_get_config_option", (DL_FUNC) &_gdalraster_get_config_option, 1},
     {"_gdalraster_set_config_option", (DL_FUNC) &_gdalraster_set_config_option, 2},
+    {"_gdalraster_get_cache_used", (DL_FUNC) &_gdalraster_get_cache_used, 0},
     {"_gdalraster_create", (DL_FUNC) &_gdalraster_create, 7},
     {"_gdalraster_createCopy", (DL_FUNC) &_gdalraster_createCopy, 5},
     {"_gdalraster_inv_geotransform", (DL_FUNC) &_gdalraster_inv_geotransform, 1},
     {"_gdalraster_get_pixel_line", (DL_FUNC) &_gdalraster_get_pixel_line, 2},
+    {"_gdalraster_fillNodata", (DL_FUNC) &_gdalraster_fillNodata, 5},
     {"_gdalraster_warp", (DL_FUNC) &_gdalraster_warp, 4},
     {"_gdalraster__combine", (DL_FUNC) &_gdalraster__combine, 7},
     {"_gdalraster_has_geos", (DL_FUNC) &_gdalraster_has_geos, 0},

@@ -27,6 +27,14 @@ and calling methods on the underlying GDALDataset, GDALDriver and
 GDALRasterBand objects. See \url{https://gdal.org/api/index.html} for
 details of the GDAL API.
 }
+\note{
+The \verb{$read()} method will perform automatic resampling if the
+specified output size (\code{out_xsize * out_ysize}) is different than
+the size of the region being read (\code{xsize * ysize}). In that case, the
+GDAL_RASTERIO_RESAMPLING configuration option could also be defined to
+override the default resampling to one of BILINEAR, CUBIC, CUBICSPLINE,
+LANCZOS, AVERAGE or MODE (see \code{\link[=set_config_option]{set_config_option()}}).
+}
 \section{Usage}{
 
 \preformatted{
@@ -53,6 +61,7 @@ ds$res()
 
 ds$getRasterCount()
 ds$getBlockSize(band)
+ds$getOverviewCount(band)
 ds$getDataTypeName(band)
 ds$getStatistics(band, approx_ok, force)
 ds$getNoDataValue(band)
@@ -100,7 +109,7 @@ Returns logical indicating whether the associated raster dataset is open.
 Prints various information about the raster dataset to the console (no
 return value, called for that side effect only).
 Equivalent to the output of the \command{gdalinfo} command-line utility
-(\command{gdalinfo -nomd -norat -noct filename}). Intended here as an
+(\command{gdalinfo -norat -noct filename}). Intended here as an
 informational convenience function.
 
 \code{$getDriverShortName()}
@@ -176,6 +185,9 @@ and block Ysize is 1. However, for tiled images block size will typically
 be the tile size. Note that the X and Y block sizes don't have to divide
 the image size evenly, meaning that right and bottom edge blocks may be
 incomplete.
+
+\code{$getOverviewCount(band)}
+Returns the number of overview layers available for \code{band}.
 
 \code{$getDataTypeName(band)}
 Returns the name of the pixel data type for \code{band}. The possible data
@@ -315,8 +327,12 @@ region will be read (typically the same value as ysize).
 Returns a numeric or complex vector containing the values that were read.
 It is organized in left to right, top to bottom pixel order.
 NA will be returned in place of the nodata value if the
-raster dataset has a nodata value defined for this band. No rescaling of the
-data is performed (see \code{$getScale()} and \code{$getOffset()} above).
+raster dataset has a nodata value defined for this band.
+Data are read as R \code{integer} type when possible for the raster data type
+(Byte, Int8, Int16, UInt16, Int32), otherwise as type \code{double} (UInt32,
+Float32, Float64).
+No rescaling of the data is performed (see \code{$getScale()} and
+\code{$getOffset()} above).
 An error is raised if the read operation fails.
 
 \code{$write(band, xoff, yoff, xsize, ysize, rasterData)}
@@ -386,6 +402,7 @@ ds$res()
 ## retrieve the number of bands and some band-level parameters
 ds$getRasterCount()
 ds$getBlockSize(band=1)
+ds$getOverviewCount(band=1)
 ds$getDataTypeName(band=1)
 ds$getNoDataValue(band=1)
 
@@ -467,5 +484,9 @@ ds_url$close()
 \seealso{
 Package overview in \code{\link[=gdalraster-package]{help("gdalraster-package")}}
 
-\code{\link[=create]{create()}}, \code{\link[=createCopy]{createCopy()}}, \code{\link[=rasterFromRaster]{rasterFromRaster()}}, \code{\link[=rasterToVRT]{rasterToVRT()}}, \code{\link[=warp]{warp()}}
+\code{\link[=create]{create()}}, \code{\link[=createCopy]{createCopy()}}, \code{\link[=rasterFromRaster]{rasterFromRaster()}}, \code{\link[=rasterToVRT]{rasterToVRT()}}
+
+\code{\link[=fillNodata]{fillNodata()}}, \code{\link[=warp]{warp()}}, \code{\link[=plot_raster]{plot_raster()}}
+
+\code{read_ds()} is a convenience wrapper for \code{GDALRaster$read()}.
 }

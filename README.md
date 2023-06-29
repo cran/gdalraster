@@ -5,6 +5,11 @@
 
 <!-- badges: start -->
 
+[![R-CMD-check](https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/gdalraster)](https://CRAN.R-project.org/package=gdalraster)
+[![cran
+checks](https://badges.cranchecks.info/worst/gdalraster.svg)](https://cran.r-project.org/web/checks/check_results_gdalraster.html)
 <!-- badges: end -->
 
 ## Overview
@@ -44,6 +49,7 @@ Additional functionality includes:
     or stack of layers. Individual pixel coordinates are available as
     variables in the R expression, as either x/y in the raster projected
     coordinate system or inverse projected longitude/latitude.
+  - `plot_raster()` displays raster data using base R graphics.
 
 `gdalraster` may be suitable for applications that primarily need
 low-level raster I/O or prefer native GDAL-like calling. The additional
@@ -52,19 +58,19 @@ other utility.
 
 ## Installation
 
-Install the stable version from CRAN:
-
 ``` r
+# Install the released version from CRAN
 install.packages("gdalraster")
-```
 
-or install the development version from GitHub:
-
-``` r
-## install.packages("devtools")
-devtools::install_github("USDAForestService/gdalraster")
+# Or the development version from GitHub:
+remotes::install_github("USDAForestService/gdalraster")
 ```
 
 ## Documentation
 
-<https://usdaforestservice.github.io/gdalraster/reference/>
+  - [Reference
+    manual](https://usdaforestservice.github.io/gdalraster/reference/)
+  - [Raster API
+    tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html)
+  - [GDAL block
+    caching](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)

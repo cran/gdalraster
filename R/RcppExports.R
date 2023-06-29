@@ -82,6 +82,20 @@ set_config_option <- function(key, value) {
     invisible(.Call(`_gdalraster_set_config_option`, key, value))
 }
 
+#' Get the size of memory in use by the GDAL block cache
+#'
+#' `get_cache_used()` returns the amount of memory currently in use for
+#' GDAL block caching. This a wrapper for `GDALGetCacheUsed64()` with return
+#' value as MB.
+#'
+#' @returns Integer. Amount of cache memory in use in MB.
+#'
+#' @examples
+#' get_cache_used()
+get_cache_used <- function() {
+    .Call(`_gdalraster_get_cache_used`)
+}
+
 #' Create a new uninitialized raster
 #'
 #' `create()` makes an empty raster in the specified format.
@@ -105,7 +119,8 @@ set_config_option <- function(key, value) {
 #' [`GDALRaster-class`][GDALRaster], [createCopy()], [rasterFromRaster()]
 #' @examples
 #' new_file <- paste0(tempdir(), "/", "newdata.tif")
-#' create("GTiff", new_file, 143, 107, 1, "Int16")
+#' create(format="GTiff", dst_filename=new_file, xsize=143, ysize=107,
+#'        nbands=1, dataType="Int16")
 #' ds <- new(GDALRaster, new_file, read_only=FALSE)
 #' ## EPSG:26912 - NAD83 / UTM zone 12N
 #' ds$setProjection(epsg_to_wkt(26912))
@@ -147,11 +162,12 @@ create <- function(format, dst_filename, xsize, ysize, nbands, dataType, options
 #' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 #' tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
 #' options <- c("COMPRESS=LZW")
-#' createCopy("GTiff", tif_file, lcp_file, options=options)
+#' createCopy(format="GTiff", dst_filename=tif_file, src_filename=lcp_file,
+#'            options=options)
 #' file.size(lcp_file)
 #' file.size(tif_file)
 #' ds <- new(GDALRaster, tif_file, read_only=FALSE)
-#' ds$getMetadata(0, "IMAGE_STRUCTURE")
+#' ds$getMetadata(band=0, domain="IMAGE_STRUCTURE")
 #' for (band in 1:ds$getRasterCount())
 #'     ds$setNoDataValue(band, -9999)
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
@@ -221,12 +237,61 @@ inv_geotransform <- function(gt) {
 #' pts <- read.csv(pt_file)
 #' print(pts)
 #' raster_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
-#' ds <- new(GDALRaster, raster_file, TRUE)
+#' ds <- new(GDALRaster, raster_file, read_only=TRUE)
 #' gt <- ds$getGeoTransform()
 #' get_pixel_line(as.matrix(pts[,-1]), gt)
 #' ds$close()
 get_pixel_line <- function(xy, gt) {
     .Call(`_gdalraster_get_pixel_line`, xy, gt)
+}
+
+#' Fill selected pixels by interpolation from surrounding areas
+#'
+#' `fillNodata()` is a wrapper for `GDALFillNodata()` in the GDAL Algorithms
+#' API. This algorithm will interpolate values for all designated nodata 
+#' pixels (pixels having an intrinsic nodata value, or marked by zero-valued
+#' pixels in the optional raster specified in `mask_file`). For each nodata 
+#' pixel, a four direction conic search is done to find values to interpolate
+#' from (using inverse distance weighting).
+#' Once all values are interpolated, zero or more smoothing iterations
+#' (3x3 average filters on interpolated pixels) are applied to smooth out 
+#' artifacts.
+#'
+#' @note
+#' The input raster will be modified in place. It should not be open in a
+#' `GDALRaster` object while processing with `fillNodata()`.
+#'
+#' @param filename Filename of input raster in which to fill nodata pixels.
+#' @param band Integer band number to modify in place.
+#' @param mask_file Optional filename of raster to use as a validity mask
+#' (band 1 is used, zero marks nodata pixels, non-zero marks valid pixels).
+#' @param max_dist Maximum distance (in pixels) that the algorithm 
+#' will search out for values to interpolate (100 pixels by default).
+#' @param smooth_iterations The number of 3x3 average filter smoothing
+#' iterations to run after the interpolation to dampen artifacts
+#' (0 by default).
+#' @returns Logical indicating success (invisible \code{TRUE}).
+#' An error is raised if the operation fails.
+#' @examples
+#' ## fill nodata edge pixels in the elevation raster
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#' 
+#' ## get count of nodata
+#' df = combine(elev_file)
+#' head(df)
+#' df[is.na(df$storml_elev),]
+#' 
+#' ## make a copy that will be modified
+#' mod_file <- paste0(tempdir(), "/", "storml_elev_fill.tif")
+#' file.copy(elev_file,  mod_file)
+#' 
+#' fillNodata(mod_file, band=1)
+#' 
+#' df_mod = combine(mod_file)
+#' head(df_mod)
+#' df_mod[is.na(df_mod$storml_elev_fill),]
+fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_iterations = 0L) {
+    invisible(.Call(`_gdalraster_fillNodata`, filename, band, mask_file, max_dist, smooth_iterations))
 }
 
 #' Raster reprojection
@@ -419,10 +484,6 @@ has_geos <- function() {
 #' (traditional GIS order) regardless of the axis order defined for the 
 #' names above.
 #'
-#' `inv_project()` is included here as a convenience function mainly for 
-#' internal use. See package `sf` for more full-featured  
-#' coordinate transformation (\url{https://r-spatial.github.io/sf/}).
-#'
 #' @param pts Numeric array of geospatial x/y coordinates 
 #' @param srs Character string in OGC WKT format specifying the projected 
 #' spatial reference system for `pts`.
@@ -447,11 +508,6 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #' Transform geospatial x/y coordinates
 #'
 #' `transform_xy()` transforms geospatial x/y coordinates to a new projection.
-#'
-#' @note
-#' `transform_xy()` is included here as a convenience function mainly for 
-#' internal use. See package `sf` for more full-featured 
-#' coordinate transformation (\url{https://r-spatial.github.io/sf/}).
 #'
 #' @param pts Numeric array of geospatial x/y coordinates 
 #' @param srs_from Character string in OGC WKT format specifying the  
@@ -578,7 +634,7 @@ srs_to_wkt <- function(srs, pretty = FALSE) {
 #' @return Logical. `TRUE` if `srs` is geographic, otherwise `FALSE`
 #'
 #' @seealso
-#' [srs_is_projected()]
+#' [srs_is_projected()], [srs_is_same()]
 #'
 #' @examples
 #' srs_is_geographic(epsg_to_wkt(5070))
@@ -598,7 +654,7 @@ srs_is_geographic <- function(srs) {
 #' @return Logical. `TRUE` if `srs` is projected, otherwise `FALSE`
 #'
 #' @seealso
-#' [srs_is_geographic()]
+#' [srs_is_geographic()], [srs_is_same()]
 #'
 #' @examples
 #' srs_is_projected(epsg_to_wkt(5070))
@@ -617,6 +673,9 @@ srs_is_projected <- function(srs) {
 #' @param srs2 Character OGC WKT string for a spatial reference system
 #' @return Logical. `TRUE` if these two spatial references describe the same 
 #' system, otherwise `FALSE`.
+#'
+#' @seealso
+#' [srs_is_geographic()], [srs_is_projected()]
 #'
 #' @examples
 #' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")

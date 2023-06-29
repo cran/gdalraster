@@ -1,5 +1,5 @@
-/* R interface to a subset of the GDAL C API for low level raster I/O
-   See: https://gdal.org/api/raster_c_api.html)
+/* R interface to a subset of the GDAL C API for raster
+   https://gdal.org/api/raster_c_api.html
    Chris Toney <chris.toney at usda.gov> */
 
 #ifndef gdalraster_H
@@ -25,6 +25,7 @@ typedef enum {GA_ReadOnly = 0, GA_Update = 1} GDALAccess;
 Rcpp::CharacterVector gdal_version();
 std::string get_config_option(std::string key);
 void set_config_option(std::string key, std::string value);
+int get_cache_used();
 
 Rcpp::NumericVector _apply_geotransform(const std::vector<double> gt, 
 		double pixel, double line);
@@ -42,6 +43,9 @@ Rcpp::NumericVector inv_geotransform(const std::vector<double> gt);
 Rcpp::IntegerMatrix get_pixel_line(const Rcpp::NumericMatrix xy,
 		const std::vector<double> gt);	
 
+bool fillNodata(std::string filename, int band, std::string mask_file,
+		double max_dist, int smooth_iterations);
+		
 bool warp(Rcpp::CharacterVector src_files, std::string dst_filename,
 		Rcpp::CharacterVector t_srs, 
 		Rcpp::Nullable<Rcpp::CharacterVector> arg_list);
@@ -87,6 +91,7 @@ class GDALRaster {
 	bool setProjection(std::string projection);
 	
 	std::vector<int> getBlockSize(int band) const;
+	int getOverviewCount(int band) const;
 	std::string getDataTypeName(int band) const;
 	Rcpp::NumericVector getStatistics(int band,	bool approx_ok, 
 			bool force) const;
