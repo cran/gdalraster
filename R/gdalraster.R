@@ -44,21 +44,27 @@
 #' ds$setProjection(projection)
 #' ds$bbox()
 #' ds$res()
+#' ds$dim()
 #'
 #' ds$getRasterCount()
 #' ds$getBlockSize(band)
 #' ds$getOverviewCount(band)
+#' ds$buildOverviews(resampling, levels, bands)
 #' ds$getDataTypeName(band)
 #' ds$getStatistics(band, approx_ok, force)
 #' ds$getNoDataValue(band)
 #' ds$setNoDataValue(band, nodata_value)
 #' ds$deleteNoDataValue(band)
 #' ds$getUnitType(band)
+#' ds$setUnitType(band, unit_type)
 #' ds$getScale(band)
+#' ds$setScale(band, scale)
 #' ds$getOffset(band)
+#' ds$setOffset(band, offset)
 #'
 #' ds$getMetadata(band, domain)
 #' ds$getMetadataItem(band, mdi_name, domain)
+#' ds$setMetadataItem(band, mdi_name, mdi_value, domain)
 #'
 #' ds$read(band, xoff, yoff, xsize, ysize, out_xsize, out_ysize)
 #' ds$write(band, xoff, yoff, xsize, ysize, rasterData)
@@ -152,6 +158,11 @@
 #' (pixel width, pixel height as positive values) assuming this is a north-up 
 #' raster.
 #'
+#' \code{$dim()}
+#' Returns an integer vector of length three containing the raster dimensions.
+#' Equivalent to:
+#' `c(ds$getRasterXSize(), ds$getRasterYSize(), ds$getRasterCount())`
+#'
 #' \code{$getRasterCount()}
 #' Returns the number of raster bands on this dataset. For the methods 
 #' described below that operate on individual bands, the \code{band} 
@@ -172,6 +183,25 @@
 #'
 #' \code{$getOverviewCount(band)}
 #' Returns the number of overview layers available for \code{band}.
+#'
+#' \code{$buildOverviews(resampling, levels, bands)}
+#' Build one or more raster overview images using the specified downsampling
+#' algorithm.
+#' \code{resampling} is one of "AVERAGE", "AVERAGE_MAGPHASE", "RMS",
+#' "BILINEAR", "CUBIC", "CUBICSPLINE", "GAUSS", "LANCZOS", "MODE", "NEAREST",
+#' or "NONE".
+#' \code{levels} is an integer vector giving the list of overview decimation
+#' factors to build (e.g., `c(2, 4, 8)`), or `0` to delete all overviews
+#' (at least for external overviews (.ovr) and GTiff internal overviews).
+#' \code{bands} is an integer vector giving a list of band numbers to build
+#' overviews for, or `0` to build for all bands.
+#' Note that for GTiff, overviews will be created internally if the dataset is
+#' open in update mode, while external overviews (.ovr) will be created if the
+#' dataset is open read-only.
+#' Starting with GDAL 3.2, the GDAL_NUM_THREADS configuration option can be set
+#' to "ALL_CPUS" or an integer value to specify the number of threads to use
+#' for overview computation (see [set_config_option()]). 
+#' No return value, called for side effects.
 #'
 #' \code{$getDataTypeName(band)}
 #' Returns the name of the pixel data type for \code{band}. The possible data 
@@ -255,6 +285,14 @@
 #' (e.g., "m" or "ft").
 #' An empty string \code{""} is returned if no units are available.
 #'
+#' \code{$setUnitType(band, unit_type)}
+#' Sets the name of the unit type of the pixel values for \code{band}.
+#' `unit_type` should be one of "" (the default indicating it is unknown),
+#' "m" indicating meters, or "ft" indicating feet, though other nonstandard
+#' values are allowed.
+#' Returns logical TRUE on success or FALSE if the unit type could not 
+#' be set.
+#'
 #' \code{$getScale(band)}
 #' Returns the pixel value scale (units value = (raw value * scale) + offset) 
 #' for \code{band}.
@@ -262,12 +300,22 @@
 #' transform raw pixel values into the units returned by \code{getUnitType()}.
 #' Returns NA if a scale value is not defined for this \code{band}.
 #'
+#' \code{$setScale(band, scale)}
+#' Sets the pixel value scale (units value = (raw value * scale) + offset) 
+#' for \code{band}. Many raster formats do not implement this method.
+#' Returns logical TRUE on success or FALSE if the scale could not be set.
+#'
 #' \code{$getOffset(band)}
 #' Returns the pixel value offset (units value = (raw value * scale) + offset) 
 #' for \code{band}.
 #' This value (in combination with the \code{getScale()} value) can be used to 
 #' transform raw pixel values into the units returned by \code{getUnitType()}.
 #' Returns NA if an offset value is not defined for this \code{band}.
+#'
+#' \code{$setOffset(band, offset)}
+#' Sets the pixel value offset (units value = (raw value * scale) + offset) 
+#' for \code{band}. Many raster formats do not implement this method.
+#' Returns logical TRUE on success or FALSE if the offset could not be set.
 #'
 #' \code{$getMetadata(band, domain)}
 #' Returns a character vector of all metadata `name=value` pairs that exist in 
@@ -287,6 +335,13 @@
 #' band number to retrieve band-level metadata.
 #' Set \code{domain = ""} (empty string) to retrieve an item in the 
 #' default domain.
+#'
+#' \code{$setMetadataItem(band, mdi_name, mdi_value, domain)}
+#' Sets the value (\code{mdi_value}) of a specific metadata item named
+#' \code{mdi_name} in the specified \code{domain}.
+#' Set \code{band = 0} to set dataset-level metadata, or to an integer 
+#' band number to set band-level metadata.
+#' Set \code{domain = ""} (empty string) to set an item in the default domain.
 #'
 #' \code{$read(band, xoff, yoff, xsize, ysize, out_xsize, out_ysize)}
 #' Reads a region of raster data from \code{band}. The method takes care of
@@ -392,14 +447,16 @@
 #' ds$getRasterYSize()
 #' ds$getGeoTransform()
 #' ds$getProjectionRef()
+#' ds$getRasterCount()
 #' ds$bbox()
 #' ds$res()
+#' ds$dim()
 #'
-#' ## retrieve the number of bands and some band-level parameters
-#' ds$getRasterCount()
+#' ## retrieve some band-level parameters
 #' ds$getBlockSize(band=1)
 #' ds$getOverviewCount(band=1)
 #' ds$getDataTypeName(band=1)
+#' # LCP format does not support an intrinsic nodata value so this returns NA:
 #' ds$getNoDataValue(band=1)
 #'
 #' ## LCP driver reports several dataset- and band-level metadata
@@ -422,7 +479,6 @@
 #' rowdata <- ds$read(band=1, xoff=0, yoff=9, 
 #'                     xsize=ncols, ysize=1, 
 #'                     out_xsize=ncols, out_ysize=1)
-#' dim(rowdata)
 #' head(rowdata)
 #'
 #' ds$close()
@@ -442,7 +498,6 @@
 #' nrows <- ds_new$getRasterYSize()
 #' for (row in 0:(nrows-1)) {
 #'     rowdata <- round(runif(ncols, 0, 100))
-#'     dim(rowdata) <- c(1, ncols)
 #'     ds_new$write(band=1, xoff=0, yoff=row, xsize=ncols, ysize=1, rowdata)
 #' }
 #'
@@ -457,24 +512,16 @@
 #' ## close the dataset for proper cleanup
 #' ds_new$close()
 #'
-#' ## checksum LCP band 1
-#' ds$open(read_only=TRUE)
-#' ncols <- ds$getRasterXSize()
-#' nrows <- ds$getRasterYSize()
-#' ds$getChecksum(band=1, xoff=0, yoff=0, xsize=ncols, ysize=nrows)   # 28017
-#' ds$close()
-#'
 #' \donttest{
 #' ## using a GDAL Virtual File System handler '/vsicurl/'
 #' ## see: https://gdal.org/user/virtual_file_systems.html
+#' url <- "/vsicurl/https://raw.githubusercontent.com/"
+#' url <- paste0(url, "usdaforestservice/gdalraster/main/sample-data/")
+#' url <- paste0(url, "lf_elev_220_mt_hood_utm.tif")
 #'
-#' web_file <- "/vsicurl/https://raw.githubusercontent.com"
-#' web_file <- paste0(web_file, "/django/django/main/tests/gis_tests/")
-#' web_file <- paste0(web_file, "data/rasters/raster.tif")
-#'
-#' ds_url <- new(GDALRaster, web_file, read_only=TRUE)
-#' ds_url$info()
-#' ds_url$close()
+#' ds <- new(GDALRaster, url, read_only=TRUE)
+#' plot_raster(ds, main="Mount Hood elevation (m)")
+#' ds$close()
 #' }
 NULL
 

@@ -6,10 +6,13 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml)
+[![codecov](https://codecov.io/gh/ctoney/gdalraster/branch/main/graph/badge.svg?token=MXIOPZQ2IU)](https://app.codecov.io/gh/ctoney/gdalraster)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/gdalraster)](https://CRAN.R-project.org/package=gdalraster)
 [![cran
 checks](https://badges.cranchecks.info/worst/gdalraster.svg)](https://cran.r-project.org/web/checks/check_results_gdalraster.html)
+[![r-universe
+status](https://usdaforestservice.r-universe.dev/badges/gdalraster)](https://usdaforestservice.r-universe.dev/gdalraster)
 <!-- badges: end -->
 
 ## Overview
@@ -52,7 +55,7 @@ Additional functionality includes:
   - `plot_raster()` displays raster data using base R graphics.
 
 `gdalraster` may be suitable for applications that primarily need
-low-level raster I/O or prefer native GDAL-like calling. The additional
+low-level raster I/O or prefer a direct GDAL API. The additional
 functionality is somewhat aimed at thematic data analysis but may have
 other utility.
 
@@ -72,5 +75,7 @@ remotes::install_github("USDAForestService/gdalraster")
     manual](https://usdaforestservice.github.io/gdalraster/reference/)
   - [Raster API
     tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html)
+  - [Raster
+    display](https://usdaforestservice.github.io/gdalraster/articles/raster-display.html)
   - [GDAL block
     caching](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)

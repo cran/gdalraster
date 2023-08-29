@@ -245,6 +245,30 @@ get_pixel_line <- function(xy, gt) {
     .Call(`_gdalraster_get_pixel_line`, xy, gt)
 }
 
+#' Raster overlay for unique combinations
+#' 
+#' @description
+#' `combine()` overlays multiple rasters so that a unique ID is assigned to 
+#' each unique combination of input values. The input raster layers  
+#' typically have integer data types (floating point will be coerced to 
+#' integer by truncation), and must have the same projection, extent and cell 
+#' size. Pixel counts for each unique combination are obtained, and 
+#' combination IDs are optionally written to an output raster.
+#'
+#' Called from and documented in R/gdalraster_proc.R
+#' @noRd
+.combine <- function(src_files, var_names, bands, dst_filename = "", fmt = "", dataType = "UInt32", options = NULL) {
+    .Call(`_gdalraster__combine`, src_files, var_names, bands, dst_filename, fmt, dataType, options)
+}
+
+#' Wrapper for GDALDEMProcessing in the GDAL Algorithms C API
+#'
+#' Called from and documented in R/gdalraster_proc.R
+#' @noRd
+.dem_proc <- function(mode, src_filename, dst_filename, cl_arg = NULL, col_file = NULL) {
+    .Call(`_gdalraster__dem_proc`, mode, src_filename, dst_filename, cl_arg, col_file)
+}
+
 #' Fill selected pixels by interpolation from surrounding areas
 #'
 #' `fillNodata()` is a wrapper for `GDALFillNodata()` in the GDAL Algorithms
@@ -332,22 +356,6 @@ fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_it
 #' ds$close()
 warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL) {
     invisible(.Call(`_gdalraster_warp`, src_files, dst_filename, t_srs, cl_arg))
-}
-
-#' Raster overlay for unique combinations
-#' 
-#' @description
-#' `combine()` overlays multiple rasters so that a unique ID is assigned to 
-#' each unique combination of input values. The input raster layers  
-#' typically have integer data types (floating point will be coerced to 
-#' integer by truncation), and must have the same projection, extent and cell 
-#' size. Pixel counts for each unique combination are obtained, and 
-#' combination IDs are optionally written to an output raster.
-#'
-#' Called from and documented in R/gdalraster_proc.R
-#' @noRd
-.combine <- function(src_files, var_names, bands, dst_filename = "", fmt = "", dataType = "UInt32", options = NULL) {
-    .Call(`_gdalraster__combine`, src_files, var_names, bands, dst_filename, fmt, dataType, options)
 }
 
 #' Is GEOS available?
@@ -458,6 +466,10 @@ has_geos <- function() {
     .Call(`_gdalraster__g_centroid`, geom)
 }
 
+#' convert data frame to numeric matrix in Rcpp
+#' @noRd
+NULL
+
 #' Inverse project geospatial x/y coordinates to longitude/latitude
 #'
 #' `inv_project()` transforms geospatial x/y coordinates to 
@@ -484,7 +496,8 @@ has_geos <- function() {
 #' (traditional GIS order) regardless of the axis order defined for the 
 #' names above.
 #'
-#' @param pts Numeric array of geospatial x/y coordinates 
+#' @param pts A two-column data frame or numeric matrix containing geospatial
+#' x/y coordinates 
 #' @param srs Character string in OGC WKT format specifying the projected 
 #' spatial reference system for `pts`.
 #' @param well_known_gcs Optional character string containing a supported 
@@ -499,8 +512,8 @@ has_geos <- function() {
 #' ## id, x, y in NAD83 / UTM zone 12N
 #' pts <- read.csv(pt_file)
 #' print(pts)
-#' inv_project(as.matrix(pts[,-1]), epsg_to_wkt(26912))
-#' inv_project(as.matrix(pts[,-1]), epsg_to_wkt(26912), "NAD27")
+#' inv_project(pts[,-1], epsg_to_wkt(26912))
+#' inv_project(pts[,-1], epsg_to_wkt(26912), "NAD27")
 inv_project <- function(pts, srs, well_known_gcs = "") {
     .Call(`_gdalraster_inv_project`, pts, srs, well_known_gcs)
 }
@@ -509,7 +522,8 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #'
 #' `transform_xy()` transforms geospatial x/y coordinates to a new projection.
 #'
-#' @param pts Numeric array of geospatial x/y coordinates 
+#' @param pts A two-column data frame or numeric matrix containing geospatial
+#' x/y coordinates 
 #' @param srs_from Character string in OGC WKT format specifying the  
 #' spatial reference system for `pts`.
 #' @param srs_to Character string in OGC WKT format specifying the output 
@@ -525,9 +539,9 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #' print(pts)
 #' ## id, x, y in NAD83 / UTM zone 12N
 #' ## transform to NAD83 / CONUS Albers
-#' transform_xy( pts = as.matrix(pts[,-1]), 
-#'               srs_from = epsg_to_wkt(26912), 
-#'               srs_to = epsg_to_wkt(5070) )
+#' transform_xy(pts = pts[,-1], 
+#'              srs_from = epsg_to_wkt(26912), 
+#'              srs_to = epsg_to_wkt(5070))
 transform_xy <- function(pts, srs_from, srs_to) {
     .Call(`_gdalraster_transform_xy`, pts, srs_from, srs_to)
 }

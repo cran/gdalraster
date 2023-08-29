@@ -361,7 +361,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <h2>Opening the file</h2>
 <p>Before opening a GDAL-supported data store it is necessary to register drivers. There is a driver for each supported raster format. <code>{gdalraster}</code> automatically registers drivers when the package is loaded. A raster dataset is opened by creating a new instance of class <code>GDALRaster</code> passing the name of the file and the access desired (<code>read_only = TRUE</code>, or <code>read_only = FALSE</code> for update access).</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">library</span>(gdalraster)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="co">#&gt; GDAL 3.6.2, released 2023/01/02</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="co">#&gt; GDAL 3.6.4, released 2023/04/17</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>elev_file &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;extdata/storml_elev.tif&quot;</span>, <span class="dt">package=</span><span class="st">&quot;gdalraster&quot;</span>)</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>ds &lt;-<span class="st"> </span><span class="kw">new</span>(GDALRaster, <span class="dt">filename =</span> elev_file, <span class="dt">read_only =</span> <span class="ot">TRUE</span>)</span></code></pre></div>
@@ -403,16 +403,18 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a><span class="co">#&gt; [1] 107</span></span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">getRasterCount</span>()</span>
 <span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a><span class="co">#&gt; [1] 1</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="co"># coordinate reference system</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">getProjectionRef</span>()</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;PROJCS[\&quot;NAD83 / UTM zone 12N\&quot;,GEOGCS[\&quot;NAD83\&quot;,DATUM[\&quot;North_American_Datum_1983\&quot;,SPHEROID[\&quot;GRS 1980\&quot;,6378137,298.257222101,AUTHORITY[\&quot;EPSG\&quot;,\&quot;7019\&quot;]],AUTHORITY[\&quot;EPSG\&quot;,\&quot;6269\&quot;]],PRIMEM[\&quot;Greenwich\&quot;,0,AUTHORITY[\&quot;EPSG\&quot;,\&quot;8901\&quot;]],UNIT[\&quot;degree\&quot;,0.0174532925199433,AUTHORITY[\&quot;EPSG\&quot;,\&quot;9122\&quot;]],AUTHORITY[\&quot;EPSG\&quot;,\&quot;4269\&quot;]],PROJECTION[\&quot;Transverse_Mercator\&quot;],PARAMETER[\&quot;latitude_of_origin\&quot;,0],PARAMETER[\&quot;central_meridian\&quot;,-111],PARAMETER[\&quot;scale_factor\&quot;,0.9996],PARAMETER[\&quot;false_easting\&quot;,500000],PARAMETER[\&quot;false_northing\&quot;,0],UNIT[\&quot;metre\&quot;,1,AUTHORITY[\&quot;EPSG\&quot;,\&quot;9001\&quot;]],AXIS[\&quot;Easting\&quot;,EAST],AXIS[\&quot;Northing\&quot;,NORTH],AUTHORITY[\&quot;EPSG\&quot;,\&quot;26912\&quot;]]&quot;</span></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a></span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a><span class="co"># origin and pixel size from the geotransform</span></span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true"></a><span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;Origin:&quot;</span>, gt[<span class="dv">1</span>], gt[<span class="dv">4</span>]))</span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Origin: 323476.071970863 5105081.98303138&quot;</span></span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true"></a><span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;Pixel size:&quot;</span>, gt[<span class="dv">2</span>], gt[<span class="dv">6</span>]))</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Pixel size: 30 -30&quot;</span></span></code></pre></div>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">dim</span>()</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="co">#&gt; [1] 143 107   1</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a><span class="co"># coordinate reference system</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">getProjectionRef</span>()</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;PROJCS[\&quot;NAD83 / UTM zone 12N\&quot;,GEOGCS[\&quot;NAD83\&quot;,DATUM[\&quot;North_American_Datum_1983\&quot;,SPHEROID[\&quot;GRS 1980\&quot;,6378137,298.257222101,AUTHORITY[\&quot;EPSG\&quot;,\&quot;7019\&quot;]],AUTHORITY[\&quot;EPSG\&quot;,\&quot;6269\&quot;]],PRIMEM[\&quot;Greenwich\&quot;,0,AUTHORITY[\&quot;EPSG\&quot;,\&quot;8901\&quot;]],UNIT[\&quot;degree\&quot;,0.0174532925199433,AUTHORITY[\&quot;EPSG\&quot;,\&quot;9122\&quot;]],AUTHORITY[\&quot;EPSG\&quot;,\&quot;4269\&quot;]],PROJECTION[\&quot;Transverse_Mercator\&quot;],PARAMETER[\&quot;latitude_of_origin\&quot;,0],PARAMETER[\&quot;central_meridian\&quot;,-111],PARAMETER[\&quot;scale_factor\&quot;,0.9996],PARAMETER[\&quot;false_easting\&quot;,500000],PARAMETER[\&quot;false_northing\&quot;,0],UNIT[\&quot;metre\&quot;,1,AUTHORITY[\&quot;EPSG\&quot;,\&quot;9001\&quot;]],AXIS[\&quot;Easting\&quot;,EAST],AXIS[\&quot;Northing\&quot;,NORTH],AUTHORITY[\&quot;EPSG\&quot;,\&quot;26912\&quot;]]&quot;</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true"></a><span class="co"># origin and pixel size from the geotransform</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true"></a><span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;Origin:&quot;</span>, gt[<span class="dv">1</span>], gt[<span class="dv">4</span>]))</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Origin: 323476.071970863 5105081.98303138&quot;</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true"></a><span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;Pixel size:&quot;</span>, gt[<span class="dv">2</span>], gt[<span class="dv">6</span>]))</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Pixel size: 30 -30&quot;</span></span></code></pre></div>
 </div>
 <div id="fetching-a-raster-band" class="section level2">
 <h2>Fetching a raster band</h2>

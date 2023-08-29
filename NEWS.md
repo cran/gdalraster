@@ -1,3 +1,21 @@
+# gdalraster 1.4.0
+
+* add `dem_proc()`: wrapper for the `gdaldem` command-line utility to generate DEM derivatives
+
+* add the following set methods in class `GDALRaster`: `setMetadataItem()`, `setUnitType()`, `setScale()`, `setOffset()`
+
+* add `GDALRaster$buildOverviews()`: build raster overviews
+
+* add `GDALRaster$dim()`: returns a vector of xsize, ysize, nbands
+
+* `transform_xy()` and `inv_project()`: `pts` can be a data frame or matrix
+
+* `plot_raster()` now accepts a `GDALRaster` object for the `data` argument
+
+* `plot_raster()`: make the legend narrower and add argument `digits` to format legend labels when raster data are floating point
+
+* add test suite and code coverage report
+
 # gdalraster 1.3.0
 
 * `GDALRaster::read()`: data are now read as R `integer` type when possible for the raster data type (#23)

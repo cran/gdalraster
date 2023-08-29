@@ -19,6 +19,7 @@ int CPL_DLL CPL_STDCALL GDALTermProgressR(double, const char *, void *);
 // Predeclare some GDAL types until the public header is included
 #ifndef GDAL_H_INCLUDED
 typedef void *GDALDatasetH;
+typedef void *GDALRasterBandH;
 typedef enum {GA_ReadOnly = 0, GA_Update = 1} GDALAccess;
 #endif
 
@@ -41,7 +42,21 @@ bool createCopy(std::string format, std::string dst_filename,
 Rcpp::NumericVector inv_geotransform(const std::vector<double> gt);
 
 Rcpp::IntegerMatrix get_pixel_line(const Rcpp::NumericMatrix xy,
-		const std::vector<double> gt);	
+		const std::vector<double> gt);
+
+Rcpp::DataFrame _combine(Rcpp::CharacterVector src_files,
+		Rcpp::CharacterVector var_names,
+		std::vector<int> bands, 
+		std::string dst_filename,
+		std::string fmt, 
+		std::string dataType,
+		Rcpp::Nullable<Rcpp::CharacterVector> options);
+
+bool _dem_proc(std::string mode,
+		std::string src_filename, 
+		std::string dst_filename,
+		Rcpp::Nullable<Rcpp::CharacterVector> cl_arg,
+		Rcpp::Nullable<Rcpp::String> col_file);
 
 bool fillNodata(std::string filename, int band, std::string mask_file,
 		double max_dist, int smooth_iterations);
@@ -49,15 +64,6 @@ bool fillNodata(std::string filename, int band, std::string mask_file,
 bool warp(Rcpp::CharacterVector src_files, std::string dst_filename,
 		Rcpp::CharacterVector t_srs, 
 		Rcpp::Nullable<Rcpp::CharacterVector> arg_list);
-
-Rcpp::DataFrame _combine(
-		Rcpp::CharacterVector src_files,
-		Rcpp::CharacterVector var_names,
-		std::vector<int> bands, 
-		std::string dst_filename,
-		std::string fmt, 
-		std::string dataType,
-		Rcpp::Nullable<Rcpp::CharacterVector> options);
 
 class GDALRaster {
 
@@ -83,15 +89,19 @@ class GDALRaster {
 	int getRasterYSize() const;
 	std::vector<double> getGeoTransform() const;
 	bool setGeoTransform(std::vector<double> transform);
-	std::vector<double> bbox() const;
-	std::vector<double> res() const;
 	int getRasterCount() const;
 	
 	std::string getProjectionRef() const;
 	bool setProjection(std::string projection);
 	
+	std::vector<double> bbox() const;
+	std::vector<double> res() const;
+	std::vector<int> dim() const;
+	
 	std::vector<int> getBlockSize(int band) const;
 	int getOverviewCount(int band) const;
+	void buildOverviews(std::string resampling, std::vector<int> levels,
+			std::vector<int> bands);
 	std::string getDataTypeName(int band) const;
 	Rcpp::NumericVector getStatistics(int band,	bool approx_ok, 
 			bool force) const;
@@ -100,14 +110,19 @@ class GDALRaster {
 	bool setNoDataValue(int band, double nodata_value);
 	void deleteNoDataValue(int band);
 	std::string getUnitType(int band) const;
+	bool setUnitType(int band, std::string unit_type);
 	bool hasScale(int band) const;
 	double getScale(int band) const;
+	bool setScale(int band, double scale);
 	bool hasOffset(int band) const;
 	double getOffset(int band) const;
+	bool setOffset(int band, double offset);
 	
 	Rcpp::CharacterVector getMetadata(int band, std::string domain) const;
-	std::string getMetadataItem(int band,
-			std::string mdi_name, std::string domain) const;
+	std::string getMetadataItem(int band, std::string mdi_name, 
+			std::string domain) const;
+	void setMetadataItem(int band, std::string mdi_name, std::string mdi_value,
+			std::string domain);
 	
 	SEXP read(int band, int xoff, int yoff, int xsize, int ysize,
 			int out_xsize, int out_ysize) const;
@@ -119,10 +134,10 @@ class GDALRaster {
 	
 	int getChecksum(int band, int xoff, int yoff, int xsize, int ysize) const;
 	
-	void _setMetadataItem(int band, std::string mdi_name, 
-			std::string mdi_value, std::string domain);
-	
 	void close();
+	
+	// methods for internal use not exposed in R
+	GDALRasterBandH _getBand(int band) const;
 };
 
 RCPP_EXPOSED_CLASS(GDALRaster)

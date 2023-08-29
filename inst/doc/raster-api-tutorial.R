@@ -32,6 +32,7 @@ ds$getDriverLongName()
 ds$getRasterXSize()
 ds$getRasterYSize()
 ds$getRasterCount()
+ds$dim()
 
 # coordinate reference system
 ds$getProjectionRef()
