@@ -5,8 +5,7 @@
 #ifndef gdalraster_H
 #define gdalraster_H
 
-#include <Rcpp.h> 
-// [[Rcpp::plugins(cpp11)]]
+#include "rcpp_util.h"
 
 #include <string>
 #include <vector>
@@ -38,6 +37,10 @@ bool create(std::string format, std::string dst_filename,
 bool createCopy(std::string format, std::string dst_filename,
 		std::string src_filename, bool strict,
 		Rcpp::Nullable<Rcpp::CharacterVector> options);
+
+bool bandCopyWholeRaster(std::string src_filename, int src_band,
+		std::string dst_filename, int dst_band,
+		Rcpp::Nullable<Rcpp::CharacterVector> options);
 			
 Rcpp::NumericVector inv_geotransform(const std::vector<double> gt);
 
@@ -61,9 +64,21 @@ bool _dem_proc(std::string mode,
 bool fillNodata(std::string filename, int band, std::string mask_file,
 		double max_dist, int smooth_iterations);
 		
+bool sieveFilter(std::string src_filename, int src_band,
+		std::string dst_filename, int dst_band,
+		int size_threshold, int connectedness,
+		std::string mask_filename , int mask_band,
+		Rcpp::Nullable<Rcpp::CharacterVector> options);
+		
 bool warp(Rcpp::CharacterVector src_files, std::string dst_filename,
 		Rcpp::CharacterVector t_srs, 
 		Rcpp::Nullable<Rcpp::CharacterVector> arg_list);
+		
+Rcpp::IntegerMatrix createColorRamp(int start_index,
+		Rcpp::IntegerVector start_color,
+		int end_index,
+		Rcpp::IntegerVector end_color,
+		std::string palette_interp);
 
 class GDALRaster {
 
@@ -79,8 +94,10 @@ class GDALRaster {
 	std::string getFilename() const;
 	void open(bool read_only);
 	bool isOpen() const;
+	Rcpp::CharacterVector getFileList() const;
 	
 	void info() const;
+	std::string infoAsJSON() const;
 	
 	std::string getDriverShortName() const;
 	std::string getDriverLongName() const;
@@ -117,6 +134,10 @@ class GDALRaster {
 	bool hasOffset(int band) const;
 	double getOffset(int band) const;
 	bool setOffset(int band, double offset);
+	std::string getDescription(int band) const;
+	void setDescription(int band, std::string desc);
+	std::string getRasterColorInterp(int band) const;
+	void setRasterColorInterp(int band, std::string col_interp);
 	
 	Rcpp::CharacterVector getMetadata(int band, std::string domain) const;
 	std::string getMetadataItem(int band, std::string mdi_name, 
@@ -132,11 +153,19 @@ class GDALRaster {
 
 	void fillRaster(int band, double value, double ivalue);
 	
+	SEXP getColorTable(int band) const;
+	std::string getPaletteInterp(int band) const;
+	bool setColorTable(int band, Rcpp::RObject &col_tbl,
+			std::string palette_interp);
+	
+	void flushCache();
+	
 	int getChecksum(int band, int xoff, int yoff, int xsize, int ysize) const;
 	
 	void close();
 	
 	// methods for internal use not exposed in R
+	void _checkAccess(GDALAccess access_needed) const;
 	GDALRasterBandH _getBand(int band) const;
 };
 

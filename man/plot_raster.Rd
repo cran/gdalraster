@@ -11,6 +11,7 @@ plot_raster(
   nbands = 1,
   max_pixels = 2.5e+07,
   col_tbl = NULL,
+  maxColorValue = 1,
   normalize = TRUE,
   minmax_def = NULL,
   minmax_pct_cut = NULL,
@@ -25,7 +26,7 @@ plot_raster(
   ylab = "y",
   xaxs = "i",
   yaxs = "i",
-  legend = NULL,
+  legend = FALSE,
   digits = 2,
   na_col = rgb(0, 0, 0, 0),
   ...
@@ -50,12 +51,20 @@ the entire raster will be read at full resolution.}
 3 (RGB). For RGB, \code{data} are interleaved by band.}
 
 \item{max_pixels}{The maximum number of pixels that the function will
-use for display (per band). An error is raised if \code{(xsize * ysize)} exceeds
-this value. Setting to \code{NULL} turns off this check.}
+attempt to display (per band). An error is raised if \code{(xsize * ysize)}
+exceeds this value. Setting to \code{NULL} turns off this check.}
 
-\item{col_tbl}{A color table as a matrix or data frame with four columns.
-Column 1 contains the numeric raster values, columns 2:4 contain the
-intensities (between 0 and 1) of the red, green and blue primaries.}
+\item{col_tbl}{A color table as a matrix or data frame with four or five
+columns. Column 1 contains the numeric pixel values. Columns 2:4 contain
+the intensities of the red, green and blue primaries (\code{0:1} by default,
+or use integer \code{0:255} by setting \code{maxColorValue = 255}).
+An optional column 5 may contain alpha transparency values, \code{0} for fully
+transparent to \code{1} (or \code{maxColorValue}) for opaque (the default if column 5
+is missing). If \code{data} is a \code{GDALRaster} object, a built-in color table will
+be used automatically if one exists in the dataset.}
+
+\item{maxColorValue}{A number giving the maximum of the color values range
+in \code{col_tbl} (see above). The default is \code{1}.}
 
 \item{normalize}{Logical. \code{TRUE} to rescale pixel values so that their
 range is \verb{[0,1]}, normalized to the full range of the pixel data by default
@@ -104,9 +113,9 @@ to the image when drawing (default \code{TRUE}).}
 (see \code{?par}).}
 
 \item{legend}{Logical indicating whether to include a legend on the plot.
-By default, a legend will be included if plotting single-band data without
-\code{col_tbl} specified. Legend is not currently supported for color tables, or
-with 3-band RGB data.}
+Currently, legends are only supported for continuous data. A color table
+will be used if one is specified or the raster has a built-in color table,
+otherwise the value for \code{col_map_fn} will be used.}
 
 \item{digits}{The number of digits to display after the decimal point in
 the legend labels when raster data are floating point.}
@@ -146,13 +155,14 @@ elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 ds <- new(GDALRaster, elev_file, read_only=TRUE)
 
 # grayscale
-plot_raster(ds, main="Storm Lake elevation (m)")
+plot_raster(ds, legend=TRUE, main="Storm Lake elevation (m)")
 
 # color ramp from user-defined palette
 elev_pal <- c("#00A60E","#63C600","#E6E600","#E9BD3B",
               "#ECB176","#EFC2B3","#F2F2F2")
 ramp <- scales::colour_ramp(elev_pal, alpha=FALSE)
-plot_raster(ds, col_map_fn=ramp, main="Storm Lake elevation (m)")
+plot_raster(ds, col_map_fn=ramp, legend=TRUE,
+            main="Storm Lake elevation (m)")
 
 ds$close()
 

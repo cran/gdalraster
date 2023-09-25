@@ -38,9 +38,9 @@ combinations of the input values
 (e.g., "UInt16" or the default "UInt32").}
 
 \item{options}{Optional list of format-specific creation options in a
-vector of "NAME=VALUE" pairs.
-(e.g., \code{options = c("COMPRESS=LZW")} to set \code{LZW}
-compression during creation of a GTiff file).}
+vector of "NAME=VALUE" pairs
+(e.g., \code{options = c("COMPRESS=LZW")} to set LZW compression
+during creation of a GTiff file).}
 }
 \value{
 A data frame with column \code{cmbid} containing the combination IDs,
@@ -98,8 +98,8 @@ rasterfiles <- c(lcp_file, lcp_file)
 bands <- c(4, 5)
 var.names <- c("fbfm", "tree_cov")
 cmb_file <- paste0(tempdir(), "/", "fbfm_cov_cmbid.tif")
-options <- c("COMPRESS=LZW")
-df <- combine(rasterfiles, var.names, bands, cmb_file, options = options)
+opt <- c("COMPRESS=LZW")
+df <- combine(rasterfiles, var.names, bands, cmb_file, options = opt)
 head(df)
 ds <- new(GDALRaster, cmb_file, TRUE)
 ds$info()

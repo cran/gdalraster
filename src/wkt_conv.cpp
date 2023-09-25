@@ -20,16 +20,16 @@
 //'
 //' @details
 //' As of GDAL 3.0, the default format for WKT export is OGC WKT 1.
-//' The WKT version can be overridden by using the `OSR_WKT_FORMAT` 
+//' The WKT version can be overridden by using the OSR_WKT_FORMAT 
 //' configuration option (see [set_config_option()]).
-//' Valid values are one of: `SFSQL`, `WKT1_SIMPLE`, `WKT1`, `WKT1_GDAL`, 
-//' `WKT1_ESRI`, `WKT2_2015`, `WKT2_2018`, `WKT2`, `DEFAULT`.
-//' If `SFSQL`, a WKT1 string without AXIS, TOWGS84, AUTHORITY or 
-//' EXTENSION node is returned. If `WKT1_SIMPLE`, a WKT1 string without 
-//' AXIS, AUTHORITY or EXTENSION node is returned. `WKT1` is an alias of 
-//' `WKT1_GDAL`. `WKT2` will default to the latest revision implemented 
-//' (currently `WKT2_2018`). `WKT2_2019` can be used as an alias of 
-//' `WKT2_2018` since GDAL 3.2
+//' Valid values are one of: SFSQL, WKT1_SIMPLE, WKT1, WKT1_GDAL, 
+//' WKT1_ESRI, WKT2_2015, WKT2_2018, WKT2, DEFAULT.
+//' If SFSQL, a WKT1 string without AXIS, TOWGS84, AUTHORITY or 
+//' EXTENSION node is returned. If WKT1_SIMPLE, a WKT1 string without 
+//' AXIS, AUTHORITY or EXTENSION node is returned. WKT1 is an alias of 
+//' WKT1_GDAL. WKT2 will default to the latest revision implemented 
+//' (currently WKT2_2018). WKT2_2019 can be used as an alias of 
+//' WKT2_2018 since GDAL 3.2
 //'
 //' @param epsg Integer EPSG code.
 //' @param pretty Logical. `TRUE` to return a nicely formatted WKT string 
@@ -84,14 +84,14 @@ std::string epsg_to_wkt(int epsg, bool pretty = false) {
 //' This is a wrapper for `OSRSetFromUserInput()` in the GDAL Spatial 
 //' Reference System C API with output to WKT. 
 //' The input SRS may take the following forms:
-//'   * `WKT` - to convert WKT versions (see below)
-//'   * `EPSG:n` - EPSG code n
-//'   * \code{AUTO:proj_id,unit_id,lon0,lat0} - WMS auto projections
-//'   * `urn:ogc:def:crs:EPSG::n` - OGC URNs
+//'   * WKT - to convert WKT versions (see below)
+//'   * EPSG:n - EPSG code n
+//'   * AUTO:proj_id,unit_id,lon0,lat0 - WMS auto projections
+//'   * urn:ogc:def:crs:EPSG::n - OGC URNs
 //'   * PROJ.4 definitions
-//'   * `filename` - file read for WKT, XML or PROJ.4 definition
-//'   * well known name such as `NAD27`, `NAD83`, `WGS84` or `WGS72`
-//'   * `IGNF:xxxx`, `ESRI:xxxx` - definitions from the PROJ database
+//'   * filename - file to read for WKT, XML or PROJ.4 definition
+//'   * well known name such as NAD27, NAD83, WGS84 or WGS72
+//'   * IGNF:xxxx, ESRI:xxxx - definitions from the PROJ database
 //'   * PROJJSON (PROJ >= 6.2)
 //'
 //' This function is intended to be flexible, but by its nature it is 
@@ -99,16 +99,16 @@ std::string epsg_to_wkt(int epsg, bool pretty = false) {
 //' [epsg_to_wkt()] could be used instead for EPSG codes.
 //'
 //' As of GDAL 3.0, the default format for WKT export is OGC WKT 1.
-//' The WKT version can be overridden by using the `OSR_WKT_FORMAT` 
+//' The WKT version can be overridden by using the OSR_WKT_FORMAT 
 //' configuration option (see [set_config_option()]).
-//' Valid values are one of: `SFSQL`, `WKT1_SIMPLE`, `WKT1`, `WKT1_GDAL`, 
-//' `WKT1_ESRI`, `WKT2_2015`, `WKT2_2018`, `WKT2`, `DEFAULT`.
-//' If `SFSQL`, a WKT1 string without AXIS, TOWGS84, AUTHORITY or 
-//' EXTENSION node is returned. If `WKT1_SIMPLE`, a WKT1 string without 
-//' AXIS, AUTHORITY or EXTENSION node is returned. `WKT1` is an alias of 
-//' `WKT1_GDAL`. `WKT2` will default to the latest revision implemented 
-//' (currently `WKT2_2018`). `WKT2_2019` can be used as an alias of 
-//' `WKT2_2018` since GDAL 3.2
+//' Valid values are one of: SFSQL, WKT1_SIMPLE, WKT1, WKT1_GDAL, 
+//' WKT1_ESRI, WKT2_2015, WKT2_2018, WKT2, DEFAULT.
+//' If SFSQL, a WKT1 string without AXIS, TOWGS84, AUTHORITY or 
+//' EXTENSION node is returned. If WKT1_SIMPLE, a WKT1 string without 
+//' AXIS, AUTHORITY or EXTENSION node is returned. WKT1 is an alias of 
+//' WKT1_GDAL. WKT2 will default to the latest revision implemented 
+//' (currently WKT2_2018). WKT2_2019 can be used as an alias of 
+//' WKT2_2018 since GDAL 3.2
 //'
 //' @param srs Character string containing an SRS definition in various
 //' formats (see Details).
@@ -251,14 +251,21 @@ bool srs_is_same(std::string srs1, std::string srs2) {
 	return OSRIsSame(hSRS1, hSRS2);
 }
 
-//' Get the bounding box of a geometry specified in OGC WKT format.
+//' Get the bounding box of a geometry specified in OGC WKT format
 //'
 //' `bbox_from_wkt()` returns the bounding box of a WKT 2D geometry 
 //' (e.g., LINE, POLYGON, MULTIPOLYGON).
 //'
 //' @param wkt Character. OGC WKT string for a simple feature 2D geometry.
+//' @param extend_x Numeric scalar. Distance to extend the output bounding box
+//' in both directions along the x-axis
+//' (results in `xmin = bbox[1] - extend_x`, `xmax = bbox[3] + extend_x`).
+//' @param extend_y Numeric scalar. Distance to extend the output bounding box
+//' in both directions along the y-axis
+//' (results in `ymin = bbox[2] - extend_y`, `ymax = bbox[4] + extend_y`).
 //' @return Numeric vector of length four containing the xmin, ymin, 
-//' xmax, ymax of the geometry specified by `wkt`.
+//' xmax, ymax of the geometry specified by `wkt` (possibly extended by values
+//' in `extend_x`, `extend_y`).
 //'
 //' @seealso
 //' [bbox_to_wkt()]
@@ -267,9 +274,10 @@ bool srs_is_same(std::string srs1, std::string srs2) {
 //' bnd <- "POLYGON ((324467.3 5104814.2, 323909.4 5104365.4, 323794.2 
 //' 5103455.8, 324970.7 5102885.8, 326420.0 5103595.3, 326389.6 5104747.5, 
 //' 325298.1 5104929.4, 325298.1 5104929.4, 324467.3 5104814.2))"
-//' bbox_from_wkt(bnd)
+//' bbox_from_wkt(bnd, 100, 100)
 // [[Rcpp::export]]
-Rcpp::NumericVector bbox_from_wkt(std::string wkt) {
+Rcpp::NumericVector bbox_from_wkt(std::string wkt,
+		double extend_x = 0, double extend_y = 0) {
 
 	OGRGeometryH hGeometry;
 	char* pszWKT;
@@ -284,27 +292,33 @@ Rcpp::NumericVector bbox_from_wkt(std::string wkt) {
 	OGREnvelope sBbox;
 	OGR_G_GetEnvelope(hGeometry, &sBbox);
 	Rcpp::NumericVector bbox = {
-		sBbox.MinX,
-		sBbox.MinY,
-		sBbox.MaxX,
-		sBbox.MaxY
+		sBbox.MinX - extend_x,
+		sBbox.MinY - extend_y,
+		sBbox.MaxX + extend_x,
+		sBbox.MaxY + extend_y
 	};
 
 	return bbox;
 }
 
-//' Convert a bounding box to POLYGON in OGC WKT format.
+//' Convert a bounding box to POLYGON in OGC WKT format
 //'
 //' `bbox_to_wkt()` returns a WKT POLYGON string for the given bounding box.
-//' This function requires GDAL built with the GEOS library.
+//' Requires GDAL built with the GEOS library.
 //'
 //' @param bbox Numeric vector of length four containing xmin, ymin, 
 //' xmax, ymax.
-//' @return Character string for an OGC WKT polygon. An empty string is 
-//' returned if GDAL was built without the GEOS library.
+//' @param extend_x Numeric scalar. Distance in units of `bbox` to extend the
+//' rectangle in both directions along the x-axis
+//' (results in `xmin = bbox[1] - extend_x`, `xmax = bbox[3] + extend_x`).
+//' @param extend_y Numeric scalar. Distance in units of `bbox` to extend the
+//' rectangle in both directions along the y-axis
+//' (results in `ymin = bbox[2] - extend_y`, `ymax = bbox[4] + extend_y`).
+//' @return Character string for an OGC WKT polygon.
+//' `NA` is returned if GDAL was built without the GEOS library.
 //'
 //' @seealso
-//' [bbox_from_wkt()]
+//' [bbox_from_wkt()], [g_buffer()]
 //'
 //' @examples
 //' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
@@ -312,21 +326,29 @@ Rcpp::NumericVector bbox_from_wkt(std::string wkt) {
 //' bbox_to_wkt(ds$bbox())
 //' ds$close()
 // [[Rcpp::export]]
-std::string bbox_to_wkt(Rcpp::NumericVector bbox) {
+Rcpp::String bbox_to_wkt(Rcpp::NumericVector bbox,
+		double extend_x = 0, double extend_y = 0) {
+		
 	if (bbox.size() != 4)
 		Rcpp::stop("Invalid bounding box.");
 		
 	if (!has_geos()) {
 		Rcpp::Rcout << "bbox_to_wkt() requires GEOS.\n";
-		return "";
+		return NA_STRING;
 	}
+	
+	Rcpp::NumericVector bbox_in = Rcpp::clone(bbox);
+	bbox_in[0] -= extend_x;
+	bbox_in[1] -= extend_y;
+	bbox_in[2] += extend_x;
+	bbox_in[3] += extend_y;
 
 	Rcpp::NumericMatrix poly_xy(5, 2);
-	poly_xy.row(0) = Rcpp::NumericVector::create(bbox(0), bbox(3));
-	poly_xy.row(1) = Rcpp::NumericVector::create(bbox(2), bbox(3));
-	poly_xy.row(2) = Rcpp::NumericVector::create(bbox(2), bbox(1));
-	poly_xy.row(3) = Rcpp::NumericVector::create(bbox(0), bbox(1));
-	poly_xy.row(4) = Rcpp::NumericVector::create(bbox(0), bbox(3));
+	poly_xy.row(0) = Rcpp::NumericVector::create(bbox_in(0), bbox_in(3));
+	poly_xy.row(1) = Rcpp::NumericVector::create(bbox_in(2), bbox_in(3));
+	poly_xy.row(2) = Rcpp::NumericVector::create(bbox_in(2), bbox_in(1));
+	poly_xy.row(3) = Rcpp::NumericVector::create(bbox_in(0), bbox_in(1));
+	poly_xy.row(4) = Rcpp::NumericVector::create(bbox_in(0), bbox_in(3));
 	
 	return _g_create(poly_xy, "POLYGON");
 }

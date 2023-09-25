@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -7,8 +7,8 @@ knitr::opts_chunk$set(
 ## -----------------------------------------------------------------------------
 library(gdalraster)
 
-elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-ds <- new(GDALRaster, filename = elev_file, read_only = TRUE)
+tcc_file <- system.file("extdata/storml_tcc.tif", package="gdalraster")
+ds <- new(GDALRaster, tcc_file, read_only=TRUE)
 
 ## -----------------------------------------------------------------------------
 gt <- ds$getGeoTransform()
@@ -34,7 +34,7 @@ ds$getRasterYSize()
 ds$getRasterCount()
 ds$dim()
 
-# coordinate reference system
+# coordinate reference system as WKT string
 ds$getProjectionRef()
 
 # origin and pixel size from the geotransform
@@ -57,18 +57,28 @@ ds$getStatistics(band=1, approx_ok = FALSE, force = TRUE)
 # does this band have overviews? (aka "pyramids")
 ds$getOverviewCount(band=1)
 
-# gdalraster currently does not support access to color tables
+# does this band have a color table?
+col_tbl <- ds$getColorTable(band=1)
+if (!is.null(col_tbl))
+  head(col_tbl)
 
 ## -----------------------------------------------------------------------------
+# read the first row of pixel values
 ncols <- ds$getRasterXSize()
-rowdata <- ds$read(band=1, 
-                   xoff=0, yoff=0,
-                   xsize=ncols, ysize=1,
-                   out_xsize=ncols, out_ysize=1)
+rowdata <- ds$read(band = 1, 
+                   xoff = 0,
+                   yoff = 0,
+                   xsize = ncols,
+                   ysize = 1,
+                   out_xsize = ncols,
+                   out_ysize = 1)
 
 length(rowdata)
 typeof(rowdata)
 head(rowdata)
+
+## ----fig.width=6, fig.height=4, dev="png"-------------------------------------
+plot_raster(ds, legend=TRUE, main="Storm Lake Tree Canopy Cover (%)")
 
 ## -----------------------------------------------------------------------------
 # close the dataset for proper cleanup
@@ -77,9 +87,11 @@ ds$close()
 ## -----------------------------------------------------------------------------
 lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
-options <- c("COMPRESS=LZW")
-createCopy(format="GTiff", dst_filename=tif_file, src_filename=lcp_file, 
-           options=options)
+opt <- c("COMPRESS=LZW")
+createCopy(format = "GTiff",
+           dst_filename = tif_file,
+           src_filename = lcp_file, 
+           options = opt)
 
 file.size(lcp_file)
 file.size(tif_file)
@@ -91,7 +103,7 @@ ds$getMetadata(band=0, domain="IMAGE_STRUCTURE")
 
 # set nodata value for all bands
 for (band in 1:ds$getRasterCount())
-    ds$setNoDataValue(band, -9999)
+  ds$setNoDataValue(band, -9999)
 
 # band 2 of an LCP file is slope degrees
 ds$getStatistics(band=2, approx_ok=FALSE, force=TRUE)
@@ -99,8 +111,12 @@ ds$close()
 
 ## -----------------------------------------------------------------------------
 new_file <- paste0(tempdir(), "/", "newdata.tif")
-create(format="GTiff", dst_filename=new_file, xsize=143, ysize=107, nbands=1, 
-       dataType="Int16")
+create(format = "GTiff",
+       dst_filename = new_file,
+       xsize = 143,
+       ysize = 107,
+       nbands = 1, 
+       dataType = "Int16")
 
 ## -----------------------------------------------------------------------------
 ds <- new(GDALRaster, new_file, read_only=FALSE)

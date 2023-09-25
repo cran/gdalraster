@@ -17,6 +17,8 @@
 #' vector of `keyLen` integers as the key and the count of occurrences of 
 #' each unique integer combination as the value, along with methods that 
 #' operate on the table as described in Details.
+#' `CmbTable` is a C++ class exposed directly to R (via `RCPP_EXPOSED_CLASS`).
+#' Methods of the class are accessed in R using the `$` operator.
 #'
 #' @section Usage:
 #' \preformatted{
@@ -25,7 +27,9 @@
 #' ## Methods (see Details)
 #' cmb$update(int_cmb, incr)
 #' cmb$updateFromMatrix(int_cmbs, incr)
+#' cmb$updateFromMatrixByRow(int_cmbs, incr)
 #' cmb$asDataFrame()
+#' cmb$asMatrix()
 #' }
 #'
 #' @section Details:
@@ -55,18 +59,46 @@
 #' Returns a numeric vector of length \code{ncol(int_cmbs)} containing the 
 #' IDs assigned to the combinations.
 #'
+#' \code{$updateFromMatrixByRow(int_cmbs, incr)}
+#' This method is the same as \code{$updateFromMatrix()} above except the
+#' integer combinations are in rows of the matrix \code{int_cmbs} (columns
+#' are the variables).
+#' The method calls \code{$update()} on each combination (each row of
+#' \code{int_cmbs}), incrementing count by \code{incr} for existing 
+#' combinations, or inserting new combinations with count set to \code{incr}.
+#' Returns a numeric vector of length \code{nrow(int_cmbs)} containing the 
+#' IDs assigned to the combinations.
+#'
 #' \code{$asDataFrame()}
-#' Returns the CmbTable as a data frame with column \code{cmbid} containing 
-#' the unique combination IDs, column \code{count} containing the counts of 
+#' Returns the `CmbTable` as a data frame with column \code{"cmbid"} containing 
+#' the unique combination IDs, column \code{"count"} containing the counts of 
 #' occurrences, and \code{keyLen} columns named \code{varNames} containing
 #' the integer values comprising each unique combination.
 #'
+#' \code{$asMatrix()}
+#' Returns the `CmbTable` as a matrix with column `1` (\code{"cmbid"})
+#' containing the unique combination IDs, column `2` (\code{"count"})
+#' containing the counts of occurrences, and columns `3:keyLen+2` named
+#' \code{varNames} containing the integer values comprising each unique
+#' combination.
+#'
 #' @examples
 #' m <- matrix(c(1,2,3,1,2,3,4,5,6,1,3,2,4,5,6,1,1,1), 3, 6, byrow=FALSE)
-#' row.names(m) <- c("v1","v2","v3")
+#' rownames(m) <- c("layer1","layer2","layer3")
 #' print(m)
-#' cmb <- new(CmbTable, 3, row.names(m))
+#' cmb <- new(CmbTable, 3, rownames(m))
 #' cmb$updateFromMatrix(m, 1)
+#' cmb$asDataFrame()
+#' cmb$update(c(4,5,6), 1)
+#' cmb$update(c(1,3,5), 1)
+#' cmb$asDataFrame()
+#'
+#' # same as above but matrix arranged with integer combinations in the rows
+#' m <- matrix(c(1,2,3,1,2,3,4,5,6,1,3,2,4,5,6,1,1,1), 6, 3, byrow=TRUE)
+#' colnames(m) <- c("v1","v2","v3")
+#' print(m)
+#' cmb <- new(CmbTable, 3, colnames(m))
+#' cmb$updateFromMatrixByRow(m, 1)
 #' cmb$asDataFrame()
 #' cmb$update(c(4,5,6), 1)
 #' cmb$update(c(1,3,5), 1)

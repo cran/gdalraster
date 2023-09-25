@@ -10,8 +10,9 @@
 \item{filename}{Character string containing the file name of a raster
 dataset to open, as full path or relative to the current working directory.
 In some cases, \code{filename} may not refer to a physical file, but instead
-contain format-specific information on how to access a dataset (GDAL raster
-format descriptions: \url{https://gdal.org/drivers/raster/index.html}).}
+contain format-specific information on how to access a dataset (see GDAL
+raster format descriptions:
+\url{https://gdal.org/drivers/raster/index.html}).}
 
 \item{read_only}{Logical. \code{TRUE} to open the dataset read-only, or \code{FALSE}
 to open with write access.}
@@ -20,12 +21,15 @@ to open with write access.}
 An object of class \code{GDALRaster} which contains a pointer to the
 opened dataset, and methods that operate on the dataset as described in
 Details.
+\code{GDALRaster} is a C++ class exposed directly to R (via
+\code{RCPP_EXPOSED_CLASS}). Methods of the class are accessed in R using the
+\code{$} operator.
 }
 \description{
 \code{GDALRaster} provides an interface for accessing a raster dataset via GDAL
-and calling methods on the underlying GDALDataset, GDALDriver and
-GDALRasterBand objects. See \url{https://gdal.org/api/index.html} for
-details of the GDAL API.
+and calling methods on the underlying \code{GDALDataset}, \code{GDALDriver} and
+\code{GDALRasterBand} objects. See \url{https://gdal.org/api/index.html} for
+details of the GDAL Raster API.
 }
 \note{
 The \verb{$read()} method will perform automatic resampling if the
@@ -44,8 +48,10 @@ ds <- new(GDALRaster, filename, read_only)
 ds$getFilename()
 ds$open(read_only)
 ds$isOpen()
+ds$getFileList()
 
 ds$info()
+ds$infoAsJSON()
 
 ds$getDriverShortName()
 ds$getDriverLongName()
@@ -61,6 +67,8 @@ ds$res()
 ds$dim()
 
 ds$getRasterCount()
+ds$getDescription(band)
+ds$setDescription(band)
 ds$getBlockSize(band)
 ds$getOverviewCount(band)
 ds$buildOverviews(resampling, levels, bands)
@@ -75,6 +83,8 @@ ds$getScale(band)
 ds$setScale(band, scale)
 ds$getOffset(band)
 ds$setOffset(band, offset)
+ds$getRasterColorInterp(band)
+ds$setRasterColorInterp(band, col_interp)
 
 ds$getMetadata(band, domain)
 ds$getMetadataItem(band, mdi_name, domain)
@@ -83,6 +93,12 @@ ds$setMetadataItem(band, mdi_name, mdi_value, domain)
 ds$read(band, xoff, yoff, xsize, ysize, out_xsize, out_ysize)
 ds$write(band, xoff, yoff, xsize, ysize, rasterData)
 ds$fillRaster(value, ivalue)
+
+ds$getColorTable(band)
+ds$getPaletteInterp(band)
+ds$setColorTable(band, col_tbl, palette_interp)
+
+ds$flushCache()
 
 ds$getChecksum(band, xoff, yoff, xsize, ysize)
 
@@ -97,8 +113,8 @@ ds$close()
 Constructor. Returns an object of class \code{GDALRaster}.
 
 \code{$getFilename()}
-Returns a character string containing the filename associated with this
-\code{GDALRaster} object.
+Returns a character string containing the \code{filename} associated with this
+\code{GDALRaster} object (\code{filename} originally used to open the dataset).
 
 \code{$open(read_only)}
 (Re-)opens the raster dataset on the existing filename. Use this method to
@@ -111,12 +127,24 @@ No return value, called for side effects.
 \code{$isOpen()}
 Returns logical indicating whether the associated raster dataset is open.
 
+\code{$getFileList()}
+Returns a character vector of files believed to be part of this dataset.
+If it returns an empty string (\code{""}) it means there is believed to be no
+local file system files associated with the dataset (e.g., a virtual file
+system). The returned filenames will normally be relative or absolute
+paths depending on the path used to originally open the dataset.
+
 \code{$info()}
 Prints various information about the raster dataset to the console (no
 return value, called for that side effect only).
 Equivalent to the output of the \command{gdalinfo} command-line utility
 (\command{gdalinfo -norat -noct filename}). Intended here as an
 informational convenience function.
+
+\code{$infoAsJSON()}
+Returns information about the raster dataset as a JSON-formatted string.
+Contains full output of the \command{gdalinfo} command-line utility
+(\command{gdalinfo -json -stats -hist filename}).
 
 \code{$getDriverShortName()}
 Returns the short name of the raster format driver
@@ -152,18 +180,19 @@ GT[6] \tab y-component of pixel height (negative for north-up raster)
 \code{$setGeoTransform(transform)}
 Sets the affine transformation coefficients on this dataset.
 \code{transform} is a numeric vector of length six.
-Returns logical TRUE on success or FALSE if the geotransform could not
-be set.
+Returns logical \code{TRUE} on success or \code{FALSE} if the geotransform
+could not be set.
 
 \code{$getProjectionRef()}
-Returns the coordinate reference system of the raster as an OpenGIS WKT
+Returns the coordinate reference system of the raster as an OGC WKT
 format string.
 An empty string is returned when a projection definition is not available.
 
 \code{$setProjection(projection)}
 Sets the projection reference for this dataset.
 \code{projection} is a string in OGC WKT format.
-Returns logical TRUE on success or FALSE if the projection could not be set.
+Returns logical \code{TRUE} on success or \code{FALSE} if the projection
+could not be set.
 
 \code{$bbox()}
 Returns a numeric vector of length four containing the bounding box
@@ -184,21 +213,30 @@ Returns the number of raster bands on this dataset. For the methods
 described below that operate on individual bands, the \code{band}
 argument is the integer band number (1-based).
 
+\code{$getDescription(band)}
+Returns a string containing the description for \code{band}. An empty
+string is returned if no description is set for the band.
+(Setting \code{band = 0} will return the dataset-level description.)
+
+\code{$setDescription(band, desc)}
+Sets a description for \code{band}. \code{desc} is the character string
+to set. No return value.
+
 \code{$getBlockSize(band)}
-Returns an integer vector of length two (Xsize, Ysize) containing the
-"natural" block size of \code{band}.
-GDAL has a concept of the natural block
+Returns an integer vector of length two (xsize, ysize) containing the
+"natural" block size of \code{band}. GDAL has a concept of the natural block
 size of rasters so that applications can organize data access efficiently
 for some file formats. The natural block size is the block size that is
 most efficient for accessing the format. For many formats this is simply a
-whole row in which case block Xsize is the same as \code{$getRasterXSize()}
-and block Ysize is 1. However, for tiled images block size will typically
+whole row in which case block xsize is the same as \code{$getRasterXSize()}
+and block ysize is 1. However, for tiled images block size will typically
 be the tile size. Note that the X and Y block sizes don't have to divide
 the image size evenly, meaning that right and bottom edge blocks may be
 incomplete.
 
 \code{$getOverviewCount(band)}
-Returns the number of overview layers available for \code{band}.
+Returns the number of overview layers (a.k.a. pyramids) available for
+\code{band}.
 
 \code{$buildOverviews(resampling, levels, bands)}
 Build one or more raster overview images using the specified downsampling
@@ -223,28 +261,28 @@ No return value, called for side effects.
 Returns the name of the pixel data type for \code{band}. The possible data
 types are:
 \tabular{rl}{
-\code{Unknown}   \tab  Unknown or unspecified type\cr
-\code{Byte}      \tab  8-bit unsigned integer\cr
-\code{Int8}      \tab  8-bit signed integer (GDAL >= 3.7)\cr
-\code{UInt16}    \tab  16-bit unsigned integer\cr
-\code{Int16}     \tab  16-bit signed integer\cr
-\code{UInt32}    \tab  32-bit unsigned integer\cr
-\code{Int32}     \tab  32-bit signed integer\cr
-\code{UInt64}    \tab  64-bit unsigned integer (GDAL >= 3.5)\cr
-\code{Int64}     \tab  64-bit signed integer (GDAL >= 3.5)\cr
-\code{Float32}   \tab  32-bit floating point\cr
-\code{Float64}   \tab  64-bit floating point\cr
-\code{CInt16}    \tab  Complex Int16\cr
-\code{CInt32}    \tab  Complex Int32\cr
-\code{CFloat32}  \tab  Complex Float32\cr
-\code{CFloat64}  \tab  Complex Float64
+Unknown   \tab  Unknown or unspecified type\cr
+Byte      \tab  8-bit unsigned integer\cr
+Int8      \tab  8-bit signed integer (GDAL >= 3.7)\cr
+UInt16    \tab  16-bit unsigned integer\cr
+Int16     \tab  16-bit signed integer\cr
+UInt32    \tab  32-bit unsigned integer\cr
+Int32     \tab  32-bit signed integer\cr
+UInt64    \tab  64-bit unsigned integer (GDAL >= 3.5)\cr
+Int64     \tab  64-bit signed integer (GDAL >= 3.5)\cr
+Float32   \tab  32-bit floating point\cr
+Float64   \tab  64-bit floating point\cr
+CInt16    \tab  Complex Int16\cr
+CInt32    \tab  Complex Int32\cr
+CFloat32  \tab  Complex Float32\cr
+CFloat64  \tab  Complex Float64
 }
-Some raster formats including GeoTIFF (\code{GTiff}) and Erdas Imagine .img
-(\code{HFA}) support sub-byte data types. Rasters can be created with these
-data types by specifying the \code{NBITS=n} creation option where n=1...7 for
+Some raster formats including GeoTIFF ("GTiff") and Erdas Imagine .img
+("HFA") support sub-byte data types. Rasters can be created with these
+data types by specifying the "NBITS=n" creation option where n=1...7 for
 GTiff or n=1/2/4 for HFA. In these cases, \code{$getDataTypeName()} reports
-the apparent type \code{Byte}. GTiff also supports n=9...15 (\code{UInt16} type) and
-n=17...31 (\code{UInt32} type), and n=16 is accepted for \code{Float32} to generate
+the apparent type \code{"Byte"}. GTiff also supports n=9...15 (UInt16 type) and
+n=17...31 (UInt32 type), and n=16 is accepted for Float32 to generate
 half-precision floating point values.
 
 \code{$getStatistics(band, approx_ok, force)}
@@ -271,14 +309,14 @@ This is a change in the behavior of \code{GetStatistics()} in the API, to a
 definitive \code{force}.)
 \item \code{FALSE}: Results will only be returned if it can be done quickly (i.e.,
 without scanning the raster, typically by using pre-existing
-STATISTICS_xxx metadata items). NAs will be returned if statistics cannot
-be obtained quickly.
+STATISTICS_xxx metadata items). \code{NA}s will be returned if statistics
+cannot be obtained quickly.
 }
 
 \code{$getNoDataValue(band)}
 Returns the nodata value for \code{band} if one exists.
 This is generally a special value defined to mark pixels that are not
-valid data. NA is returned if a nodata value is not defined for
+valid data. \code{NA} is returned if a nodata value is not defined for
 \code{band}. Not all raster formats support a designated nodata value.
 
 \code{$setNoDataValue(band, nodata_value)}
@@ -291,14 +329,14 @@ intent is to initialize the raster to the nodata value. In any case,
 changing an existing nodata value, when one already exists on an initialized
 dataset, has no effect on the pixels whose values matched the previous
 nodata value.
-Returns logical TRUE on success or FALSE if the nodata value could not
-be set.
+Returns logical \code{TRUE} on success or \code{FALSE} if the nodata value
+could not be set.
 
 \code{$deleteNoDataValue(band)}
 Removes the nodata value for \code{band}.
 This affects only the definition of the nodata value for raster formats
-that support one (does not modify pixel values). No return value, called
-for side effects. An error is raised if the nodata value cannot be removed.
+that support one (does not modify pixel values). No return value.
+An error is raised if the nodata value cannot be removed.
 
 \code{$getUnitType(band)}
 Returns the name of the unit type of the pixel values for \code{band}
@@ -307,35 +345,64 @@ An empty string \code{""} is returned if no units are available.
 
 \code{$setUnitType(band, unit_type)}
 Sets the name of the unit type of the pixel values for \code{band}.
-\code{unit_type} should be one of "" (the default indicating it is unknown),
-"m" indicating meters, or "ft" indicating feet, though other nonstandard
-values are allowed.
-Returns logical TRUE on success or FALSE if the unit type could not
-be set.
+\code{unit_type} should be one of empty string \code{""} (the default indicating it is
+unknown), "m" indicating meters, or "ft" indicating feet, though other
+nonstandard values are allowed.
+Returns logical \code{TRUE} on success or \code{FALSE} if the unit type
+could not be set.
 
 \code{$getScale(band)}
 Returns the pixel value scale (units value = (raw value * scale) + offset)
 for \code{band}.
-This value (in combination with the \code{getOffset()} value) can be used to
-transform raw pixel values into the units returned by \code{getUnitType()}.
-Returns NA if a scale value is not defined for this \code{band}.
+This value (in combination with the \code{$getOffset()} value) can be used to
+transform raw pixel values into the units returned by \code{$getUnitType()}.
+Returns \code{NA} if a scale value is not defined for this \code{band}.
 
 \code{$setScale(band, scale)}
 Sets the pixel value scale (units value = (raw value * scale) + offset)
 for \code{band}. Many raster formats do not implement this method.
-Returns logical TRUE on success or FALSE if the scale could not be set.
+Returns logical \code{TRUE} on success or \code{FALSE} if the scale could
+not be set.
 
 \code{$getOffset(band)}
 Returns the pixel value offset (units value = (raw value * scale) + offset)
 for \code{band}.
-This value (in combination with the \code{getScale()} value) can be used to
-transform raw pixel values into the units returned by \code{getUnitType()}.
-Returns NA if an offset value is not defined for this \code{band}.
+This value (in combination with the \code{$getScale()} value) can be used to
+transform raw pixel values into the units returned by \code{$getUnitType()}.
+Returns \code{NA} if an offset value is not defined for this \code{band}.
 
 \code{$setOffset(band, offset)}
 Sets the pixel value offset (units value = (raw value * scale) + offset)
 for \code{band}. Many raster formats do not implement this method.
-Returns logical TRUE on success or FALSE if the offset could not be set.
+Returns logical \code{TRUE} on success or \code{FALSE} if the offset could
+not be set.
+
+\code{$getRasterColorInterp(band)}
+Returns a string describing the color interpretation for \code{band}.
+The color interpretation values and their meanings are:
+\tabular{rl}{
+Undefined  \tab Undefined\cr
+Gray       \tab Grayscale\cr
+Palette    \tab Paletted (see associated color table)\cr
+Red        \tab Red band of RGBA image\cr
+Green      \tab Green band of RGBA image\cr
+Blue       \tab Blue band of RGBA image\cr
+Alpha      \tab Alpha (0=transparent, 255=opaque)\cr
+Hue        \tab Hue band of HLS image\cr
+Saturation \tab Saturation band of HLS image\cr
+Lightness  \tab Lightness band of HLS image\cr
+Cyan       \tab Cyan band of CMYK image\cr
+Magenta    \tab Magenta band of CMYK image\cr
+Yellow     \tab Yellow band of CMYK image\cr
+Black      \tab Black band of CMYK image\cr
+YCbCr_Y    \tab Y Luminance\cr
+YCbCr_Cb   \tab Cb Chroma\cr
+YCbCr_Cr   \tab Cr Chroma
+}
+
+\code{$setRasterColorInterp(band, col_interp)}
+Sets the color interpretation for \code{band}. See above for the list of
+valid values for \code{col_interp} (passed as a string).
 
 \code{$getMetadata(band, domain)}
 Returns a character vector of all metadata \code{name=value} pairs that exist in
@@ -381,10 +448,10 @@ region will be read (typically the same value as xsize).
 region will be read (typically the same value as ysize).
 Returns a numeric or complex vector containing the values that were read.
 It is organized in left to right, top to bottom pixel order.
-NA will be returned in place of the nodata value if the
+\code{NA} will be returned in place of the nodata value if the
 raster dataset has a nodata value defined for this band.
-Data are read as R \code{integer} type when possible for the raster data type
-(Byte, Int8, Int16, UInt16, Int32), otherwise as type \code{double} (UInt32,
+Data are read as R integer type when possible for the raster data type
+(Byte, Int8, Int16, UInt16, Int32), otherwise as type double (UInt32,
 Float32, Float64).
 No rescaling of the data is performed (see \code{$getScale()} and
 \code{$getOffset()} above).
@@ -400,18 +467,60 @@ the band to be accessed (zero to start from the top).
 \code{xsize} is the width in pixels of the region to write.
 \code{ysize} is the height in pixels of the region to write.
 \code{rasterData} is a numeric or complex vector containing values to write.
-It is organized in left to right, top to bottom pixel order. NA in
+It is organized in left to right, top to bottom pixel order. \code{NA} in
 \code{rasterData} should be replaced with a suitable nodata value prior to
 writing (see \code{$getNoDataValue()} and \code{$setNoDataValue()} above).
 An error is raised if the operation fails (no return value).
 
-\code{$fillRaster(band, value, ivalue)}
-Fills \code{band} with a constant value. Used to clear a band to a specified
-default value.
-\code{value} is the fill value (real component).
-\code{ivalue} is the imaginary component of fill value for a raster with
-complex data type. Set \code{ivalue = 0} for real data types. No return
-value, called for side effects.
+\code{$getColorTable(band)}
+Returns the color table associated with \code{band}, or \code{NULL} if
+there is no associated color table. The color table is returned as an
+integer matrix with five columns. To associate a color with a raster pixel,
+the pixel value is used as a subscript into the color table. This means that
+the colors are always applied starting at zero and ascending
+(see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
+Color Table}).
+Column 1 contains the pixel values. Interpretation of columns 2:5 depends
+on the value of \verb{$getPaletteInterp()} (see below). For "RGB", columns 2:5
+contain red, green, blue, alpha as 0-255 integer values.
+
+\code{$getPaletteInterp(band)}
+If \code{band} has an associated color table, this method returns a
+character string with the palette interpretation for columns 2:5 of the
+table. An empty string (\code{""}) is returned if \code{band} does not have
+an associated color table. The palette interpretation values and their
+meanings are:
+\tabular{rl}{
+Gray \tab column 2 contains grayscale values (columns 3:5 unused)\cr
+RGB  \tab columns 2:5 contain red, green, blue, alpha\cr
+CMYK \tab columns 2:5 contain cyan, magenta, yellow, black\cr
+HLS  \tab columns 2:4 contain hue, lightness, saturation (column 5 unused)
+}
+
+\code{$setColorTable(band, col_tbl, palette_interp)}
+Sets the raster color table for \code{band}
+(see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
+Color Table}).
+\code{col_tbl} is an integer matrix or data frame with either four or five
+columns (see \code{$getColorTable()} above). Column 1 contains the pixel
+values. Valid values are integers 0 and larger (note that GTiff format
+supports color tables only for Byte and UInt16 bands). Negative values
+will be skipped with a warning emitted. Interpretation of columns 2:5
+depends on the value of \verb{$getPaletteInterp()} (see above). For "RGB",
+columns 2:4 contain red, green, blue as 0-255 integer values, and an
+optional column 5 contains alpha transparency values (defaults to 255
+opaque).
+\code{palette_interp} is one of "Gray", "RGB", "CMYK" or "HLS" (see
+\code{$getPaletteInterp()} above).
+Returns logical \code{TRUE} on success or \code{FALSE} if the color table
+could not be set.
+
+\code{$flushCache()}
+Flush all write cached data to disk. Any raster data written via GDAL calls,
+but buffered internally will be written to disk. Using this method does not
+preclude calling \verb{$close()} to properly close the dataset and ensure that
+important data not addressed by \verb{$flushCache()} is written in the file
+(see also \verb{$open()} above). No return value, called for side effect.
 
 \code{$getChecksum(band, xoff, yoff, xsize, ysize)}
 Returns a 16-bit integer (0-65535) checksum from a region of raster data
@@ -446,6 +555,9 @@ ds$info()
 ds$getDriverShortName()
 ds$getDriverLongName()
 
+## retrieve a list of files composing the dataset
+ds$getFileList()
+
 ## retrieve dataset parameters
 ds$getRasterXSize()
 ds$getRasterYSize()
@@ -457,6 +569,7 @@ ds$res()
 ds$dim()
 
 ## retrieve some band-level parameters
+ds$getDescription(band=1)
 ds$getBlockSize(band=1)
 ds$getOverviewCount(band=1)
 ds$getDataTypeName(band=1)
@@ -524,7 +637,7 @@ url <- paste0(url, "usdaforestservice/gdalraster/main/sample-data/")
 url <- paste0(url, "lf_elev_220_mt_hood_utm.tif")
 
 ds <- new(GDALRaster, url, read_only=TRUE)
-plot_raster(ds, main="Mount Hood elevation (m)")
+plot_raster(ds, legend=TRUE, main="Mount Hood elevation (m)")
 ds$close()
 }
 }
@@ -533,7 +646,7 @@ Package overview in \code{\link[=gdalraster-package]{help("gdalraster-package")}
 
 \code{\link[=create]{create()}}, \code{\link[=createCopy]{createCopy()}}, \code{\link[=rasterFromRaster]{rasterFromRaster()}}, \code{\link[=rasterToVRT]{rasterToVRT()}}
 
-\code{\link[=fillNodata]{fillNodata()}}, \code{\link[=warp]{warp()}}, \code{\link[=plot_raster]{plot_raster()}}
+\code{\link[=get_pixel_line]{get_pixel_line()}}, \code{\link[=plot_raster]{plot_raster()}}, \code{\link[=warp]{warp()}}
 
-\code{read_ds()} is a convenience wrapper for \code{GDALRaster$read()}.
+\code{\link[=read_ds]{read_ds()}} is a convenience wrapper for \code{GDALRaster$read()}.
 }

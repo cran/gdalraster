@@ -25,13 +25,13 @@ to guess from the output filename if \code{fmt} is not specified.}
 
 \item{nbands}{Number of output bands.}
 
-\item{dtName}{Output raster data type name.
-(e.g., "Byte", "Int16", "UInt16", "Int32" or "Float32").}
+\item{dtName}{Output raster data type name. Commonly used types include
+\code{"Byte"}, \code{"Int16"}, \code{"UInt16"}, \code{"Int32"} and \code{"Float32"}.}
 
 \item{options}{Optional list of format-specific creation options in a
-vector of "NAME=VALUE" pairs.
-(e.g., \code{options = c("COMPRESS=LZW")} to set \code{LZW}
-compression during creation of a GTiff file).}
+vector of "NAME=VALUE" pairs
+(e.g., \code{options = c("COMPRESS=LZW")} to set LZW compression
+during creation of a GTiff file).}
 
 \item{init}{Numeric value to initialize all pixels in the output raster.}
 
@@ -54,12 +54,12 @@ ds_lcp <- new(GDALRaster, lcp_file, read_only=TRUE)
 ds_lcp$getMetadata(band=2, domain="")
 
 slpp_file <- paste0(tempdir(), "/", "storml_slpp.tif")
-options = c("COMPRESS=LZW")
+opt = c("COMPRESS=LZW")
 rasterFromRaster(srcfile = lcp_file,
                  dstfile = slpp_file,
                  nbands = 1,
                  dtName = "Int16",
-                 options = options,
+                 options = opt,
                  init = -32767)
 ds_slp <- new(GDALRaster, slpp_file, read_only=FALSE)
 
@@ -94,5 +94,6 @@ ds_slp$close()
 ds_lcp$close()
 }
 \seealso{
-\code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=create]{create()}}, \code{\link[=createCopy]{createCopy()}}, \code{\link[=rasterToVRT]{rasterToVRT()}}
+\code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=create]{create()}}, \code{\link[=createCopy]{createCopy()}},
+\code{\link[=bandCopyWholeRaster]{bandCopyWholeRaster()}}
 }

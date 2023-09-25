@@ -20,8 +20,8 @@
 }
 
 #' @noRd
-.as_raster <- function(a, col_tbl=NULL, normalize=TRUE,
-				minmax_def=NULL, minmax_pct_cut=NULL,
+.as_raster <- function(a, col_tbl=NULL, maxColorValue=1,
+				normalize=TRUE, minmax_def=NULL, minmax_pct_cut=NULL,
 				col_map_fn=NULL, na_col=rgb(0,0,0,0), ...) {
 				
 # Create an object of class "raster", a matrix of color values representing
@@ -40,15 +40,18 @@
 		if(nbands != 1)
 			stop("A color table can only be used with single-band data.",
 					call.=FALSE)
-
+		
 		ct <- as.data.frame(col_tbl)
-		if(ncol(ct) != 4)
-			stop("Color table must have four columns.", call.=FALSE)
-
-		ct[,5] <- rgb(ct[,2], ct[,3], ct[,4])
-		names(ct) <- c("value", "r", "g", "b", "rgb")
+		if(ncol(ct) < 4 || ncol(ct) > 5)
+			stop("Color table must have four or five columns.", call.=FALSE)
+		
+		if (ncol(ct) == 4) # add alpha channel
+			ct[,5] <- rep(maxColorValue, nrow(ct))
+		ct[,6] <- rgb(ct[,2], ct[,3], ct[,4], ct[,5],
+						maxColorValue=maxColorValue)
+		names(ct) <- c("value", "r", "g", "b", "a", "rgb")
 		f <- function(x) { ct$rgb[match(x, ct$value)] }
-		r <- vapply(a, FUN=f, FUN.VALUE="#000000", USE.NAMES=FALSE)
+		r <- vapply(a, FUN=f, FUN.VALUE="#00000000", USE.NAMES=FALSE)
 		if (anyNA(r))
 			r[is.na(r)] <- na_col
 		dim(r) <- dim(a)[2:1]
@@ -132,11 +135,18 @@
 #' @param nbands The number of bands in `data`. Must be either 1 (grayscale) or
 #' 3 (RGB). For RGB, `data` are interleaved by band.
 #' @param max_pixels The maximum number of pixels that the function will
-#' use for display (per band). An error is raised if `(xsize * ysize)` exceeds
-#' this value. Setting to `NULL` turns off this check.
-#' @param col_tbl A color table as a matrix or data frame with four columns.
-#' Column 1 contains the numeric raster values, columns 2:4 contain the
-#' intensities (between 0 and 1) of the red, green and blue primaries.
+#' attempt to display (per band). An error is raised if `(xsize * ysize)`
+#' exceeds this value. Setting to `NULL` turns off this check.
+#' @param col_tbl A color table as a matrix or data frame with four or five
+#' columns. Column 1 contains the numeric pixel values. Columns 2:4 contain
+#' the intensities of the red, green and blue primaries (`0:1` by default,
+#' or use integer `0:255` by setting `maxColorValue = 255`).
+#' An optional column 5 may contain alpha transparency values, `0` for fully
+#' transparent to `1` (or `maxColorValue`) for opaque (the default if column 5
+#' is missing). If `data` is a `GDALRaster` object, a built-in color table will
+#' be used automatically if one exists in the dataset.
+#' @param maxColorValue A number giving the maximum of the color values range
+#' in `col_tbl` (see above). The default is `1`.
 #' @param normalize Logical. `TRUE` to rescale pixel values so that their
 #' range is `[0,1]`, normalized to the full range of the pixel data by default
 #' (`min(data)`, `max(data)`, per band). Ignored if `col_tbl` is used.
@@ -170,9 +180,9 @@
 #' @param axes Logical. `TRUE` to draw axes (the default).
 #' @param main The main title (on top).
 #' @param legend Logical indicating whether to include a legend on the plot.
-#' By default, a legend will be included if plotting single-band data without
-#' `col_tbl` specified. Legend is not currently supported for color tables, or
-#' with 3-band RGB data.
+#' Currently, legends are only supported for continuous data. A color table
+#' will be used if one is specified or the raster has a built-in color table,
+#' otherwise the value for `col_map_fn` will be used.
 #' @param digits The number of digits to display after the decimal point in
 #' the legend labels when raster data are floating point.
 #' @param na_col Color to use for `NA` as a 7- or 9-character hexadecimal code.
@@ -209,13 +219,14 @@
 #' ds <- new(GDALRaster, elev_file, read_only=TRUE)
 #'
 #' # grayscale
-#' plot_raster(ds, main="Storm Lake elevation (m)")
+#' plot_raster(ds, legend=TRUE, main="Storm Lake elevation (m)")
 #'
 #' # color ramp from user-defined palette
 #' elev_pal <- c("#00A60E","#63C600","#E6E600","#E9BD3B",
 #'               "#ECB176","#EFC2B3","#F2F2F2")
 #' ramp <- scales::colour_ramp(elev_pal, alpha=FALSE)
-#' plot_raster(ds, col_map_fn=ramp, main="Storm Lake elevation (m)")
+#' plot_raster(ds, col_map_fn=ramp, legend=TRUE,
+#'             main="Storm Lake elevation (m)")
 #'
 #' ds$close()
 #'
@@ -252,12 +263,12 @@
 #' ds$close()
 #' @export
 plot_raster <- function(data, xsize=NULL, ysize=NULL, nbands=1,
-						max_pixels=2.5e7, col_tbl=NULL, normalize=TRUE,
-						minmax_def=NULL, minmax_pct_cut=NULL, col_map_fn=NULL,
-						xlim=c(0, xsize), ylim=c(ysize, 0),
+						max_pixels=2.5e7, col_tbl=NULL, maxColorValue=1,
+						normalize=TRUE, minmax_def=NULL, minmax_pct_cut=NULL,
+						col_map_fn=NULL, xlim=c(0, xsize), ylim=c(ysize, 0),
 						interpolate=TRUE, asp=1, axes=TRUE, main="",
 						xlab="x", ylab="y", xaxs="i", yaxs="i", 
-						legend=NULL, digits=2, na_col=rgb(0,0,0,0), ...) {
+						legend=FALSE, digits=2, na_col=rgb(0,0,0,0), ...) {
 
 	if (isTRUE((grDevices::dev.capabilities()$rasterImage == "no"))) {
 		message("Device does not support rasterImage().")
@@ -287,6 +298,15 @@ plot_raster <- function(data, xsize=NULL, ysize=NULL, nbands=1,
 		data_in <- read_ds(data, bands=1:nbands, xoff=0, yoff=0,
 							xsize=dm[1], ysize=dm[2],
 							out_xsize=out_xsize, out_ysize=out_ysize)
+		
+		if (nbands==1 && is.null(col_tbl) && is.null(col_map_fn)) {
+			# check for a built-in color table
+			if (!is.null(data$getColorTable(band=1)) && 
+				data$getPaletteInterp(band=1)=="RGB") {
+					col_tbl = data$getColorTable(band=1)
+					maxColorValue = 255
+			}
+		}
 	}
 	else {
 		if (is.null(xsize) || is.null(ysize))
@@ -296,31 +316,19 @@ plot_raster <- function(data, xsize=NULL, ysize=NULL, nbands=1,
 		data_in <- data
 	}
 
-	if (is.null(legend)) {
-		if (nbands==1 && is.null(col_tbl))
-			legend <- TRUE
-		else
-			legend <- FALSE
-	}
-
 	a <- array(data_in, dim = c(xsize, ysize, nbands))
 	r <- .as_raster(a,
 					col_tbl=col_tbl,
+					maxColorValue=maxColorValue,
 					normalize=normalize,
 					minmax_def=minmax_def,
 					minmax_pct_cut=minmax_pct_cut,
 					col_map_fn=col_map_fn,
 					na_col=na_col)
 
-	if (legend) {
-		if (nbands != 1) {
+	if (legend && nbands != 1) {
 			message("Legend is not supported for RGB plot.")
 			legend <- FALSE
-		}
-		else if (!is.null(col_tbl)) {
-			message("Legend is currently not supported for color tables.")
-			legend <- FALSE
-		}
 	}
 	
 	op <- NULL
@@ -331,11 +339,13 @@ plot_raster <- function(data, xsize=NULL, ysize=NULL, nbands=1,
 		graphics::layout(matrix(1:2, ncol=2), width=c(6,1), height=c(1,1))
 		graphics::par(mar=c(5, 4, 4, 0.5) + 0.1)
 	}
+	
 	graphics::plot.new()
 	graphics::plot.window(xlim=xlim, ylim=ylim, asp=asp,
 							xaxs=xaxs, yaxs=yaxs, ...)
 	graphics::rasterImage(r, xlim[1], ylim[1], xlim[2], ylim[2],
 							interpolate=interpolate)
+
 	if (axes) {
 		graphics::title(main=main, xlab=xlab, ylab=ylab)
 		graphics::axis(1)
@@ -344,21 +354,37 @@ plot_raster <- function(data, xsize=NULL, ysize=NULL, nbands=1,
 	else {
 		graphics::title(main=main)
 	}
+	
 	if (legend) {
-		mm <- NULL
+		mm <- NULL # define legend min/max
 		if (!is.null(minmax_def))
 			mm <- minmax_def
 		else if (!is.null(minmax_pct_cut))
 			mm <- stats::quantile(data_in,
-									probs=c(minmax_pct_cut[1] / 100,
-											minmax_pct_cut[2] / 100),
-									na.rm = TRUE, names=FALSE)
+							probs=c(minmax_pct_cut[1] / 100,
+							minmax_pct_cut[2] / 100),
+							na.rm = TRUE, names=FALSE)
 		else
 			mm <- c(min(data_in, na.rm=TRUE), max(data_in, na.rm=TRUE))
 
-		leg_data <- .normalize(seq(mm[1], mm[2], length.out=100))
-		leg_img <- grDevices::as.raster(matrix(rev(col_map_fn(leg_data)),
-										ncol=1))
+		if (is.null(col_tbl)) {
+			# continuous data with col_map_fn (the default)
+			leg_data <- seq(mm[1], mm[2], length.out=256)
+			if (normalize)
+				leg_data <- .normalize(leg_data)
+			leg_data <- sort(leg_data, decreasing=TRUE)
+			leg_data <- col_map_fn(leg_data)
+			leg_img <- grDevices::as.raster(matrix(leg_data, ncol=1))
+		}
+		else {
+			# continuous data with col_tbl
+			leg_data <- sort(seq(mm[1], mm[2], by=1), decreasing=TRUE)
+			leg_data <- array(leg_data, dim=c(1, length(leg_data), 1))
+			leg_img <- .as_raster(leg_data,
+							col_tbl=col_tbl,
+							maxColorValue=maxColorValue,
+							na_col=na_col)
+		}
 		graphics::par(mar=c(6, 0.5, 6, 2) + 0.1)
 		graphics::plot(c(0,2), c(0,1), type="n", axes=FALSE,
 						xlab="", ylab="", main="")

@@ -2,21 +2,29 @@
 % Please edit documentation in R/RcppExports.R
 \name{bbox_to_wkt}
 \alias{bbox_to_wkt}
-\title{Convert a bounding box to POLYGON in OGC WKT format.}
+\title{Convert a bounding box to POLYGON in OGC WKT format}
 \usage{
-bbox_to_wkt(bbox)
+bbox_to_wkt(bbox, extend_x = 0, extend_y = 0)
 }
 \arguments{
 \item{bbox}{Numeric vector of length four containing xmin, ymin,
 xmax, ymax.}
+
+\item{extend_x}{Numeric scalar. Distance in units of \code{bbox} to extend the
+rectangle in both directions along the x-axis
+(results in \code{xmin = bbox[1] - extend_x}, \code{xmax = bbox[3] + extend_x}).}
+
+\item{extend_y}{Numeric scalar. Distance in units of \code{bbox} to extend the
+rectangle in both directions along the y-axis
+(results in \code{ymin = bbox[2] - extend_y}, \code{ymax = bbox[4] + extend_y}).}
 }
 \value{
-Character string for an OGC WKT polygon. An empty string is
-returned if GDAL was built without the GEOS library.
+Character string for an OGC WKT polygon.
+\code{NA} is returned if GDAL was built without the GEOS library.
 }
 \description{
 \code{bbox_to_wkt()} returns a WKT POLYGON string for the given bounding box.
-This function requires GDAL built with the GEOS library.
+Requires GDAL built with the GEOS library.
 }
 \examples{
 elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
@@ -25,5 +33,5 @@ bbox_to_wkt(ds$bbox())
 ds$close()
 }
 \seealso{
-\code{\link[=bbox_from_wkt]{bbox_from_wkt()}}
+\code{\link[=bbox_from_wkt]{bbox_from_wkt()}}, \code{\link[=g_buffer]{g_buffer()}}
 }

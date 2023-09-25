@@ -1,14 +1,11 @@
 /* Exported stand-alone functions for gdalraster
    Chris Toney <chris.toney at usda.gov> */
 
-#include <Rcpp.h> 
-// [[Rcpp::plugins(cpp11)]]
-
 #include <cmath>
 
 #include "gdal.h"
-#include "cpl_conv.h"
 #include "cpl_port.h"
+#include "cpl_conv.h"
 #include "cpl_string.h"
 #include "gdal_alg.h"
 #include "gdal_utils.h"
@@ -25,7 +22,7 @@
 //' @returns Character vector of length four containing:
 //'   * "–version" - one line version message, e.g., “GDAL 3.6.3, released 
 //'   2023/03/12”
-//'   * "GDAL_VERSION_NUM" - formatted as a string, e.g., “30603000” for 
+//'   * "GDAL_VERSION_NUM" - formatted as a string, e.g., “3060300” for 
 //'   GDAL 3.6.3.0
 //'   * "GDAL_RELEASE_DATE" - formatted as a string, e.g., “20230312”
 //'   * "GDAL_RELEASE_NAME" - e.g., “3.6.3”
@@ -128,7 +125,7 @@ int get_cache_used() {
 //' @param dataType Character data type name.
 //' (e.g., common data types include Byte, Int16, UInt16, Int32, Float32).
 //' @param options Optional list of format-specific creation options in a
-//' vector of "NAME=VALUE" pairs 
+//' vector of `"NAME=VALUE"` pairs 
 //' (e.g., \code{options = c("COMPRESS=LZW")} to set LZW 
 //' compression during creation of a GTiff file).
 //' The APPEND_SUBDATASET=YES option can be 
@@ -136,7 +133,8 @@ int get_cache_used() {
 //' @returns Logical indicating success (invisible \code{TRUE}).
 //' An error is raised if the operation fails.
 //' @seealso
-//' [`GDALRaster-class`][GDALRaster], [createCopy()], [rasterFromRaster()]
+//' [`GDALRaster-class`][GDALRaster], [bandCopyWholeRaster()],
+//' [createCopy()], [rasterFromRaster()]
 //' @examples
 //' new_file <- paste0(tempdir(), "/", "newdata.tif")
 //' create(format="GTiff", dst_filename=new_file, xsize=143, ysize=107,
@@ -207,7 +205,7 @@ bool create(std::string format, std::string dst_filename,
 //' or more normally FALSE indicating that the copy may adapt as needed for  
 //' the output format.
 //' @param options Optional list of format-specific creation options in a
-//' vector of "NAME=VALUE" pairs 
+//' vector of `"NAME=VALUE"` pairs 
 //' (e.g., \code{options = c("COMPRESS=LZW")} to set \code{LZW}
 //' compression during creation of a GTiff file).
 //' The APPEND_SUBDATASET=YES option can be 
@@ -215,13 +213,14 @@ bool create(std::string format, std::string dst_filename,
 //' @returns Logical indicating success (invisible \code{TRUE}).
 //' An error is raised if the operation fails.
 //' @seealso
-//' [`GDALRaster-class`][GDALRaster], [create()], [rasterFromRaster()]
+//' [`GDALRaster-class`][GDALRaster], [bandCopyWholeRaster()], [create()],
+//' [rasterFromRaster()]
 //' @examples
 //' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 //' tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
-//' options <- c("COMPRESS=LZW")
+//' opt <- c("COMPRESS=LZW")
 //' createCopy(format="GTiff", dst_filename=tif_file, src_filename=lcp_file,
-//'            options=options)
+//'            options=opt)
 //' file.size(lcp_file)
 //' file.size(tif_file)
 //' ds <- new(GDALRaster, tif_file, read_only=FALSE)
@@ -293,7 +292,7 @@ bool createCopy(std::string format, std::string dst_filename,
 //' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [get_pixel_line()], 
 //' [inv_geotransform()]
 //' @noRd
-// [[Rcpp::export(name = ".apply_geotransform"]]
+// [[Rcpp::export(name = ".apply_geotransform")]]
 Rcpp::NumericVector _apply_geotransform(const std::vector<double> gt, 
 		double pixel, double line) {
 		
@@ -529,6 +528,8 @@ bool _dem_proc(std::string mode,
 	
 	GDALDEMProcessingOptions* psOptions;
 	psOptions = GDALDEMProcessingOptionsNew(argv.data(), NULL);
+	if (psOptions == NULL)
+		Rcpp::stop("DEM processing failed (could not create options struct).");
 	GDALDEMProcessingOptionsSetProgress(psOptions, GDALTermProgressR, NULL);
 	
 	GDALDatasetH hDstDS;
@@ -636,6 +637,146 @@ bool fillNodata(std::string filename, int band, std::string mask_file = "",
 }
 
 
+//' Remove small raster polygons
+//'
+//' `sieveFilter()` is a wrapper for `GDALSieveFilter()` in the GDAL Algorithms
+//' API. It removes raster polygons smaller than a provided threshold size
+//' (in pixels) and replaces them with the pixel value of the largest neighbour
+//' polygon.
+//'
+//' @details
+//' Polygons are determined as regions of the raster where the pixels all have
+//' the same value, and that are contiguous (connected).
+//' Pixels determined to be "nodata" per the mask band will not be
+//' treated as part of a polygon regardless of their pixel values. Nodata areas
+//' will never be changed nor affect polygon sizes. Polygons smaller than the
+//' threshold with no neighbours that are as large as the threshold will not be
+//' altered. Polygons surrounded by nodata areas will therefore not be altered.
+//'
+//' The algorithm makes three passes over the input file to enumerate the
+//' polygons and collect limited information about them. Memory use is
+//' proportional to the number of polygons (roughly 24 bytes per polygon), but
+//' is not directly related to the size of the raster. So very large raster
+//' files can be processed effectively if there aren't too many polygons. But
+//' extremely noisy rasters with many one pixel polygons will end up being
+//' expensive (in memory) to process.
+//'
+//' The input dataset is read as integer data which means that floating point
+//' values are rounded to integers.
+//'
+//' @param src_filename Filename of the source raster to be processed.
+//' @param src_band Band number in the source raster to be processed.
+//' @param dst_filename Filename of the output raster. It may be the same as
+//' `src_filename` to update the source file in place.
+//' @param dst_band Band number in `dst_filename` to write output. It may be
+//' the same as `src_band` to update the source raster in place.
+//' @param size_threshold Integer. Raster polygons with sizes (in pixels)
+//' smaller than this value will be merged into their largest neighbour.
+//' @param connectedness Integer. Either `4` indicating that diagonal pixels
+//' are not considered directly adjacent for polygon membership purposes, or
+//' `8` indicating they are.
+//' @param mask_filename Optional filename of raster to use as a mask.
+//' @param mask_band Band number in `mask_filename` to use as a mask. All
+//' pixels in the mask band with a value other than zero will be considered
+//' suitable for inclusion in polygons.
+//' @param options Algorithm options as a character vector of name=value pairs.
+//' None currently supported.
+//' @returns Logical indicating success (invisible \code{TRUE}).
+//' An error is raised if the operation fails.
+//'
+//' @examples
+//' ## remove single-pixel polygons from the vegetation type layer (EVT)
+//' evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
+//'
+//' # create a blank raster to hold the output
+//' evt_mmu_file <- paste0(tempdir(), "/", "storml_evt_mmu2.tif")
+//' rasterFromRaster(srcfile = evt_file,
+//'                  dstfile = evt_mmu_file,
+//'                  init = 32767)
+//'
+//' # create a mask to exclude water pixels from the algorithm
+//' # recode water (7292) to 0
+//' expr <- "ifelse(EVT == 7292, 0, EVT)"
+//' mask_file <- calc(expr = expr,
+//'                   rasterfiles = evt_file,
+//'                   var.names = "EVT")
+//'
+//' # create a version of EVT with two-pixel minimum mapping unit
+//' sieveFilter(src_filename = evt_file,
+//'             src_band = 1,
+//'             dst_filename = evt_mmu_file,
+//'             dst_band = 1,
+//'             size_threshold = 2,
+//'             connectedness = 8,
+//'             mask_filename = mask_file,
+//'             mask_band = 1)
+// [[Rcpp::export(invisible = true)]]
+bool sieveFilter(std::string src_filename, int src_band,
+		std::string dst_filename, int dst_band,
+		int size_threshold, int connectedness,
+		std::string mask_filename = "", int mask_band = 0,
+		Rcpp::Nullable<Rcpp::CharacterVector> options = R_NilValue) {
+
+	GDALDatasetH hSrcDS = NULL;
+	GDALRasterBandH hSrcBand = NULL;
+	GDALDatasetH hMaskDS = NULL;
+	GDALRasterBandH hMaskBand = NULL;
+	GDALDatasetH hDstDS = NULL;
+	GDALRasterBandH hDstBand = NULL;
+	bool in_place = false;
+	CPLErr err;
+	
+	if (size_threshold < 1)
+		Rcpp::stop("size_threshold must be 1 or larger.");
+		
+	if (connectedness != 4 && connectedness != 8)
+		Rcpp::stop("connectedness must be 4 or 8.");
+	
+	if (src_filename == dst_filename && src_band == dst_band)
+		in_place = true;
+	
+	if (in_place)
+		hSrcDS = GDALOpenShared(src_filename.c_str(), GA_Update);
+	else
+		hSrcDS = GDALOpenShared(src_filename.c_str(), GA_ReadOnly);
+	if (hSrcDS == NULL)
+		Rcpp::stop("Open source raster failed.");
+	hSrcBand = GDALGetRasterBand(hSrcDS, src_band);
+	
+	if (mask_filename != "") {
+		hMaskDS = GDALOpenShared(mask_filename.c_str(), GA_ReadOnly);
+		if (hMaskDS == NULL)
+			Rcpp::stop("Open mask raster failed.");
+		hMaskBand = GDALGetRasterBand(hMaskDS, mask_band);
+	}
+	
+	if (!in_place) {
+		hDstDS = GDALOpenShared(dst_filename.c_str(), GA_Update);
+		if (hDstDS == NULL)
+			Rcpp::stop("Open destination raster failed.");
+		hDstBand = GDALGetRasterBand(hDstDS, dst_band);
+	}
+	
+	if (in_place)
+		err = GDALSieveFilter(hSrcBand, hMaskBand, hSrcBand, size_threshold,
+				connectedness, NULL, GDALTermProgressR, NULL);
+	else
+		err = GDALSieveFilter(hSrcBand, hMaskBand, hDstBand, size_threshold,
+				connectedness, NULL, GDALTermProgressR, NULL);	
+			
+	if (err != CE_None)
+		Rcpp::stop("sieveFilter() failed.");
+		
+	GDALClose(hSrcDS);
+	if (hMaskDS != NULL)
+		GDALClose(hMaskDS);
+	if (hDstDS != NULL)
+		GDALClose(hDstDS);
+		
+	return true;
+}
+
+
 //' Raster reprojection
 //'
 //' `warp()` is a wrapper for the \command{gdalwarp} command-line utility.
@@ -695,7 +836,10 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 		}
 		argv[cl_arg_in.size() + 2] = NULL;
 	}
+	
 	GDALWarpAppOptions* psOptions = GDALWarpAppOptionsNew(argv.data(), NULL);
+	if (psOptions == NULL)
+		Rcpp::stop("Warp raster failed (could not create options struct).");
 	GDALWarpAppOptionsSetProgress(psOptions, GDALTermProgressR, NULL);
 	
 	GDALDatasetH hDstDS = GDALWarp(dst_filename.c_str(), NULL,
@@ -716,3 +860,244 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 	}
 }
 
+
+//' Create a color ramp
+//'
+//' `createColorRamp()` is a wrapper for `GDALCreateColorRamp()` in the GDAL
+//' API. It automatically creates a color ramp from one color entry to another.
+//' Output is an integer matrix in color table format for use with
+//' [`GDALRaster$setColorTable()`][GDALRaster].
+//'
+//' @note
+//' `createColorRamp()` could be called several times, using `rbind()` to
+//' combine multiple ramps into the same color table. Possible duplicate rows
+//' in the resulting table are not a problem when used in
+//' `GDALRaster$setColorTable()` (i.e., when `end_color` of one ramp is the
+//' same as `start_color` of the next ramp).
+//'
+//' @param start_index Integer start index (raster value).
+//' @param start_color Integer vector of length three or four.
+//' A color entry value to start the ramp (e.g., RGB values).
+//' @param end_index Integer end index (raster value).
+//' @param end_color Integer vector of length three or four.
+//' A color entry value to end the ramp (e.g., RGB values).
+//' @param palette_interp One of "Gray", "RGB" (the default), "CMYK" or "HLS"
+//' descibing interpretation of `start_color` and `end_color` values
+//' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL 
+//' Color Table}).
+//' @returns Intger matrix with five columns containing the color ramp from
+//' `start_index` to `end_index`, with raster index values in column 1 and
+//' color entries in columns 2:5).
+//'
+//' @seealso
+//' [`GDALRaster$getColorTable()`][GDALRaster],
+//' [`GDALRaster$getPaletteInterp()`][GDALRaster]
+//'
+//' @examples
+//' # create a color ramp for tree canopy cover percent
+//' # band 5 of an LCP file contains canopy cover
+//' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
+//' ds <- new(GDALRaster, lcp_file, read_only=TRUE)
+//' ds$getDescription(band=5)
+//' ds$getMetadata(band=5, domain="")
+//' ds$close()
+//'
+//' # create a GTiff file with Byte data type for the canopy cover band
+//' # recode nodata -9999 to 255
+//' tcc_file <- calc(expr = "ifelse(CANCOV == -9999, 255, CANCOV)",
+//'                  rasterfiles = lcp_file,
+//'                  bands = 5,
+//'                  var.names = "CANCOV",
+//'                  fmt = "GTiff",
+//'                  dtName = "Byte",
+//'                  nodata_value = 255,
+//'                  setRasterNodataValue = TRUE)
+//' 
+//' ds_tcc <- new(GDALRaster, tcc_file, read_only=FALSE)
+//' 
+//' # create a color ramp from 0 to 100 and set as the color table
+//' colors <- createColorRamp(start_index = 0,
+//'                           start_color = c(211, 211, 211),
+//'                           end_index = 100,
+//'                           end_color = c(0, 100, 0))
+//' 
+//' print(colors)
+//' ds_tcc$setColorTable(band=1, col_tbl=colors, palette_interp="RGB")
+//' ds_tcc$setRasterColorInterp(band=1, col_interp="Palette")
+//' 
+//' # close and re-open the dataset in read_only mode
+//' ds_tcc$open(read_only=TRUE)
+//' 
+//' plot_raster(ds_tcc, interpolate=FALSE, legend=TRUE,
+//'             main="Storm Lake Tree Canopy Cover (%)")
+//' ds_tcc$close()
+// [[Rcpp::export]]
+Rcpp::IntegerMatrix createColorRamp(int start_index,
+		Rcpp::IntegerVector start_color,
+		int end_index,
+		Rcpp::IntegerVector end_color,
+		std::string palette_interp = "RGB") {
+		
+	if (end_index <= start_index)
+		Rcpp::stop("end_index must be greater than start_index.");
+	if (start_color.size() < 3 || start_color.size() > 4)
+		Rcpp::stop("Length of start_color must be 3 or 4.");
+	if (end_color.size() < 3 || end_color.size() > 4)
+		Rcpp::stop("Length of end_color must be 3 or 4.");
+	
+	if (start_color.size() == 3)
+		start_color.push_back(255);
+	if (end_color.size() == 3)
+		end_color.push_back(255);
+
+	GDALPaletteInterp gpi;
+	if (palette_interp ==  "Gray" || palette_interp == "gray")
+		gpi = GPI_Gray;
+	else if (palette_interp ==  "RGB")
+		gpi = GPI_RGB;
+	else if (palette_interp ==  "CMYK")
+		gpi = GPI_CMYK;
+	else if (palette_interp ==  "HLS")
+		gpi = GPI_HLS;
+	else
+		Rcpp::stop("Invalid palette_interp.");
+
+	GDALColorTableH hColTbl = GDALCreateColorTable(gpi);
+	
+	const GDALColorEntry colStart = {
+			static_cast<short>(start_color(0)),
+			static_cast<short>(start_color(1)),
+			static_cast<short>(start_color(2)),
+			static_cast<short>(start_color(3)) };
+	const GDALColorEntry colEnd = {
+			static_cast<short>(end_color(0)),
+			static_cast<short>(end_color(1)),
+			static_cast<short>(end_color(2)),
+			static_cast<short>(end_color(3)) };
+
+	GDALCreateColorRamp(hColTbl, start_index, &colStart, end_index, &colEnd);
+	
+	//int nEntries = GDALGetColorEntryCount(hColTbl);
+	int nEntries = (end_index - start_index) + 1;
+	Rcpp::IntegerMatrix col_tbl(nEntries, 5);
+	Rcpp::CharacterVector col_tbl_names;
+
+	if (gpi == GPI_Gray) {
+		col_tbl_names = {"value", "gray", "c2", "c3", "c4"};
+		Rcpp::colnames(col_tbl) = col_tbl_names;
+	}
+	else if (gpi == GPI_RGB) {
+		col_tbl_names = {"value", "red", "green", "blue", "alpha"};
+		Rcpp::colnames(col_tbl) = col_tbl_names;
+	}
+	else if (gpi == GPI_CMYK) {
+		col_tbl_names = {"value", "cyan", "magenta", "yellow", "black"};
+		Rcpp::colnames(col_tbl) = col_tbl_names;
+	}
+	else if (gpi == GPI_HLS) {
+		col_tbl_names = {"value", "hue", "lightness", "saturation", "c4"};
+		Rcpp::colnames(col_tbl) = col_tbl_names;
+	}
+
+	int idx = start_index;
+	for (int i=0; i < nEntries; ++i) {
+		const GDALColorEntry* colEntry = GDALGetColorEntry(hColTbl, idx);
+		col_tbl(i, 0) = idx;
+		col_tbl(i, 1) = colEntry->c1;
+		col_tbl(i, 2) = colEntry->c2;
+		col_tbl(i, 3) = colEntry->c3;
+		col_tbl(i, 4) = colEntry->c4;
+		++idx;
+	}
+	
+	GDALDestroyColorTable(hColTbl);
+	
+	return col_tbl;
+}
+
+
+//' Copy a whole raster band efficiently
+//'
+//' `bandCopyWholeRaster()` copies the complete raster contents of one band to
+//' another similarly configured band. The source and destination bands must
+//' have the same xsize and ysize. The bands do not have to have the same data
+//' type. It implements efficient copying, in particular "chunking" the copy in
+//' substantial blocks. This is a wrapper for `GDALRasterBandCopyWholeRaster()`
+//' in the GDAL API.
+//'
+//' @param src_filename Filename of the source raster.
+//' @param src_band Band number in the source raster to be copied.
+//' @param dst_filename Filename of the destination raster.
+//' @param dst_band Band number in the destination raster to copy into.
+//' @param options Optional list of transfer hints in a vector of `"NAME=VALUE"`
+//' pairs. The currently supported `options` are:
+//'   * `"COMPRESSED=YES"` to force alignment on target dataset block sizes to
+//'   achieve best compression. 
+//'    * `"SKIP_HOLES=YES"` to skip chunks that contain only empty blocks.
+//'    Empty blocks are blocks that are generally not physically present in the
+//'    file, and when read through GDAL, contain only pixels whose value is the
+//'    nodata value when it is set, or whose value is 0 when the nodata value is
+//'    not set. The query is done in an efficient way without reading the actual
+//'    pixel values (if implemented by the raster format driver, otherwise will
+//'    not be skipped).
+//' @returns Logical indicating success (invisible \code{TRUE}).
+//' An error is raised if the operation fails.
+//'
+//' @seealso
+//' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
+//' [rasterFromRaster()]
+//'
+//' @examples
+//' ## copy Landsat data from a single-band file to a new multi-band image
+//' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+//' dst_file <- paste0(tempdir(), "/", "sr_multi.tif")
+//' rasterFromRaster(b5_file, dst_file, nbands=7, init=0)
+//' opt <- c("COMPRESSED=YES", "SKIP_HOLES=YES")
+//' bandCopyWholeRaster(b5_file, 1, dst_file, 5, options=opt)
+//' ds <- new(GDALRaster, dst_file, read_only=TRUE)
+//' ds$getStatistics(band=5, approx_ok=FALSE, force=TRUE)
+//' ds$close()
+// [[Rcpp::export(invisible = true)]]
+bool bandCopyWholeRaster(std::string src_filename, int src_band,
+		std::string dst_filename, int dst_band,
+		Rcpp::Nullable<Rcpp::CharacterVector> options = R_NilValue) {
+
+	GDALDatasetH hSrcDS = NULL;
+	GDALRasterBandH hSrcBand = NULL;
+	GDALDatasetH hDstDS = NULL;
+	GDALRasterBandH hDstBand = NULL;
+	CPLErr err;
+	
+	hSrcDS = GDALOpenShared(src_filename.c_str(), GA_ReadOnly);
+	if (hSrcDS == NULL)
+		Rcpp::stop("Open source raster failed.");
+	hSrcBand = GDALGetRasterBand(hSrcDS, src_band);
+	
+	hDstDS = GDALOpenShared(dst_filename.c_str(), GA_Update);
+	if (hDstDS == NULL)
+		Rcpp::stop("Open destination raster failed.");
+	hDstBand = GDALGetRasterBand(hDstDS, dst_band);
+	
+	std::vector<char *> opt_list = {NULL};
+	if (options.isNotNull()) {
+		// cast to the underlying type
+		// https://gallery.rcpp.org/articles/optional-null-function-arguments/
+		Rcpp::CharacterVector options_in(options);
+		opt_list.resize(options_in.size() + 1);
+		for (R_xlen_t i = 0; i < options_in.size(); ++i) {
+			opt_list[i] = (char *) (options_in[i]);
+		}
+		opt_list[options_in.size()] = NULL;
+	}
+	
+	err = GDALRasterBandCopyWholeRaster(hSrcBand, hDstBand, opt_list.data(),
+			GDALTermProgressR, NULL);
+	
+	if (err != CE_None)
+		Rcpp::stop("bandCopyWholeRaster() failed.");
+		
+	GDALClose(hSrcDS);
+	GDALClose(hDstDS);
+		
+	return true;
+}

@@ -1,8 +1,7 @@
-/* Functions for coordinate transformation 
+/* Functions for coordinate transformation using PROJ via GDAL headers
    Chris Toney <chris.toney at usda.gov> */
 
-#include <Rcpp.h> 
-// [[Rcpp::plugins(cpp11)]]
+#include "rcpp_util.h"
 
 #include <string>
 
@@ -10,45 +9,124 @@
 #include "ogr_srs_api.h"
 #include "ogr_spatialref.h"
 
-//' convert data frame to numeric matrix in Rcpp
+//' get PROJ version
 //' @noRd
-Rcpp::NumericMatrix _df_to_matrix(Rcpp::DataFrame df) {
-	Rcpp::NumericMatrix m(df.nrows(), df.size());
-	for (R_xlen_t i=0; i<df.size(); ++i) {
-		m.column(i) = Rcpp::NumericVector(df[i]);
-	}
-	return m;
+// [[Rcpp::export(name = ".getPROJVersion")]]
+std::vector<int> _getPROJVersion() {
+	int major, minor, patch;
+	major = minor = patch = NA_INTEGER;
+#if GDAL_VERSION_NUM >= 3000100	
+	OSRGetPROJVersion(&major, &minor, &patch);
+#endif
+	std::vector<int> ret = {major, minor, patch};
+	return ret;
 }
 
+//' get search path(s) for PROJ resource files
+//' @noRd
+// [[Rcpp::export(name = ".getPROJSearchPaths")]]
+Rcpp::CharacterVector _getPROJSearchPaths() {
+#if GDAL_VERSION_NUM >= 3000300
+	char **papszPaths;
+	papszPaths = OSRGetPROJSearchPaths();
+	
+	int items = CSLCount(papszPaths);
+	if (items > 0) {
+		Rcpp::CharacterVector paths(items);
+		for (int i=0; i < items; ++i) {
+			paths(i) = papszPaths[i];
+		}
+		CSLDestroy(papszPaths);
+		return paths;
+	}
+	else {
+		CSLDestroy(papszPaths);
+		return "";	
+	}
+#endif
+	return NA_STRING;
+}
+
+//' set search path(s) for PROJ resource files
+//' @noRd
+// [[Rcpp::export(name = ".setPROJSearchPaths")]]
+void _setPROJSearchPaths(Rcpp::CharacterVector paths) {
+#if GDAL_VERSION_NUM >= 3000000
+	std::vector<char *> path_list = {NULL};
+	path_list.resize(paths.size() + 1);
+	for (R_xlen_t i = 0; i < paths.size(); ++i) {
+		path_list[i] = (char *) (paths[i]);
+	}
+	path_list[paths.size()] = NULL;
+	OSRSetPROJSearchPaths(path_list.data());
+#else
+	Rcpp::Rcerr << "OSRSetPROJSearchPaths requires GDAL 3.0 or later.\n";
+#endif
+	return;
+}
+
+//' get whether PROJ networking capabilities are enabled
+//' returns logical NA if GDAL < 3.4
+//' @noRd
+// [[Rcpp::export(name = ".getPROJEnableNetwork")]]
+Rcpp::LogicalVector _getPROJEnableNetwork() {
+	Rcpp::LogicalVector ret = Rcpp::LogicalVector::create(NA_LOGICAL);
+#if GDAL_VERSION_NUM >= 3040000
+	if (_getPROJVersion()[0] >= 7) {
+		ret[0] = OSRGetPROJEnableNetwork();
+		return ret;
+	}
+	else {
+		ret[0] = false;
+		return ret;
+	}
+#endif
+	return ret;
+}
+
+//' enable or disable PROJ networking capabilities
+//' @noRd
+// [[Rcpp::export(name = ".setPROJEnableNetwork")]]
+void _setPROJEnableNetwork(int enabled) {
+#if GDAL_VERSION_NUM >= 3040000
+	if (_getPROJVersion()[0] >= 7)
+		OSRSetPROJEnableNetwork(enabled);
+	else
+		Rcpp::Rcerr << "OSRSetPROJEnableNetwork requires PROJ 7 or later.\n";
+#else
+	Rcpp::Rcerr << "OSRSetPROJEnableNetwork requires GDAL 3.4 or later.\n";
+#endif
+	return;
+}
 
 //' Inverse project geospatial x/y coordinates to longitude/latitude
 //'
-//' `inv_project()` transforms geospatial x/y coordinates to 
-//' longitude/latitude in the same geographic coordinate system used by the 
-//' given projected spatial reference system. The output long/lat can 
-//' optionally be set to a specific geographic coordinate system by specifying 
+//' `inv_project()` transforms geospatial x/y coordinates to
+//' longitude/latitude in the same geographic coordinate system used by the
+//' given projected spatial reference system. The output long/lat can
+//' optionally be set to a specific geographic coordinate system by specifying
 //' a well known name (see Details).
 //'
 //' @details
-//' By default, the geographic coordinate system of the projection specified 
-//' by `srs` will be used. If a specific geographic coordinate system is 
+//' By default, the geographic coordinate system of the projection specified
+//' by `srs` will be used. If a specific geographic coordinate system is
 //' desired, then `well_known_gcs` can be set to one of the values below:
 //' \tabular{rl}{
-//'  `EPSG:n` \tab where `n` is the code of a geographic CRS\cr
-//'  `WGS84`  \tab same as `EPSG:4326`\cr
-//'  `WGS72`  \tab same as `EPSG:4322`\cr
-//'  `NAD83`  \tab same as `EPSG:4269`\cr
-//'  `NAD27`  \tab same as `EPSG:4267`\cr
-//'  `CRS84`  \tab same as `WGS84`\cr
-//'  `CRS72`  \tab same as `WGS72`\cr
-//'  `CRS27`  \tab same as `NAD27`
+//'  EPSG:n \tab where n is the code of a geographic coordinate system\cr
+//'  WGS84  \tab same as EPSG:4326\cr
+//'  WGS72  \tab same as EPSG:4322\cr
+//'  NAD83  \tab same as EPSG:4269\cr
+//'  NAD27  \tab same as EPSG:4267\cr
+//'  CRS84  \tab same as WGS84\cr
+//'  CRS72  \tab same as WGS72\cr
+//'  CRS27  \tab same as NAD27
 //' }
-//' The returned array will always be in longitude, latitude order 
-//' (traditional GIS order) regardless of the axis order defined for the 
+//' The returned array will always be in longitude, latitude order
+//' (traditional GIS order) regardless of the axis order defined for the
 //' names above.
 //'
 //' @param pts A two-column data frame or numeric matrix containing geospatial
-//' x/y coordinates 
+//' x/y coordinates.
 //' @param srs Character string in OGC WKT format specifying the projected 
 //' spatial reference system for `pts`.
 //' @param well_known_gcs Optional character string containing a supported 
@@ -133,7 +211,7 @@ Rcpp::NumericMatrix inv_project(Rcpp::RObject &pts,
 //' `transform_xy()` transforms geospatial x/y coordinates to a new projection.
 //'
 //' @param pts A two-column data frame or numeric matrix containing geospatial
-//' x/y coordinates 
+//' x/y coordinates.
 //' @param srs_from Character string in OGC WKT format specifying the  
 //' spatial reference system for `pts`.
 //' @param srs_to Character string in OGC WKT format specifying the output 

@@ -85,6 +85,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// _apply_geotransform
+Rcpp::NumericVector _apply_geotransform(const std::vector<double> gt, double pixel, double line);
+RcppExport SEXP _gdalraster__apply_geotransform(SEXP gtSEXP, SEXP pixelSEXP, SEXP lineSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::vector<double> >::type gt(gtSEXP);
+    Rcpp::traits::input_parameter< double >::type pixel(pixelSEXP);
+    Rcpp::traits::input_parameter< double >::type line(lineSEXP);
+    rcpp_result_gen = Rcpp::wrap(_apply_geotransform(gt, pixel, line));
+    return rcpp_result_gen;
+END_RCPP
+}
 // inv_geotransform
 Rcpp::NumericVector inv_geotransform(const std::vector<double> gt);
 RcppExport SEXP _gdalraster_inv_geotransform(SEXP gtSEXP) {
@@ -155,6 +168,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sieveFilter
+bool sieveFilter(std::string src_filename, int src_band, std::string dst_filename, int dst_band, int size_threshold, int connectedness, std::string mask_filename, int mask_band, Rcpp::Nullable<Rcpp::CharacterVector> options);
+RcppExport SEXP _gdalraster_sieveFilter(SEXP src_filenameSEXP, SEXP src_bandSEXP, SEXP dst_filenameSEXP, SEXP dst_bandSEXP, SEXP size_thresholdSEXP, SEXP connectednessSEXP, SEXP mask_filenameSEXP, SEXP mask_bandSEXP, SEXP optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type src_filename(src_filenameSEXP);
+    Rcpp::traits::input_parameter< int >::type src_band(src_bandSEXP);
+    Rcpp::traits::input_parameter< std::string >::type dst_filename(dst_filenameSEXP);
+    Rcpp::traits::input_parameter< int >::type dst_band(dst_bandSEXP);
+    Rcpp::traits::input_parameter< int >::type size_threshold(size_thresholdSEXP);
+    Rcpp::traits::input_parameter< int >::type connectedness(connectednessSEXP);
+    Rcpp::traits::input_parameter< std::string >::type mask_filename(mask_filenameSEXP);
+    Rcpp::traits::input_parameter< int >::type mask_band(mask_bandSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type options(optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(sieveFilter(src_filename, src_band, dst_filename, dst_band, size_threshold, connectedness, mask_filename, mask_band, options));
+    return rcpp_result_gen;
+END_RCPP
+}
 // warp
 bool warp(std::vector<std::string> src_files, std::string dst_filename, Rcpp::CharacterVector t_srs, Rcpp::Nullable<Rcpp::CharacterVector> cl_arg);
 RcppExport SEXP _gdalraster_warp(SEXP src_filesSEXP, SEXP dst_filenameSEXP, SEXP t_srsSEXP, SEXP cl_argSEXP) {
@@ -166,6 +198,36 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type t_srs(t_srsSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type cl_arg(cl_argSEXP);
     rcpp_result_gen = Rcpp::wrap(warp(src_files, dst_filename, t_srs, cl_arg));
+    return rcpp_result_gen;
+END_RCPP
+}
+// createColorRamp
+Rcpp::IntegerMatrix createColorRamp(int start_index, Rcpp::IntegerVector start_color, int end_index, Rcpp::IntegerVector end_color, std::string palette_interp);
+RcppExport SEXP _gdalraster_createColorRamp(SEXP start_indexSEXP, SEXP start_colorSEXP, SEXP end_indexSEXP, SEXP end_colorSEXP, SEXP palette_interpSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type start_index(start_indexSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type start_color(start_colorSEXP);
+    Rcpp::traits::input_parameter< int >::type end_index(end_indexSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type end_color(end_colorSEXP);
+    Rcpp::traits::input_parameter< std::string >::type palette_interp(palette_interpSEXP);
+    rcpp_result_gen = Rcpp::wrap(createColorRamp(start_index, start_color, end_index, end_color, palette_interp));
+    return rcpp_result_gen;
+END_RCPP
+}
+// bandCopyWholeRaster
+bool bandCopyWholeRaster(std::string src_filename, int src_band, std::string dst_filename, int dst_band, Rcpp::Nullable<Rcpp::CharacterVector> options);
+RcppExport SEXP _gdalraster_bandCopyWholeRaster(SEXP src_filenameSEXP, SEXP src_bandSEXP, SEXP dst_filenameSEXP, SEXP dst_bandSEXP, SEXP optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type src_filename(src_filenameSEXP);
+    Rcpp::traits::input_parameter< int >::type src_band(src_bandSEXP);
+    Rcpp::traits::input_parameter< std::string >::type dst_filename(dst_filenameSEXP);
+    Rcpp::traits::input_parameter< int >::type dst_band(dst_bandSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type options(optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(bandCopyWholeRaster(src_filename, src_band, dst_filename, dst_band, options));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -404,6 +466,56 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// _getPROJVersion
+std::vector<int> _getPROJVersion();
+RcppExport SEXP _gdalraster__getPROJVersion() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(_getPROJVersion());
+    return rcpp_result_gen;
+END_RCPP
+}
+// _getPROJSearchPaths
+Rcpp::CharacterVector _getPROJSearchPaths();
+RcppExport SEXP _gdalraster__getPROJSearchPaths() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(_getPROJSearchPaths());
+    return rcpp_result_gen;
+END_RCPP
+}
+// _setPROJSearchPaths
+void _setPROJSearchPaths(Rcpp::CharacterVector paths);
+RcppExport SEXP _gdalraster__setPROJSearchPaths(SEXP pathsSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type paths(pathsSEXP);
+    _setPROJSearchPaths(paths);
+    return R_NilValue;
+END_RCPP
+}
+// _getPROJEnableNetwork
+Rcpp::LogicalVector _getPROJEnableNetwork();
+RcppExport SEXP _gdalraster__getPROJEnableNetwork() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(_getPROJEnableNetwork());
+    return rcpp_result_gen;
+END_RCPP
+}
+// _setPROJEnableNetwork
+void _setPROJEnableNetwork(int enabled);
+RcppExport SEXP _gdalraster__setPROJEnableNetwork(SEXP enabledSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type enabled(enabledSEXP);
+    _setPROJEnableNetwork(enabled);
+    return R_NilValue;
+END_RCPP
+}
 // inv_project
 Rcpp::NumericMatrix inv_project(Rcpp::RObject& pts, std::string srs, std::string well_known_gcs);
 RcppExport SEXP _gdalraster_inv_project(SEXP ptsSEXP, SEXP srsSEXP, SEXP well_known_gcsSEXP) {
@@ -489,24 +601,28 @@ BEGIN_RCPP
 END_RCPP
 }
 // bbox_from_wkt
-Rcpp::NumericVector bbox_from_wkt(std::string wkt);
-RcppExport SEXP _gdalraster_bbox_from_wkt(SEXP wktSEXP) {
+Rcpp::NumericVector bbox_from_wkt(std::string wkt, double extend_x, double extend_y);
+RcppExport SEXP _gdalraster_bbox_from_wkt(SEXP wktSEXP, SEXP extend_xSEXP, SEXP extend_ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type wkt(wktSEXP);
-    rcpp_result_gen = Rcpp::wrap(bbox_from_wkt(wkt));
+    Rcpp::traits::input_parameter< double >::type extend_x(extend_xSEXP);
+    Rcpp::traits::input_parameter< double >::type extend_y(extend_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(bbox_from_wkt(wkt, extend_x, extend_y));
     return rcpp_result_gen;
 END_RCPP
 }
 // bbox_to_wkt
-std::string bbox_to_wkt(Rcpp::NumericVector bbox);
-RcppExport SEXP _gdalraster_bbox_to_wkt(SEXP bboxSEXP) {
+Rcpp::String bbox_to_wkt(Rcpp::NumericVector bbox, double extend_x, double extend_y);
+RcppExport SEXP _gdalraster_bbox_to_wkt(SEXP bboxSEXP, SEXP extend_xSEXP, SEXP extend_ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type bbox(bboxSEXP);
-    rcpp_result_gen = Rcpp::wrap(bbox_to_wkt(bbox));
+    Rcpp::traits::input_parameter< double >::type extend_x(extend_xSEXP);
+    Rcpp::traits::input_parameter< double >::type extend_y(extend_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(bbox_to_wkt(bbox, extend_x, extend_y));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -522,12 +638,16 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_get_cache_used", (DL_FUNC) &_gdalraster_get_cache_used, 0},
     {"_gdalraster_create", (DL_FUNC) &_gdalraster_create, 7},
     {"_gdalraster_createCopy", (DL_FUNC) &_gdalraster_createCopy, 5},
+    {"_gdalraster__apply_geotransform", (DL_FUNC) &_gdalraster__apply_geotransform, 3},
     {"_gdalraster_inv_geotransform", (DL_FUNC) &_gdalraster_inv_geotransform, 1},
     {"_gdalraster_get_pixel_line", (DL_FUNC) &_gdalraster_get_pixel_line, 2},
     {"_gdalraster__combine", (DL_FUNC) &_gdalraster__combine, 7},
     {"_gdalraster__dem_proc", (DL_FUNC) &_gdalraster__dem_proc, 5},
     {"_gdalraster_fillNodata", (DL_FUNC) &_gdalraster_fillNodata, 5},
+    {"_gdalraster_sieveFilter", (DL_FUNC) &_gdalraster_sieveFilter, 9},
     {"_gdalraster_warp", (DL_FUNC) &_gdalraster_warp, 4},
+    {"_gdalraster_createColorRamp", (DL_FUNC) &_gdalraster_createColorRamp, 5},
+    {"_gdalraster_bandCopyWholeRaster", (DL_FUNC) &_gdalraster_bandCopyWholeRaster, 5},
     {"_gdalraster_has_geos", (DL_FUNC) &_gdalraster_has_geos, 0},
     {"_gdalraster__g_create", (DL_FUNC) &_gdalraster__g_create, 2},
     {"_gdalraster__g_is_valid", (DL_FUNC) &_gdalraster__g_is_valid, 1},
@@ -548,6 +668,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster__g_length", (DL_FUNC) &_gdalraster__g_length, 1},
     {"_gdalraster__g_area", (DL_FUNC) &_gdalraster__g_area, 1},
     {"_gdalraster__g_centroid", (DL_FUNC) &_gdalraster__g_centroid, 1},
+    {"_gdalraster__getPROJVersion", (DL_FUNC) &_gdalraster__getPROJVersion, 0},
+    {"_gdalraster__getPROJSearchPaths", (DL_FUNC) &_gdalraster__getPROJSearchPaths, 0},
+    {"_gdalraster__setPROJSearchPaths", (DL_FUNC) &_gdalraster__setPROJSearchPaths, 1},
+    {"_gdalraster__getPROJEnableNetwork", (DL_FUNC) &_gdalraster__getPROJEnableNetwork, 0},
+    {"_gdalraster__setPROJEnableNetwork", (DL_FUNC) &_gdalraster__setPROJEnableNetwork, 1},
     {"_gdalraster_inv_project", (DL_FUNC) &_gdalraster_inv_project, 3},
     {"_gdalraster_transform_xy", (DL_FUNC) &_gdalraster_transform_xy, 3},
     {"_gdalraster_epsg_to_wkt", (DL_FUNC) &_gdalraster_epsg_to_wkt, 2},
@@ -555,8 +680,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_srs_is_geographic", (DL_FUNC) &_gdalraster_srs_is_geographic, 1},
     {"_gdalraster_srs_is_projected", (DL_FUNC) &_gdalraster_srs_is_projected, 1},
     {"_gdalraster_srs_is_same", (DL_FUNC) &_gdalraster_srs_is_same, 2},
-    {"_gdalraster_bbox_from_wkt", (DL_FUNC) &_gdalraster_bbox_from_wkt, 1},
-    {"_gdalraster_bbox_to_wkt", (DL_FUNC) &_gdalraster_bbox_to_wkt, 1},
+    {"_gdalraster_bbox_from_wkt", (DL_FUNC) &_gdalraster_bbox_from_wkt, 3},
+    {"_gdalraster_bbox_to_wkt", (DL_FUNC) &_gdalraster_bbox_to_wkt, 3},
     {"_rcpp_module_boot_mod_cmb_table", (DL_FUNC) &_rcpp_module_boot_mod_cmb_table, 0},
     {"_rcpp_module_boot_mod_GDALRaster", (DL_FUNC) &_rcpp_module_boot_mod_GDALRaster, 0},
     {"_rcpp_module_boot_mod_running_stats", (DL_FUNC) &_rcpp_module_boot_mod_running_stats, 0},
