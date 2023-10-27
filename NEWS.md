@@ -1,3 +1,52 @@
+# gdalraster 1.6.0
+
+## Dependencies
+
+* GDAL >= 2.4.0 (previously >= 2.3.0)
+* package [**xml2**](https://CRAN.R-project.org/package=xml2) is now required (previously in Suggests)
+* package [**gt**](https://CRAN.R-project.org/package=gt) has been added to Suggests (required for `displayRAT()`)
+
+## GDALRaster-class
+
+* add methods for Raster Attribute Tables: `getDefaultRAT()`, `setDefaultRAT()`
+* add `getDefaultHistogram()`: fetch default raster histogram for a band
+* add `getHistogram()`: compute raster histogram for a band
+* add `getMinMax()`: compute min/max for a raster band
+* add `getMetadataDomainList()`: get a list of metadata domains for a dataset or raster band
+* fix `getMetadataItem()` for a specific domain at dataset level (#109)
+
+## GDAL API stand-alone functions
+
+* add `buildRAT()`: compute for a raster band the set of unique pixel values and their counts, and build a GDAL Raster Attribute Table as data frame
+* add `displayRAT()`: generate a presentation Raster Attribute Table, showing colors if the table contains RGB columns
+* add `gdal_formats()`: report the supported raster formats
+* add `getCreationOptions()`: get the list of creation options of a raster format
+* add `copyDatasetFiles()`: copy all the files associated with a dataset
+* add `deleteDataset()`: delete a dataset in a format-specific way
+* add `renameDataset()`: rename a dataset in a format-specific way
+* add some missing error checks in src/gdal_exp.cpp (#104)
+
+## CmbTable-class
+
+* argument `incr` for the count increment in `CmbTable::update()` can be zero
+
+## RunningStats-class
+
+* use `uint64_t` for the count accumulator (previously `long long`) and make explicit the return cast in `get_count()` (no user-visible changes)
+* slightly faster update
+
+## Other miscellaneous
+
+* `plot_raster()`: normalize legend correctly for `minmax_def` and `minmax_pct_cut` (#131)
+
+## Documentation
+
+* add vignette [Raster Attribute Tables](https://usdaforestservice.github.io/gdalraster/articles/raster-attribute-tables.html)
+* add [notes](https://usdaforestservice.github.io/gdalraster/reference/RunningStats-class.html#note) for `RunningStats-class`
+* update vignette [Raster API Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html) with `gdal_formats()` and `getCreationOptions()`
+* update installation instructions in [README](https://github.com/USDAForestService/gdalraster/blob/main/README.md)
+
+
 # gdalraster 1.5.0
 
 ## GDALRaster-class

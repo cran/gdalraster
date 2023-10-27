@@ -21,6 +21,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// gdal_formats
+void gdal_formats();
+RcppExport SEXP _gdalraster_gdal_formats() {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    gdal_formats();
+    return R_NilValue;
+END_RCPP
+}
 // get_config_option
 std::string get_config_option(std::string key);
 RcppExport SEXP _gdalraster_get_config_option(SEXP keySEXP) {
@@ -138,6 +147,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// _value_count
+Rcpp::DataFrame _value_count(std::string src_filename, int band);
+RcppExport SEXP _gdalraster__value_count(SEXP src_filenameSEXP, SEXP bandSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type src_filename(src_filenameSEXP);
+    Rcpp::traits::input_parameter< int >::type band(bandSEXP);
+    rcpp_result_gen = Rcpp::wrap(_value_count(src_filename, band));
+    return rcpp_result_gen;
+END_RCPP
+}
 // _dem_proc
 bool _dem_proc(std::string mode, std::string src_filename, std::string dst_filename, Rcpp::Nullable<Rcpp::CharacterVector> cl_arg, Rcpp::Nullable<Rcpp::String> col_file);
 RcppExport SEXP _gdalraster__dem_proc(SEXP modeSEXP, SEXP src_filenameSEXP, SEXP dst_filenameSEXP, SEXP cl_argSEXP, SEXP col_fileSEXP) {
@@ -228,6 +249,55 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type dst_band(dst_bandSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type options(optionsSEXP);
     rcpp_result_gen = Rcpp::wrap(bandCopyWholeRaster(src_filename, src_band, dst_filename, dst_band, options));
+    return rcpp_result_gen;
+END_RCPP
+}
+// deleteDataset
+bool deleteDataset(std::string filename, std::string format);
+RcppExport SEXP _gdalraster_deleteDataset(SEXP filenameSEXP, SEXP formatSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type filename(filenameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type format(formatSEXP);
+    rcpp_result_gen = Rcpp::wrap(deleteDataset(filename, format));
+    return rcpp_result_gen;
+END_RCPP
+}
+// renameDataset
+bool renameDataset(std::string new_filename, std::string old_filename, std::string format);
+RcppExport SEXP _gdalraster_renameDataset(SEXP new_filenameSEXP, SEXP old_filenameSEXP, SEXP formatSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type new_filename(new_filenameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type old_filename(old_filenameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type format(formatSEXP);
+    rcpp_result_gen = Rcpp::wrap(renameDataset(new_filename, old_filename, format));
+    return rcpp_result_gen;
+END_RCPP
+}
+// copyDatasetFiles
+bool copyDatasetFiles(std::string new_filename, std::string old_filename, std::string format);
+RcppExport SEXP _gdalraster_copyDatasetFiles(SEXP new_filenameSEXP, SEXP old_filenameSEXP, SEXP formatSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type new_filename(new_filenameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type old_filename(old_filenameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type format(formatSEXP);
+    rcpp_result_gen = Rcpp::wrap(copyDatasetFiles(new_filename, old_filename, format));
+    return rcpp_result_gen;
+END_RCPP
+}
+// _getCreationOptions
+std::string _getCreationOptions(std::string format);
+RcppExport SEXP _gdalraster__getCreationOptions(SEXP formatSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type format(formatSEXP);
+    rcpp_result_gen = Rcpp::wrap(_getCreationOptions(format));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -633,6 +703,7 @@ RcppExport SEXP _rcpp_module_boot_mod_running_stats();
 
 static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_gdal_version", (DL_FUNC) &_gdalraster_gdal_version, 0},
+    {"_gdalraster_gdal_formats", (DL_FUNC) &_gdalraster_gdal_formats, 0},
     {"_gdalraster_get_config_option", (DL_FUNC) &_gdalraster_get_config_option, 1},
     {"_gdalraster_set_config_option", (DL_FUNC) &_gdalraster_set_config_option, 2},
     {"_gdalraster_get_cache_used", (DL_FUNC) &_gdalraster_get_cache_used, 0},
@@ -642,12 +713,17 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_inv_geotransform", (DL_FUNC) &_gdalraster_inv_geotransform, 1},
     {"_gdalraster_get_pixel_line", (DL_FUNC) &_gdalraster_get_pixel_line, 2},
     {"_gdalraster__combine", (DL_FUNC) &_gdalraster__combine, 7},
+    {"_gdalraster__value_count", (DL_FUNC) &_gdalraster__value_count, 2},
     {"_gdalraster__dem_proc", (DL_FUNC) &_gdalraster__dem_proc, 5},
     {"_gdalraster_fillNodata", (DL_FUNC) &_gdalraster_fillNodata, 5},
     {"_gdalraster_sieveFilter", (DL_FUNC) &_gdalraster_sieveFilter, 9},
     {"_gdalraster_warp", (DL_FUNC) &_gdalraster_warp, 4},
     {"_gdalraster_createColorRamp", (DL_FUNC) &_gdalraster_createColorRamp, 5},
     {"_gdalraster_bandCopyWholeRaster", (DL_FUNC) &_gdalraster_bandCopyWholeRaster, 5},
+    {"_gdalraster_deleteDataset", (DL_FUNC) &_gdalraster_deleteDataset, 2},
+    {"_gdalraster_renameDataset", (DL_FUNC) &_gdalraster_renameDataset, 3},
+    {"_gdalraster_copyDatasetFiles", (DL_FUNC) &_gdalraster_copyDatasetFiles, 3},
+    {"_gdalraster__getCreationOptions", (DL_FUNC) &_gdalraster__getCreationOptions, 1},
     {"_gdalraster_has_geos", (DL_FUNC) &_gdalraster_has_geos, 0},
     {"_gdalraster__g_create", (DL_FUNC) &_gdalraster__g_create, 2},
     {"_gdalraster__g_is_valid", (DL_FUNC) &_gdalraster__g_is_valid, 1},

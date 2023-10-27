@@ -8,13 +8,12 @@
 #define running_stats_H
 
 #include <Rcpp.h> 
-// [[Rcpp::plugins(cpp11)]]
 
 class RunningStats {
 
 	private:
 	bool na_rm;
-	unsigned long long count;
+	uint64_t count;
 	double mean, min, max, sum;
 	double M2;
 
@@ -26,7 +25,7 @@ class RunningStats {
 	
 	void reset();
 	
-	unsigned long long get_count() const;
+	double get_count() const;
 	double get_mean() const;
 	double get_min() const;
 	double get_max() const;

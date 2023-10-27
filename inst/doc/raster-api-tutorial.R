@@ -110,6 +110,11 @@ ds$getStatistics(band=2, approx_ok=FALSE, force=TRUE)
 ds$close()
 
 ## -----------------------------------------------------------------------------
+getCreationOptions("GTiff", "COMPRESS")
+
+getCreationOptions("GTiff", "SPARSE_OK")
+
+## -----------------------------------------------------------------------------
 new_file <- paste0(tempdir(), "/", "newdata.tif")
 create(format = "GTiff",
        dst_filename = new_file,

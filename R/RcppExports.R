@@ -18,6 +18,18 @@ gdal_version <- function() {
     .Call(`_gdalraster_gdal_version`)
 }
 
+#' Report all configured GDAL drivers for raster formats
+#'
+#' `gdal_formats()` prints to the console a list of the supported raster
+#' formats.
+#'
+#' @returns No return value, called for reporting only.
+#' @examples
+#' gdal_formats()
+gdal_formats <- function() {
+    invisible(.Call(`_gdalraster_gdal_formats`))
+}
+
 #' Get GDAL configuration option
 #'
 #' `get_config_option()` gets the value of GDAL runtime configuration option.
@@ -83,7 +95,7 @@ get_cache_used <- function() {
 #'
 #' `create()` makes an empty raster in the specified format.
 #'
-#' @param format Raster format short name (e.g., "GTiff" or "HFA").
+#' @param format Raster format short name (e.g., "GTiff").
 #' @param dst_filename Filename to create.
 #' @param xsize Integer width of raster in pixels.
 #' @param ysize Integer height of raster in pixels.
@@ -99,8 +111,8 @@ get_cache_used <- function() {
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #' @seealso
-#' [`GDALRaster-class`][GDALRaster], [bandCopyWholeRaster()],
-#' [createCopy()], [rasterFromRaster()]
+#' [`GDALRaster-class`][GDALRaster], [createCopy()], [rasterFromRaster()],
+#' [getCreationOptions()]
 #' @examples
 #' new_file <- paste0(tempdir(), "/", "newdata.tif")
 #' create(format="GTiff", dst_filename=new_file, xsize=143, ysize=107,
@@ -141,8 +153,8 @@ create <- function(format, dst_filename, xsize, ysize, nbands, dataType, options
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #' @seealso
-#' [`GDALRaster-class`][GDALRaster], [bandCopyWholeRaster()], [create()],
-#' [rasterFromRaster()]
+#' [`GDALRaster-class`][GDALRaster], [create()], [rasterFromRaster()],
+#' [getCreationOptions()]
 #' @examples
 #' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 #' tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
@@ -265,6 +277,13 @@ get_pixel_line <- function(xy, gt) {
     .Call(`_gdalraster__combine`, src_files, var_names, bands, dst_filename, fmt, dataType, options)
 }
 
+#' Compute for a raster band the set of unique pixel values and their counts
+#' 
+#' @noRd
+.value_count <- function(src_filename, band = 1L) {
+    .Call(`_gdalraster__value_count`, src_filename, band)
+}
+
 #' Wrapper for GDALDEMProcessing in the GDAL Algorithms C API
 #'
 #' Called from and documented in R/gdalraster_proc.R
@@ -305,9 +324,9 @@ get_pixel_line <- function(xy, gt) {
 #' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 #' 
 #' ## get count of nodata
-#' df = combine(elev_file)
-#' head(df)
-#' df[is.na(df$storml_elev),]
+#' tbl <- buildRAT(elev_file)
+#' head(tbl)
+#' tbl[is.na(tbl$VALUE),]
 #' 
 #' ## make a copy that will be modified
 #' mod_file <- paste0(tempdir(), "/", "storml_elev_fill.tif")
@@ -315,9 +334,9 @@ get_pixel_line <- function(xy, gt) {
 #' 
 #' fillNodata(mod_file, band=1)
 #' 
-#' df_mod = combine(mod_file)
-#' head(df_mod)
-#' df_mod[is.na(df_mod$storml_elev_fill),]
+#' mod_tbl = buildRAT(mod_file)
+#' head(mod_tbl)
+#' mod_tbl[is.na(mod_tbl$VALUE),]
 fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_iterations = 0L) {
     invisible(.Call(`_gdalraster_fillNodata`, filename, band, mask_file, max_dist, smooth_iterations))
 }
@@ -460,10 +479,10 @@ warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL) {
 #' @param end_color Integer vector of length three or four.
 #' A color entry value to end the ramp (e.g., RGB values).
 #' @param palette_interp One of "Gray", "RGB" (the default), "CMYK" or "HLS"
-#' descibing interpretation of `start_color` and `end_color` values
+#' describing interpretation of `start_color` and `end_color` values
 #' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL 
 #' Color Table}).
-#' @returns Intger matrix with five columns containing the color ramp from
+#' @returns Integer matrix with five columns containing the color ramp from
 #' `start_index` to `end_index`, with raster index values in column 1 and
 #' color entries in columns 2:5).
 #'
@@ -557,6 +576,159 @@ createColorRamp <- function(start_index, start_color, end_index, end_color, pale
 bandCopyWholeRaster <- function(src_filename, src_band, dst_filename, dst_band, options = NULL) {
     invisible(.Call(`_gdalraster_bandCopyWholeRaster`, src_filename, src_band, dst_filename, dst_band, options))
 }
+
+#' Delete named dataset
+#'
+#' `deleteDataset()` will attempt to delete the named dataset in a format
+#' specific fashion. Full featured drivers will delete all associated files,
+#' database objects, or whatever is appropriate. The default behavior when no
+#' format specific behavior is provided is to attempt to delete all the files
+#' that would be returned by `GDALRaster$getFileList()` on the dataset.
+#' The named dataset should not be open in any existing `GDALRaster` objects
+#' when `deleteDataset()` is called. Wrapper for `GDALDeleteDataset()` in the
+#' GDAL API.
+#'
+#' @note
+#' If `format` is set to an empty string `""` (the default) then the function
+#' will try to identify the driver from `filename`. This is done internally in
+#' GDAL by invoking the `Identify` method of each registered `GDALDriver` in
+#' turn. The first driver that successful identifies the file name will be
+#' returned. An error is raised if a format cannot be determined from the
+#' passed file name.
+#'
+#' @param filename Filename to delete (should not be open in a `GDALRaster`
+#' object).
+#' @param format Raster format short name (e.g., "GTiff"). If set to empty
+#' string `""` (the default), will attempt to guess the raster format from
+#' `filename`.
+#' @returns Logical `TRUE` if no error or `FALSE` on failure.
+#'
+#' @seealso
+#' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
+#' [copyDatasetFiles()], [renameDataset()]
+#'
+#' @examples
+#' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+#' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
+#' file.copy(b5_file,  b5_tmp)
+#' 
+#' ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+#' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
+#' files <- ds$getFileList()
+#' print(files)
+#' ds$close()
+#' file.exists(files)
+#' deleteDataset(b5_tmp)
+#' file.exists(files)
+deleteDataset <- function(filename, format = "") {
+    .Call(`_gdalraster_deleteDataset`, filename, format)
+}
+
+#' Rename a dataset
+#'
+#' `renameDataset()` renames a dataset in a format-specific way (e.g.,
+#' rename associated files as appropriate). This could include moving the
+#' dataset to a new directory or even a new filesystem.
+#' The dataset should not be open in any existing `GDALRaster` objects
+#' when `renameDataset()` is called. Wrapper for `GDALRenameDataset()` in the
+#' GDAL API.
+#'
+#' @note
+#' If `format` is set to an empty string `""` (the default) then the function
+#' will try to identify the driver from `old_filename`. This is done
+#' internally in GDAL by invoking the `Identify` method of each registered
+#' `GDALDriver` in turn. The first driver that successful identifies the file
+#' name will be returned. An error is raised if a format cannot be determined
+#' from the passed file name.
+#'
+#' @param new_filename New name for the dataset.
+#' @param old_filename Old name for the dataset (should not be open in a
+#' `GDALRaster` object).
+#' @param format Raster format short name (e.g., "GTiff"). If set to empty
+#' string `""` (the default), will attempt to guess the raster format from
+#' `old_filename`.
+#' @returns Logical `TRUE` if no error or `FALSE` on failure.
+#'
+#' @seealso
+#' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
+#' [deleteDataset()], [copyDatasetFiles()]
+#'
+#' @examples
+#' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+#' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
+#' file.copy(b5_file,  b5_tmp)
+#' 
+#' ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+#' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
+#' ds$getFileList()
+#' ds$close()
+#' b5_tmp2 <- paste0(tempdir(), "/", "b5_tmp_renamed.tif")
+#' renameDataset(b5_tmp2, b5_tmp)
+#' ds <- new(GDALRaster, b5_tmp2, read_only=TRUE)
+#' ds$getFileList()
+#' ds$close()
+renameDataset <- function(new_filename, old_filename, format = "") {
+    .Call(`_gdalraster_renameDataset`, new_filename, old_filename, format)
+}
+
+#' Copy the files of a dataset
+#'
+#' `copyDatasetFiles()` copies all the files associated with a dataset.
+#' Wrapper for `GDALCopyDatasetFiles()` in the GDAL API.
+#'
+#' @note
+#' If `format` is set to an empty string `""` (the default) then the function
+#' will try to identify the driver from `old_filename`. This is done
+#' internally in GDAL by invoking the `Identify` method of each registered
+#' `GDALDriver` in turn. The first driver that successful identifies the file
+#' name will be returned. An error is raised if a format cannot be determined
+#' from the passed file name.
+#'
+#' @param new_filename New name for the dataset (copied to).
+#' @param old_filename Old name for the dataset (copied from).
+#' @param format Raster format short name (e.g., "GTiff"). If set to empty
+#' string `""` (the default), will attempt to guess the raster format from
+#' `old_filename`.
+#' @returns Logical `TRUE` if no error or `FALSE` on failure.
+#'
+#' @seealso
+#' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
+#' [deleteDataset()], [renameDataset()]
+#'
+#' @examples
+#' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
+#' ds <- new(GDALRaster, lcp_file, read_only=TRUE)
+#' ds$getFileList()
+#' ds$close()
+#' 
+#' lcp_tmp <- paste0(tempdir(), "/", "storm_lake_copy.lcp")
+#' copyDatasetFiles(lcp_tmp, lcp_file)
+#' ds_copy <- new(GDALRaster, lcp_tmp, read_only=TRUE)
+#' ds_copy$getFileList()
+#' ds_copy$close()
+copyDatasetFiles <- function(new_filename, old_filename, format = "") {
+    .Call(`_gdalraster_copyDatasetFiles`, new_filename, old_filename, format)
+}
+
+#' Return the list of creation options of a GDAL driver as XML string
+#'
+#' Called from and documented in R/gdal_helpers.R
+#' @noRd
+.getCreationOptions <- function(format) {
+    .Call(`_gdalraster__getCreationOptions`, format)
+}
+
+#' @noRd
+NULL
+
+#' @noRd
+NULL
+
+#' @noRd
+NULL
+
+#' @noRd
+NULL
 
 #' Is GEOS available?
 #'

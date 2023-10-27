@@ -22,6 +22,11 @@
   \item raster creation: \code{\link[=create]{create()}},
   \code{\link[=createCopy]{createCopy()}},
   \code{\link[=rasterFromRaster]{rasterFromRaster()}},
+  \code{\link[=getCreationOptions]{getCreationOptions()}}
+  
+  \item data management: \code{\link[=copyDatasetFiles]{copyDatasetFiles()}},
+  \code{\link[=deleteDataset]{deleteDataset()}},
+  \code{\link[=renameDataset]{renameDataset()}},\cr
   \code{\link[=bandCopyWholeRaster]{bandCopyWholeRaster()}}
  
   \item virtual raster: \code{\link[=rasterToVRT]{rasterToVRT()}}
@@ -32,6 +37,11 @@
   \code{\link[=fillNodata]{fillNodata()}},
   \code{\link[=sieveFilter]{sieveFilter()}},
   \code{\link[=GDALRaster]{GDALRaster$getChecksum()}}
+  
+  \item raster attribute tables: \code{\link[=buildRAT]{buildRAT()}},
+  \code{\link[=displayRAT]{displayRAT()}},
+  \code{\link[=GDALRaster]{GDALRaster$getDefaultRAT()}},\cr
+  \code{\link[=GDALRaster]{GDALRaster$setDefaultRAT()}}
   
   \item geotransform conversion:
   \code{\link[=inv_geotransform]{inv_geotransform()}}, 
@@ -58,8 +68,9 @@
   
   \item GDAL configuration:
   \code{\link[=gdal_version]{gdal_version()}},
-  \code{\link[=get_cache_used]{get_cache_used()}},
-  \code{\link[=get_config_option]{get_config_option()}},\cr
+  \code{\link[=gdal_formats]{gdal_formats()}},
+  \code{\link[=get_cache_used]{get_cache_used()}},\cr
+  \code{\link[=get_config_option]{get_config_option()}},
   \code{\link[=set_config_option]{set_config_option()}}
   
   \item PROJ configuration:

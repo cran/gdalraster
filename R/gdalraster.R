@@ -59,7 +59,6 @@
 #' ds$getOverviewCount(band)
 #' ds$buildOverviews(resampling, levels, bands)
 #' ds$getDataTypeName(band)
-#' ds$getStatistics(band, approx_ok, force)
 #' ds$getNoDataValue(band)
 #' ds$setNoDataValue(band, nodata_value)
 #' ds$deleteNoDataValue(band)
@@ -72,9 +71,15 @@
 #' ds$getRasterColorInterp(band)
 #' ds$setRasterColorInterp(band, col_interp)
 #'
+#' ds$getMinMax(band, approx_ok)
+#' ds$getStatistics(band, approx_ok, force)
+#' ds$getHistogram(band, min, max, num_buckets, incl_out_of_range, approx_ok)
+#' ds$getDefaultHistogram(band, force)
+#'
 #' ds$getMetadata(band, domain)
 #' ds$getMetadataItem(band, mdi_name, domain)
 #' ds$setMetadataItem(band, mdi_name, mdi_value, domain)
+#' ds$getMetadataDomainList(band)
 #'
 #' ds$read(band, xoff, yoff, xsize, ysize, out_xsize, out_ysize)
 #' ds$write(band, xoff, yoff, xsize, ysize, rasterData)
@@ -83,6 +88,9 @@
 #' ds$getColorTable(band)
 #' ds$getPaletteInterp(band)
 #' ds$setColorTable(band, col_tbl, palette_interp)
+#'
+#' ds$getDefaultRAT(band)
+#' ds$setDefaultRAT(band, df)
 #'
 #' ds$flushCache()
 #'
@@ -269,30 +277,6 @@
 #' n=17...31 (UInt32 type), and n=16 is accepted for Float32 to generate
 #' half-precision floating point values.
 #'
-#' \code{$getStatistics(band, approx_ok, force)}
-#' Returns a numeric vector of length four containing the minimum, maximum,
-#' mean and standard deviation of pixel values in \code{band} (excluding
-#' nodata pixels). Some raster formats will cache statistics allowing fast
-#' retrieval after the first request.
-#'
-#' \code{approx_ok}:
-#'   * `TRUE`: Approximate statistics are sufficient, in which case overviews
-#'   or a subset of raster tiles may be used in computing the statistics.
-#'   * `FALSE`: All pixels will be read and used to compute statistics (if
-#'   computation is forced).
-#'
-#' \code{force}:
-#'   * `TRUE`: The raster will be scanned to compute statistics. Once computed,
-#'   statistics will generally be “set” back on the raster band if the format
-#'   supports caching statistics.
-#'   (Note: `ComputeStatistics()` in the GDAL API is called automatically here.
-#'   This is a change in the behavior of `GetStatistics()` in the API, to a
-#'   definitive `force`.)
-#'   * `FALSE`: Results will only be returned if it can be done quickly (i.e.,
-#'   without scanning the raster, typically by using pre-existing
-#'   STATISTICS_xxx metadata items). \code{NA}s will be returned if statistics
-#'   cannot be obtained quickly.
-#'
 #' \code{$getNoDataValue(band)}
 #' Returns the nodata value for \code{band} if one exists.
 #' This is generally a special value defined to mark pixels that are not
@@ -384,6 +368,64 @@
 #' Sets the color interpretation for \code{band}. See above for the list of
 #' valid values for \code{col_interp} (passed as a string).
 #'
+#' \code{$getMinMax(band, approx_ok)}
+#' Returns a numeric vector of length two containing the min/max values for
+#' \code{band}. If \code{approx_ok} is `TRUE` and the raster format knows these
+#' values intrinsically then those values will be returned. If that doesn't
+#' work, a subsample of blocks will be read to get an approximate min/max. If
+#' the band has a nodata value it will be excluded from the minimum and
+#' maximum. If \code{approx_ok} is `FALSE`, then all pixels will be read and
+#' used to compute an exact range.
+#'
+#' \code{$getStatistics(band, approx_ok, force)}
+#' Returns a numeric vector of length four containing the minimum, maximum,
+#' mean and standard deviation of pixel values in \code{band} (excluding
+#' nodata pixels). Some raster formats will cache statistics allowing fast
+#' retrieval after the first request.
+#'
+#' \code{approx_ok}:
+#'   * `TRUE`: Approximate statistics are sufficient, in which case overviews
+#'   or a subset of raster tiles may be used in computing the statistics.
+#'   * `FALSE`: All pixels will be read and used to compute statistics (if
+#'   computation is forced).
+#'
+#' \code{force}:
+#'   * `TRUE`: The raster will be scanned to compute statistics. Once computed,
+#'   statistics will generally be “set” back on the raster band if the format
+#'   supports caching statistics.
+#'   (Note: `ComputeStatistics()` in the GDAL API is called automatically here.
+#'   This is a change in the behavior of `GetStatistics()` in the API, to a
+#'   definitive `force`.)
+#'   * `FALSE`: Results will only be returned if it can be done quickly (i.e.,
+#'   without scanning the raster, typically by using pre-existing
+#'   STATISTICS_xxx metadata items). \code{NA}s will be returned if statistics
+#'   cannot be obtained quickly.
+#'
+#' \code{$getHistogram(band, min, max, num_buckets, incl_out_of_range, 
+#'   approx_ok)}\cr
+#' Computes raster histogram for \code{band}. \code{min} is the lower bound of
+#' the histogram. \code{max} is the upper bound of the histogram.
+#' \code{num_buckets} is the number of buckets to use (bucket size is
+#' \code{(max - min) / num_buckets}).
+#' \code{incl_out_of_range} is a logical scalar: if `TRUE` values below the
+#' histogram range will be mapped into the first bucket and values above will
+#' be mapped into the last bucket, if `FALSE` out of range values are discarded.
+#' \code{approx_ok} is a logical scalar: `TRUE` if an approximate histogram is
+#' OK (generally faster), or `FALSE` for an exactly computed histogram.
+#' Returns the histogram as a numeric vector of length \code{num_buckets}.
+#'
+#' \code{$getDefaultHistogram(band, force)}
+#' Returns a default raster histogram for \code{band}. In the GDAL API, this
+#' method is overridden by derived classes (such as GDALPamRasterBand,
+#' VRTDataset, HFADataset...) that may be able to fetch efficiently an already
+#' stored histogram. \code{force} is a logical scalar: `TRUE` to force the
+#' computation of a default histogram; or if `FALSE` and no default histogram
+#' is available, a warning is emitted and the returned list has a 0-length
+#' histogram vector.
+#' Returns a list of length four containing named elements `$min` (lower
+#' bound), `$max` (upper bound), `$num_buckets` (number of buckets), and
+#'`$histogram` (a numeric vector of length `num_buckets`).
+#' 
 #' \code{$getMetadata(band, domain)}
 #' Returns a character vector of all metadata `name=value` pairs that exist in
 #' the specified \code{domain}, or \code{""} (empty string) if there are no
@@ -409,6 +451,11 @@
 #' Set \code{band = 0} to set dataset-level metadata, or to an integer
 #' band number to set band-level metadata.
 #' Set \code{domain = ""} (empty string) to set an item in the default domain.
+#'
+#' \code{$getMetadataDomainList(band)}
+#' Returns a character vector of metadata domains or \code{""} (empty string).
+#' Set \code{band = 0} to retrieve dataset-level domains, or to an integer
+#' band number to retrieve band-level domains.
 #'
 #' \code{$read(band, xoff, yoff, xsize, ysize, out_xsize, out_ysize)}
 #' Reads a region of raster data from \code{band}. The method takes care of
@@ -494,6 +541,28 @@
 #' \code{$getPaletteInterp()} above).
 #' Returns logical \code{TRUE} on success or \code{FALSE} if the color table
 #' could not be set.
+#'
+#' \code{$getDefaultRAT(band)}
+#' Returns the Raster Attribute Table for \code{band} as a data frame,
+#' or \code{NULL} if there is no associated Raster Attribute Table. See the
+#' stand-alone function [buildRAT()] for details of the Raster Attribute Table
+#' format.
+#'
+#' \code{$setDefaultRAT(band, df)}
+#' Sets a default Raster Attribute Table for \code{band} from data frame `df`.
+#' The input data frame will be checked for attribute `"GDALRATTableType"`
+#' which can have values of `"thematic"` or `"athematic"` (for continuous data).
+#' Columns of the data frame will be checked for attribute `"GFU"` (for "GDAL
+#' field usage"). If the `"GFU"` attribute is missing, a value of `"Generic"`
+#' will be used (corresponding to `GFU_Generic` in the GDAL API, for general
+#' purpose field). Columns with other, specific field usage values should
+#' generally be present in `df`, such as fields containing the set of unique
+#' (discrete) pixel values (GFU `"MinMax"`), pixel counts (GFU `"PixelCount"`),
+#' class names (GFU `"Name"`), color values (GFUs `"Red"`, "`Green"`, `"Blue"`),
+#' etc. The data frame will also be checked for attributes `"Row0Min"` and
+#' `"BinSize"` which can have numeric values that describe linear binning.
+#' See the stand-alone function [buildRAT()] for details of the GDAL Raster
+#' Attribute Table format and its representation as data frame.
 #'
 #' \code{$flushCache()}
 #' Flush all write cached data to disk. Any raster data written via GDAL calls,

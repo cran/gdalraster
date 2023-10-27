@@ -5,6 +5,10 @@ test_that("gdal_version returns vector", {
 	expect_length(gdal_version(), 4)
 })
 
+test_that("gdal_formats prints output", {
+	expect_output(gdal_formats())
+})
+
 test_that("get/set_config_option work", {
 	co <- get_config_option("GDAL_CACHEMAX")
 	set_config_option("GDAL_CACHEMAX", "64")
@@ -122,5 +126,73 @@ test_that("bandCopyWholeRaster writes correct output", {
 	dst_stats <- ds$getStatistics(band=5, approx_ok=FALSE, force=TRUE)
 	ds$close()
 	expect_equal(src_stats, dst_stats)
+})
+
+test_that("deleteDataset works", {
+	b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+	b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
+	file.copy(b5_file,  b5_tmp)
+	ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+	ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
+	files <- ds$getFileList()
+	ds$close()
+	expect_true(all(file.exists(files)))
+	deleteDataset(b5_tmp)
+	expect_false(any(file.exists(files)))
+	ds = NULL
+	
+	# with format argument
+	b5_tmp2 <- paste0(tempdir(), "/", "b5_tmp2.tif")
+	file.copy(b5_file,  b5_tmp2)
+	ds2 <- new(GDALRaster, b5_tmp2, read_only=TRUE)
+	ds2$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
+	files <- ds2$getFileList()
+	ds2$close()
+	deleteDataset(b5_tmp2, "GTiff")
+	expect_false(any(file.exists(files)))
+})
+
+test_that("renameDataset works", {
+	b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+	b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
+	file.copy(b5_file,  b5_tmp)
+	ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+	ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
+	ds$close()
+	b5_tmp2 <- paste0(tempdir(), "/", "b5_tmp_renamed.tif")
+	renameDataset(b5_tmp2, b5_tmp)
+	ds <- new(GDALRaster, b5_tmp2, read_only=TRUE)
+	expect_length(ds$getFileList(), 2)
+	ds$close()
+	
+	# with format argument
+	b5_tmp3 <- paste0(tempdir(), "/", "b5_tmp3.tif")
+	renameDataset(b5_tmp3, b5_tmp2)
+	ds <- new(GDALRaster, b5_tmp3, read_only=TRUE)
+	expect_length(ds$getFileList(), 2)
+	ds$close()	
+
+	deleteDataset(b5_tmp3)
+})
+
+test_that("copyDatasetFiles works", {
+	lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
+	ds <- new(GDALRaster, lcp_file, read_only=TRUE)
+	num_files <- length(ds$getFileList())
+	ds$close()
+	lcp_tmp <- paste0(tempdir(), "/", "storm_lake_copy.lcp")
+	copyDatasetFiles(lcp_tmp, lcp_file)
+	ds_copy <- new(GDALRaster, lcp_tmp, read_only=TRUE)
+	expect_equal(length(ds_copy$getFileList()), num_files)
+	ds_copy$close()
+	deleteDataset(lcp_tmp)
+	
+	# with format argument
+	lcp_tmp2 <- paste0(tempdir(), "/", "storm_lake_copy2.lcp")
+	copyDatasetFiles(lcp_tmp2, lcp_file)
+	ds_copy2 <- new(GDALRaster, lcp_tmp2, read_only=TRUE)
+	expect_equal(length(ds_copy2$getFileList()), num_files)
+	ds_copy2$close()
+	deleteDataset(lcp_tmp2)
 })
 

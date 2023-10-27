@@ -2,6 +2,7 @@
    Chris Toney <chris.toney at usda.gov> */
 
 #include <cmath>
+#include <unordered_map>
 
 #include "gdal.h"
 #include "cpl_port.h"
@@ -36,6 +37,38 @@ Rcpp::CharacterVector gdal_version() {
 	ret(2) = GDALVersionInfo("RELEASE_DATE");
 	ret(3) = GDALVersionInfo("RELEASE_NAME");
 	return ret;
+}
+
+
+//' Report all configured GDAL drivers for raster formats
+//'
+//' `gdal_formats()` prints to the console a list of the supported raster
+//' formats.
+//'
+//' @returns No return value, called for reporting only.
+//' @examples
+//' gdal_formats()
+// [[Rcpp::export]]
+void gdal_formats() {
+	Rprintf("Supported raster formats:\n");
+	for (int i=0; i < GDALGetDriverCount(); ++i) {
+		GDALDriverH hDriver = GDALGetDriver(i);
+		char **papszMD = GDALGetMetadata(hDriver, NULL);
+		const char *pszRFlag = "", *pszWFlag;
+		std::string rw_flag = "";
+		if (!CPLFetchBool(papszMD, GDAL_DCAP_RASTER, false))
+			continue;
+		if (CPLFetchBool(papszMD, GDAL_DCAP_OPEN, false))
+			pszRFlag = "r";
+		if (CPLFetchBool(papszMD, GDAL_DCAP_CREATE, false))
+			pszWFlag = "w+";
+		else if (CPLFetchBool(papszMD, GDAL_DCAP_CREATECOPY, false))
+			pszWFlag = "w";
+		else
+			pszWFlag = "o";
+		Rprintf("  %s (%s%s): %s\n", GDALGetDriverShortName(hDriver),
+				pszRFlag, pszWFlag, GDALGetDriverLongName(hDriver));
+	}
 }
 
 
@@ -117,7 +150,7 @@ int get_cache_used() {
 //'
 //' `create()` makes an empty raster in the specified format.
 //'
-//' @param format Raster format short name (e.g., "GTiff" or "HFA").
+//' @param format Raster format short name (e.g., "GTiff").
 //' @param dst_filename Filename to create.
 //' @param xsize Integer width of raster in pixels.
 //' @param ysize Integer height of raster in pixels.
@@ -133,8 +166,8 @@ int get_cache_used() {
 //' @returns Logical indicating success (invisible \code{TRUE}).
 //' An error is raised if the operation fails.
 //' @seealso
-//' [`GDALRaster-class`][GDALRaster], [bandCopyWholeRaster()],
-//' [createCopy()], [rasterFromRaster()]
+//' [`GDALRaster-class`][GDALRaster], [createCopy()], [rasterFromRaster()],
+//' [getCreationOptions()]
 //' @examples
 //' new_file <- paste0(tempdir(), "/", "newdata.tif")
 //' create(format="GTiff", dst_filename=new_file, xsize=143, ysize=107,
@@ -213,8 +246,8 @@ bool create(std::string format, std::string dst_filename,
 //' @returns Logical indicating success (invisible \code{TRUE}).
 //' An error is raised if the operation fails.
 //' @seealso
-//' [`GDALRaster-class`][GDALRaster], [bandCopyWholeRaster()], [create()],
-//' [rasterFromRaster()]
+//' [`GDALRaster-class`][GDALRaster], [create()], [rasterFromRaster()],
+//' [getCreationOptions()]
 //' @examples
 //' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 //' tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
@@ -234,9 +267,9 @@ bool createCopy(std::string format, std::string dst_filename,
 		std::string src_filename, bool strict = false,
 		Rcpp::Nullable<Rcpp::CharacterVector> options = R_NilValue) {
 
-	GDALDriverH hDriver = GDALGetDriverByName( format.c_str() );
+	GDALDriverH hDriver = GDALGetDriverByName(format.c_str());
 	if (hDriver == NULL)
-		Rcpp::stop("Failed to get driver for the specified format.");
+		Rcpp::stop("Failed to get driver from format name.");
 		
 	char **papszMetadata = GDALGetMetadata(hDriver, NULL);
 	if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE))
@@ -456,9 +489,10 @@ Rcpp::DataFrame _combine(
 	if (out_raster) {
 		if (create(fmt, dst_filename, ncols, nrows, 1, dataType, options)) {
 			dst_ds = GDALRaster(dst_filename, false);
-			dst_ds.setGeoTransform(gt);
+			if (!dst_ds.setGeoTransform(gt))
+				Rcpp::warning("Failed to set output geotransform.");
 			if (!dst_ds.setProjection(srs))
-				Rcpp::Rcout << "WARNING: failed to set output projection.\n";
+				Rcpp::warning("Failed to set output projection.");
 		}
 		else {
 			for (std::size_t i = 0; i < nrasters; ++i)
@@ -472,7 +506,10 @@ Rcpp::DataFrame _combine(
 	Rcpp::NumericVector cmbid;
 	GDALProgressFunc pfnProgress = GDALTermProgressR;
 	void* pProgressData = NULL;
-	Rcpp::Rcout << "Combining...\n";
+	if (nrasters == 1)
+		Rcpp::Rcout << "Scanning raster...\n";
+	else
+		Rcpp::Rcout << "Combining " << nrasters << " rasters...\n";
 	for (int y = 0; y < nrows; ++y) {
 		for (std::size_t i = 0; i < nrasters; ++i)
 			rowdata.row(i) = Rcpp::as<Rcpp::IntegerVector>(
@@ -482,12 +519,9 @@ Rcpp::DataFrame _combine(
 		cmbid = tbl.updateFromMatrix(rowdata, 1);
 		
 		if (out_raster) {
-			//cmbid.attr("dim") = Rcpp::Dimension(1, ncols);
 			dst_ds.write( 1, 0, y, ncols, 1, cmbid );
 		}
 		pfnProgress(y / (nrows-1.0), NULL, pProgressData);
-		if (y % 1000 == 0)
-			Rcpp::checkUserInterrupt();
 	}
 
 	if (out_raster)
@@ -497,6 +531,77 @@ Rcpp::DataFrame _combine(
 		src_ds[i].close();
 	
 	return tbl.asDataFrame();
+}
+
+
+//' Compute for a raster band the set of unique pixel values and their counts
+//' 
+//' @noRd
+// [[Rcpp::export(name = ".value_count")]]
+Rcpp::DataFrame _value_count(std::string src_filename, int band = 1) {
+
+	GDALRaster src_ds = GDALRaster(src_filename, true);
+	int nrows = src_ds.getRasterYSize();
+	int ncols = src_ds.getRasterXSize();
+	GDALProgressFunc pfnProgress = GDALTermProgressR;
+	void* pProgressData = NULL;
+	Rcpp::DataFrame df_out = Rcpp::DataFrame::create();
+	
+	Rcpp::Rcout << "Scanning raster...\n";
+	
+	if (src_ds._readableAsInt(band)) {
+		// read pixel values as int
+		Rcpp::IntegerVector rowdata(ncols);
+		std::unordered_map<int, double> tbl;
+		for (int y = 0; y < nrows; ++y) {
+			rowdata = Rcpp::as<Rcpp::IntegerVector>(
+							src_ds.read(band, 0, y, ncols, 1, ncols, 1) );
+			for (auto const& i : rowdata) {
+				tbl[i] += 1.0;
+			}
+			pfnProgress(y / (nrows-1.0), NULL, pProgressData);
+		}
+
+		Rcpp::IntegerVector value(tbl.size());
+		Rcpp::NumericVector count(tbl.size());
+		std::size_t this_idx = 0;
+		for(auto iter = tbl.begin(); iter != tbl.end(); ++iter) {
+			value[this_idx] = iter->first;
+			count[this_idx] = iter->second;
+			++this_idx;
+		}
+		
+		df_out.push_back(value, "VALUE");
+		df_out.push_back(count, "COUNT");
+	}
+	else {
+		// UInt32, Float32, Float64
+		// read pixel values as double
+		Rcpp::NumericVector rowdata(ncols);
+		std::unordered_map<double, double> tbl;
+		for (int y = 0; y < nrows; ++y) {
+			rowdata = Rcpp::as<Rcpp::NumericVector>(
+							src_ds.read(band, 0, y, ncols, 1, ncols, 1) );
+			for (auto const& i : rowdata) {
+				tbl[i] += 1.0;
+			}
+			pfnProgress(y / (nrows-1.0), NULL, pProgressData);
+		}
+
+		Rcpp::NumericVector value(tbl.size());
+		Rcpp::NumericVector count(tbl.size());
+		std::size_t this_idx = 0;
+		for(auto iter = tbl.begin(); iter != tbl.end(); ++iter) {
+			value[this_idx] = iter->first;
+			count[this_idx] = iter->second;
+			++this_idx;
+		}
+		
+		df_out.push_back(value, "VALUE");
+		df_out.push_back(count, "COUNT");
+	}
+	
+	return df_out;
 }
 
 
@@ -588,9 +693,9 @@ bool _dem_proc(std::string mode,
 //' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 //' 
 //' ## get count of nodata
-//' df = combine(elev_file)
-//' head(df)
-//' df[is.na(df$storml_elev),]
+//' tbl <- buildRAT(elev_file)
+//' head(tbl)
+//' tbl[is.na(tbl$VALUE),]
 //' 
 //' ## make a copy that will be modified
 //' mod_file <- paste0(tempdir(), "/", "storml_elev_fill.tif")
@@ -598,9 +703,9 @@ bool _dem_proc(std::string mode,
 //' 
 //' fillNodata(mod_file, band=1)
 //' 
-//' df_mod = combine(mod_file)
-//' head(df_mod)
-//' df_mod[is.na(df_mod$storml_elev_fill),]
+//' mod_tbl = buildRAT(mod_file)
+//' head(mod_tbl)
+//' mod_tbl[is.na(mod_tbl$VALUE),]
 // [[Rcpp::export(invisible = true)]]
 bool fillNodata(std::string filename, int band, std::string mask_file = "",
 		double max_dist = 100, int smooth_iterations = 0) {
@@ -820,7 +925,14 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 
 	std::vector<GDALDatasetH> src_ds(src_files.size());
 	for (std::size_t i = 0; i < src_files.size(); ++i) {
-		src_ds[i] = GDALOpenShared(src_files[i].c_str(), GA_ReadOnly);
+		GDALDatasetH hDS = GDALOpenShared(src_files[i].c_str(), GA_ReadOnly);
+		if (hDS == NULL) {
+			Rcpp::Rcerr << "Error on source: " << src_files[i].c_str() << "\n";
+			Rcpp::stop("Open source raster failed.");
+		}
+		else {
+			src_ds[i] = hDS;
+		}
 	}
 
 	std::vector<char *> argv = {(char *) ("-t_srs"), (char *) (t_srs[0]), NULL};
@@ -882,10 +994,10 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 //' @param end_color Integer vector of length three or four.
 //' A color entry value to end the ramp (e.g., RGB values).
 //' @param palette_interp One of "Gray", "RGB" (the default), "CMYK" or "HLS"
-//' descibing interpretation of `start_color` and `end_color` values
+//' describing interpretation of `start_color` and `end_color` values
 //' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL 
 //' Color Table}).
-//' @returns Intger matrix with five columns containing the color ramp from
+//' @returns Integer matrix with five columns containing the color ramp from
 //' `start_index` to `end_index`, with raster index values in column 1 and
 //' color entries in columns 2:5).
 //'
@@ -963,6 +1075,8 @@ Rcpp::IntegerMatrix createColorRamp(int start_index,
 		Rcpp::stop("Invalid palette_interp.");
 
 	GDALColorTableH hColTbl = GDALCreateColorTable(gpi);
+	if (hColTbl == NULL)
+		Rcpp::stop("Could not create GDAL color table.");
 	
 	const GDALColorEntry colStart = {
 			static_cast<short>(start_color(0)),
@@ -1101,3 +1215,222 @@ bool bandCopyWholeRaster(std::string src_filename, int src_band,
 		
 	return true;
 }
+
+
+//' Delete named dataset
+//'
+//' `deleteDataset()` will attempt to delete the named dataset in a format
+//' specific fashion. Full featured drivers will delete all associated files,
+//' database objects, or whatever is appropriate. The default behavior when no
+//' format specific behavior is provided is to attempt to delete all the files
+//' that would be returned by `GDALRaster$getFileList()` on the dataset.
+//' The named dataset should not be open in any existing `GDALRaster` objects
+//' when `deleteDataset()` is called. Wrapper for `GDALDeleteDataset()` in the
+//' GDAL API.
+//'
+//' @note
+//' If `format` is set to an empty string `""` (the default) then the function
+//' will try to identify the driver from `filename`. This is done internally in
+//' GDAL by invoking the `Identify` method of each registered `GDALDriver` in
+//' turn. The first driver that successful identifies the file name will be
+//' returned. An error is raised if a format cannot be determined from the
+//' passed file name.
+//'
+//' @param filename Filename to delete (should not be open in a `GDALRaster`
+//' object).
+//' @param format Raster format short name (e.g., "GTiff"). If set to empty
+//' string `""` (the default), will attempt to guess the raster format from
+//' `filename`.
+//' @returns Logical `TRUE` if no error or `FALSE` on failure.
+//'
+//' @seealso
+//' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
+//' [copyDatasetFiles()], [renameDataset()]
+//'
+//' @examples
+//' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+//' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
+//' file.copy(b5_file,  b5_tmp)
+//' 
+//' ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+//' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
+//' files <- ds$getFileList()
+//' print(files)
+//' ds$close()
+//' file.exists(files)
+//' deleteDataset(b5_tmp)
+//' file.exists(files)
+// [[Rcpp::export]]
+bool deleteDataset(std::string filename, std::string format = "") {
+
+	GDALDriverH hDriver;
+	if (format == "") {
+		hDriver = GDALIdentifyDriver(filename.c_str(), NULL);
+		if (hDriver == NULL)
+			Rcpp::stop("Failed to get driver from file name.");
+	}
+	else {
+		hDriver = GDALGetDriverByName(format.c_str());
+		if (hDriver == NULL)
+			Rcpp::stop("Failed to get driver from format name.");
+	}
+	
+	CPLErr err = GDALDeleteDataset(hDriver, filename.c_str());
+	if (err != CE_None) {
+		Rcpp::Rcerr << "Error from GDALDeleteDataset().\n";
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+
+//' Rename a dataset
+//'
+//' `renameDataset()` renames a dataset in a format-specific way (e.g.,
+//' rename associated files as appropriate). This could include moving the
+//' dataset to a new directory or even a new filesystem.
+//' The dataset should not be open in any existing `GDALRaster` objects
+//' when `renameDataset()` is called. Wrapper for `GDALRenameDataset()` in the
+//' GDAL API.
+//'
+//' @note
+//' If `format` is set to an empty string `""` (the default) then the function
+//' will try to identify the driver from `old_filename`. This is done
+//' internally in GDAL by invoking the `Identify` method of each registered
+//' `GDALDriver` in turn. The first driver that successful identifies the file
+//' name will be returned. An error is raised if a format cannot be determined
+//' from the passed file name.
+//'
+//' @param new_filename New name for the dataset.
+//' @param old_filename Old name for the dataset (should not be open in a
+//' `GDALRaster` object).
+//' @param format Raster format short name (e.g., "GTiff"). If set to empty
+//' string `""` (the default), will attempt to guess the raster format from
+//' `old_filename`.
+//' @returns Logical `TRUE` if no error or `FALSE` on failure.
+//'
+//' @seealso
+//' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
+//' [deleteDataset()], [copyDatasetFiles()]
+//'
+//' @examples
+//' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+//' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
+//' file.copy(b5_file,  b5_tmp)
+//' 
+//' ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+//' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
+//' ds$getFileList()
+//' ds$close()
+//' b5_tmp2 <- paste0(tempdir(), "/", "b5_tmp_renamed.tif")
+//' renameDataset(b5_tmp2, b5_tmp)
+//' ds <- new(GDALRaster, b5_tmp2, read_only=TRUE)
+//' ds$getFileList()
+//' ds$close()
+// [[Rcpp::export]]
+bool renameDataset(std::string new_filename, std::string old_filename,
+		std::string format = "") {
+
+	GDALDriverH hDriver;
+	if (format == "") {
+		hDriver = GDALIdentifyDriver(old_filename.c_str(), NULL);
+		if (hDriver == NULL)
+			Rcpp::stop("Failed to get driver from file name.");
+	}
+	else {
+		hDriver = GDALGetDriverByName(format.c_str());
+		if (hDriver == NULL)
+			Rcpp::stop("Failed to get driver from format name.");
+	}
+	
+	CPLErr err = GDALRenameDataset(hDriver, new_filename.c_str(),
+			old_filename.c_str());
+	if (err != CE_None) {
+		Rcpp::Rcerr << "Error from GDALRenameDataset().\n";
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+
+//' Copy the files of a dataset
+//'
+//' `copyDatasetFiles()` copies all the files associated with a dataset.
+//' Wrapper for `GDALCopyDatasetFiles()` in the GDAL API.
+//'
+//' @note
+//' If `format` is set to an empty string `""` (the default) then the function
+//' will try to identify the driver from `old_filename`. This is done
+//' internally in GDAL by invoking the `Identify` method of each registered
+//' `GDALDriver` in turn. The first driver that successful identifies the file
+//' name will be returned. An error is raised if a format cannot be determined
+//' from the passed file name.
+//'
+//' @param new_filename New name for the dataset (copied to).
+//' @param old_filename Old name for the dataset (copied from).
+//' @param format Raster format short name (e.g., "GTiff"). If set to empty
+//' string `""` (the default), will attempt to guess the raster format from
+//' `old_filename`.
+//' @returns Logical `TRUE` if no error or `FALSE` on failure.
+//'
+//' @seealso
+//' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
+//' [deleteDataset()], [renameDataset()]
+//'
+//' @examples
+//' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
+//' ds <- new(GDALRaster, lcp_file, read_only=TRUE)
+//' ds$getFileList()
+//' ds$close()
+//' 
+//' lcp_tmp <- paste0(tempdir(), "/", "storm_lake_copy.lcp")
+//' copyDatasetFiles(lcp_tmp, lcp_file)
+//' ds_copy <- new(GDALRaster, lcp_tmp, read_only=TRUE)
+//' ds_copy$getFileList()
+//' ds_copy$close()
+// [[Rcpp::export]]
+bool copyDatasetFiles(std::string new_filename, std::string old_filename,
+		std::string format = "") {
+
+	GDALDriverH hDriver;
+	if (format == "") {
+		hDriver = GDALIdentifyDriver(old_filename.c_str(), NULL);
+		if (hDriver == NULL)
+			Rcpp::stop("Failed to get driver from file name.");
+	}
+	else {
+		hDriver = GDALGetDriverByName(format.c_str());
+		if (hDriver == NULL)
+			Rcpp::stop("Failed to get driver from format name.");
+	}
+	
+	CPLErr err = GDALCopyDatasetFiles(hDriver, new_filename.c_str(),
+			old_filename.c_str());
+	if (err != CE_None) {
+		Rcpp::Rcerr << "Error from GDALCopyDatasetFiles().\n";
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+
+//' Return the list of creation options of a GDAL driver as XML string
+//'
+//' Called from and documented in R/gdal_helpers.R
+//' @noRd
+// [[Rcpp::export(name = ".getCreationOptions")]]
+std::string _getCreationOptions(std::string format) {
+
+	GDALDriverH hDriver = GDALGetDriverByName(format.c_str());
+	if (hDriver == NULL)
+		Rcpp::stop("Failed to get driver from format name.");
+
+	return GDALGetDriverCreationOptionList(hDriver);
+}
+

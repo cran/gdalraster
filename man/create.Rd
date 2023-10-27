@@ -7,7 +7,7 @@
 create(format, dst_filename, xsize, ysize, nbands, dataType, options = NULL)
 }
 \arguments{
-\item{format}{Raster format short name (e.g., "GTiff" or "HFA").}
+\item{format}{Raster format short name (e.g., "GTiff").}
 
 \item{dst_filename}{Filename to create.}
 
@@ -50,6 +50,6 @@ ds$fillRaster(band = 1, -9999, 0)
 ds$close()
 }
 \seealso{
-\code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=bandCopyWholeRaster]{bandCopyWholeRaster()}},
-\code{\link[=createCopy]{createCopy()}}, \code{\link[=rasterFromRaster]{rasterFromRaster()}}
+\code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=createCopy]{createCopy()}}, \code{\link[=rasterFromRaster]{rasterFromRaster()}},
+\code{\link[=getCreationOptions]{getCreationOptions()}}
 }

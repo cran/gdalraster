@@ -61,8 +61,12 @@ test_that("metadata are correct", {
 	expect_equal(ds$getMetadata(band=1, domain="IMAGE_STRUCTURE"), "")
 	expect_equal(ds$getMetadataItem(band=0, mdi_name="AREA_OR_POINT",
 				domain=""), "Area")
+	expect_equal(ds$getMetadataItem(band=0, "INTERLEAVE",
+				domain="IMAGE_STRUCTURE"), "BAND")
 	expect_equal(ds$getMetadataItem(band=1, mdi_name="COMPRESSION",
 				domain="IMAGE_STRUCTURE"), "")
+	expect_equal(length(ds$getMetadataDomainList(band=0)), 3)
+	expect_equal(length(ds$getMetadataDomainList(band=1)), 1)
 	ds$close()
 })
 
@@ -103,11 +107,34 @@ test_that("statistics are correct", {
 	mod_file <- paste0(tempdir(), "/", "storml_elev_mod.tif")
 	file.copy(elev_file,  mod_file)
 	ds <- new(GDALRaster, mod_file, read_only=TRUE)
+	expect_equal(ds$getMinMax(band=1, approx_ok=FALSE), c(2438, 3046))
 	stats <- round(ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE))
 	expect_equal(stats, c(2438, 3046, 2676, 133))
 	files <- ds$getFileList()
 	on.exit(unlink(files))
 	ds$close()
+})
+
+test_that("get histogram works", {
+	tcc_file <- system.file("extdata/storml_tcc.tif", package="gdalraster")
+	f <- paste0(tempdir(), "/", "storml_tcc_test.tif")
+	file.copy(tcc_file,  f)
+	ds <- new(GDALRaster, f, read_only=TRUE)
+	num_bins <- length(ds$getHistogram(1, -0.5, 100.5, 101, FALSE, FALSE))
+	expect_equal(num_bins, 101)
+	num_pixels <- sum(ds$getHistogram(1, -0.5, 100.5, 101, FALSE, FALSE))
+	expect_equal(num_pixels, 15301)
+	ds$close()
+	deleteDataset(f)
+	
+	# default histogram
+	f2 <- paste0(tempdir(), "/", "storml_tcc_test2.tif")
+	file.copy(tcc_file,  f2)
+	ds <- new(GDALRaster, f2, read_only=TRUE)
+	expect_warning(ds$getDefaultHistogram(1, FALSE))
+	expect_length(ds$getDefaultHistogram(1, TRUE), 4)
+	ds$close()
+	deleteDataset(f2)
 })
 
 test_that("floating point I/O works", {
@@ -246,3 +273,29 @@ test_that("Int64 data type is detected", {
 		ds$close()
 	}
 })
+
+test_that("get/set default RAT works", {
+	evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
+	f <- paste0(tempdir(), "/", "storml_evt_tmp.tif")
+	file.copy(evt_file,  f)
+	ds <- new(GDALRaster, f, read_only=FALSE)
+	expect_true(is.null(ds$getDefaultRAT(band=1)))
+	evt_csv <- system.file("extdata/LF20_EVT_220.csv", package="gdalraster")
+	evt_tbl <- read.csv(evt_csv)
+	evt_tbl <- evt_tbl[,1:7]
+	rat <- buildRAT(ds, table_type="thematic", na_value=-9999, join_df=evt_tbl)
+	ds$setDefaultRAT(band=1, rat)
+	ds$flushCache()
+	rat2 <- ds$getDefaultRAT(band=1)
+	expect_equal(nrow(rat2), 24)
+	expect_equal(ncol(rat2), 8)
+	expect_equal(attr(rat2, "GDALRATTableType"), "thematic")
+	expect_equal(attr(rat2$VALUE, "GFU"), "MinMax")
+	expect_equal(attr(rat2$COUNT, "GFU"), "PixelCount")
+	expect_equal(attr(rat2$EVT_NAME, "GFU"), "Name")
+	expect_equal(attr(rat2$EVT_LF, "GFU"), "Generic")
+	expect_equal(attr(rat2$B, "GFU"), "Blue")
+	ds$close()
+	deleteDataset(f)
+})
+

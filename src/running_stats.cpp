@@ -11,25 +11,26 @@ RunningStats::RunningStats(bool na_rm):
 	na_rm(na_rm), count(0) {}
 
 void RunningStats::update(const Rcpp::NumericVector& newvalues) {
-	R_xlen_t n = newvalues.size();
-	for (R_xlen_t i=0; i!=n; ++i) {
+	for (auto const& i : newvalues) {
 		if (na_rm) {
-			if (Rcpp::NumericVector::is_na(newvalues[i]))
+			if (Rcpp::NumericVector::is_na(i))
 				continue;
 		}
-		++count;
+		count += 1;
 		if (count == 1) {
-			mean = min = max = sum = newvalues[i];
-			M2 = 0;
+			mean = min = max = sum = i;
+			M2 = 0.0;
 		}
 		else {
-			const double delta = newvalues[i] - mean;
+			const double delta = i - mean;
 			mean += (delta / count);
-			const double delta2 = newvalues[i] - mean;
+			const double delta2 = i - mean;
 			M2 += (delta * delta2);
-			if (newvalues[i] < min) min = newvalues[i];
-			if (newvalues[i] > max) max = newvalues[i];
-			sum += newvalues[i];
+			if (i < min)
+				min = i;
+			else if (i > max)
+				max = i;
+			sum += i;
 		}
 	}
 }
@@ -38,8 +39,9 @@ void RunningStats::reset() {
 	count = 0;
 }
 
-unsigned long long RunningStats::get_count() const {
-	return count;
+double RunningStats::get_count() const {
+	// return as double in R (no native int64)
+	return static_cast<double>(count);
 }
 
 double RunningStats::get_mean() const {
