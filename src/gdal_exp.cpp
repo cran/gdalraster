@@ -15,6 +15,7 @@
 
 #include "gdalraster.h"
 #include "cmb_table.h"
+#include "ogr_util.h"
 
 //' Get GDAL version
 //'
@@ -85,8 +86,12 @@ void gdal_formats() {
 //' @returns Character. The value of a (key, value) option previously set with 
 //' `set_config_option()`. An empty string (`""`) is returned if `key` is not 
 //' found.
+//'
 //' @seealso
 //' [set_config_option()]
+//'
+//' `vignette("gdal-config-quick-ref")`
+//'
 //' @examples
 //' ## this option is set during initialization of the gdalraster package
 //' get_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER")
@@ -112,10 +117,14 @@ std::string get_config_option(std::string key) {
 //' `value = ""` (empty string) will unset a value previously set by 
 //' `set_config_option()`.
 //' @returns No return value, called for side effects.
+//'
 //' @seealso
 //' [get_config_option()]
+//'
+//' `vignette("gdal-config-quick-ref")`
+//'
 //' @examples
-//' set_config_option("GDAL_CACHEMAX", "64")
+//' set_config_option("GDAL_CACHEMAX", "10%")
 //' get_config_option("GDAL_CACHEMAX")
 //' ## unset:
 //' set_config_option("GDAL_CACHEMAX", "")
@@ -136,6 +145,9 @@ void set_config_option(std::string key, std::string value) {
 //' value as MB.
 //'
 //' @returns Integer. Amount of cache memory in use in MB.
+//'
+//' @seealso
+//' [GDAL Block Cache](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)
 //'
 //' @examples
 //' get_cache_used()
@@ -214,13 +226,11 @@ bool create(std::string format, std::string dst_filename,
 						xsize, ysize, nbands, dt,
                     	opt_list.data());
 
-	if (hDstDS != NULL) {
-		GDALClose(hDstDS);
-		return true;
-	}
-	else {
-		Rcpp::stop("Create raster failed.");
-	}
+	if (hDstDS == NULL)
+		Rcpp::stop("Create dataset failed.");
+	
+	GDALClose(hDstDS);
+	return true;
 }
 
 
@@ -247,7 +257,7 @@ bool create(std::string format, std::string dst_filename,
 //' An error is raised if the operation fails.
 //' @seealso
 //' [`GDALRaster-class`][GDALRaster], [create()], [rasterFromRaster()],
-//' [getCreationOptions()]
+//' [getCreationOptions()], [translate()]
 //' @examples
 //' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 //' tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
@@ -295,18 +305,12 @@ bool createCopy(std::string format, std::string dst_filename,
 	hDstDS = GDALCreateCopy(hDriver, dst_filename.c_str(), hSrcDS, strict,
 				opt_list.data(), GDALTermProgressR, NULL);
 
-	bool ret = false;
-	if (hDstDS != NULL) {
-		GDALClose(hDstDS);
-		ret = true;
-	}
-	else {
-		Rcpp::stop("Create raster failed.");
-	}
-	
 	GDALClose(hSrcDS);
-	
-	return ret;
+	if (hDstDS == NULL)
+		Rcpp::stop("Create copy failed.");
+
+	GDALClose(hDstDS);
+	return true;
 }
 
 
@@ -430,6 +434,94 @@ Rcpp::IntegerMatrix get_pixel_line(const Rcpp::NumericMatrix xy,
 	return pixel_line;
 }
 
+
+//' Build a GDAL virtual raster from a list of datasets
+//'
+//' `buildVRT()` is a wrapper of the \command{gdalbuildvrt} command-line
+//' utility for building a VRT (Virtual Dataset) that is a mosaic of the list
+//' of input GDAL datasets
+//' (see \url{https://gdal.org/programs/gdalbuildvrt.html}).
+//'
+//' @details
+//' Several command-line options are described in the GDAL documentation at the
+//' URL above. By default, the input files are considered as tiles of a larger
+//' mosaic and the VRT file has as many bands as one of the input files.
+//' Alternatively, the `-separate` argument can be used to put each input
+//' raster into a separate band in the VRT dataset.
+//'
+//' Some amount of checks are done to assure that all files that will be put in
+//' the resulting VRT have similar characteristics: number of bands,
+//' projection, color interpretation.... If not, files that do not match the
+//' common characteristics will be skipped. (This is true in the default
+//' mode for virtual mosaicing, and not when using the `-separate` option).
+//'
+//' In a virtual mosaic, if there is spatial overlap between
+//' input rasters then the order of files appearing in the list of
+//' sources matter: files that are listed at the end are the ones
+//' from which the data will be fetched. Note that nodata will be taken into
+//' account to potentially fetch data from less priority datasets.
+//'
+//' @param vrt_filename Character string. Filename of the output VRT.
+//' @param input_rasters Character vector of input raster filenames.
+//' @param cl_arg Optional character vector of command-line arguments to 
+//' \code{gdalbuildvrt}.
+//' @returns Logical indicating success (invisible \code{TRUE}).
+//' An error is raised if the operation fails.
+//'
+//' @seealso
+//' [rasterToVRT()]
+//'
+//' @examples
+//' # build a virtual 3-band RGB raster from individual Landsat band files
+//' b4_file <- system.file("extdata/sr_b4_20200829.tif", package="gdalraster")
+//' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+//' b6_file <- system.file("extdata/sr_b6_20200829.tif", package="gdalraster")
+//' band_files <- c(b6_file, b5_file, b4_file)
+//' vrt_file <- paste0(tempdir(), "/", "storml_b6_b5_b4.vrt")
+//' buildVRT(vrt_file, band_files, cl_arg = "-separate")
+//' ds <- new(GDALRaster, vrt_file, read_only=TRUE)
+//' ds$getRasterCount()
+//' plot_raster(ds, nbands=3, main="Landsat 6-5-4 (vegetative analysis)")
+//' ds$close()
+// [[Rcpp::export(invisible = true)]]
+bool buildVRT(std::string vrt_filename, Rcpp::CharacterVector input_rasters,
+		Rcpp::Nullable<Rcpp::CharacterVector> cl_arg = R_NilValue) {
+
+	std::vector<char *> src_ds_names = {NULL};
+	src_ds_names.resize(input_rasters.size() + 1);
+	for (R_xlen_t i = 0; i < input_rasters.size(); ++i) {
+		src_ds_names[i] = (char *) (input_rasters[i]);
+	}
+	src_ds_names[input_rasters.size()] = NULL;
+	
+	std::vector<char *> argv = {NULL};
+	if (cl_arg.isNotNull()) {
+		// cast Nullable to the underlying type
+		Rcpp::CharacterVector cl_arg_in(cl_arg);
+		argv.resize(cl_arg_in.size() + 1);
+		for (R_xlen_t i = 0; i < cl_arg_in.size(); ++i) {
+			argv[i] = (char *) (cl_arg_in[i]);
+		}
+		argv[cl_arg_in.size()] = NULL;
+	}
+	
+	GDALBuildVRTOptions* psOptions = GDALBuildVRTOptionsNew(argv.data(), NULL);
+	if (psOptions == NULL)
+		Rcpp::stop("Build VRT failed (could not create options struct).");
+	GDALBuildVRTOptionsSetProgress(psOptions, GDALTermProgressR, NULL);
+	
+	GDALDatasetH hDstDS = GDALBuildVRT(vrt_filename.c_str(),
+							input_rasters.size(), NULL, src_ds_names.data(),
+							psOptions, NULL);
+							
+	GDALBuildVRTOptionsFree(psOptions);
+
+	if (hDstDS == NULL)
+		Rcpp::stop("Build VRT failed.");
+	
+	GDALClose(hDstDS);
+	return true;
+}
 
 //' Raster overlay for unique combinations
 //' 
@@ -651,13 +743,11 @@ bool _dem_proc(std::string mode,
 							
 	GDALDEMProcessingOptionsFree(psOptions);
 	GDALClose(src_ds);
-	if (hDstDS != NULL) {
-		GDALClose(hDstDS);
-		return true;
-	}
-	else {
+	if (hDstDS == NULL)
 		Rcpp::stop("DEM processing failed.");
-	}
+
+	GDALClose(hDstDS);
+	return true;
 }
 
 
@@ -720,24 +810,169 @@ bool fillNodata(std::string filename, int band, std::string mask_file = "",
 	if (hDS == NULL)
 		Rcpp::stop("Open raster failed.");
 	hBand = GDALGetRasterBand(hDS, band);
-	
+	if (hBand == NULL) {
+		GDALClose(hDS);
+		Rcpp::stop("Failed to access the requested band.");
+	}
+
 	if (mask_file != "") {
 		hMaskDS = GDALOpenShared(mask_file.c_str(), GA_ReadOnly);
-		if (hMaskDS == NULL)
-			Rcpp::stop("Open raster failed.");
+		if (hMaskDS == NULL) {
+			GDALClose(hDS);
+			Rcpp::stop("Open mask raster failed.");
+		}
 		hMaskBand = GDALGetRasterBand(hMaskDS, 1);
+		if (hMaskBand == NULL) {
+			GDALClose(hDS);
+			GDALClose(hMaskDS);
+			Rcpp::stop("Failed to access the mask band.");
+		}
 	}
 	
 	err = GDALFillNodata(hBand, hMaskBand, max_dist, 0, smooth_iterations,
 			NULL, GDALTermProgressR, NULL);
-	
-	if (err != CE_None)
-		Rcpp::stop("fillNodata() failed.");
-		
+
 	GDALClose(hDS);
 	if (hMaskDS != NULL)
 		GDALClose(hMaskDS);
+	if (err != CE_None)
+		Rcpp::stop("Error in GDALFillNodata().");
+
+	return true;
+}
+
+
+//' Wrapper for GDALPolygonize in the GDAL Algorithms C API
+//'
+//' Called from and documented in R/gdalraster_proc.R
+//' @noRd
+// [[Rcpp::export(name = ".polygonize")]]
+bool _polygonize(std::string src_filename, int src_band,
+		std::string out_dsn, std::string out_layer, std::string fld_name,
+		std::string mask_file = "", bool nomask = false,
+		int connectedness = 4) {
+
+	GDALDatasetH hSrcDS = NULL;
+	GDALRasterBandH hSrcBand = NULL;
+	GDALDatasetH hMaskDS = NULL;
+	GDALRasterBandH hMaskBand = NULL;
+	GDALDatasetH hOutDS = NULL;
+	OGRLayerH hOutLayer = NULL;
+	int iPixValField;
+	CPLErr err;
+
+	if (connectedness != 4 && connectedness != 8)
+		Rcpp::stop("connectedness must be 4 or 8.");
 		
+	hSrcDS = GDALOpenShared(src_filename.c_str(), GA_ReadOnly);
+	if (hSrcDS == NULL)
+		Rcpp::stop("Open source raster failed.");
+		
+	hSrcBand = GDALGetRasterBand(hSrcDS, src_band);
+	if (hSrcBand == NULL) {
+		GDALClose(hSrcDS);
+		Rcpp::stop("Failed to access the source band.");
+	}
+
+	if (mask_file == "" && nomask == false) {
+		// default validity mask
+		hMaskBand = GDALGetMaskBand(hSrcBand);
+	}
+	else if (mask_file == "" && nomask == true) {
+		// do not use default validity mask for source band (such as nodata)
+		hMaskBand = NULL;
+	}
+	else {
+		// mask_file specified
+		hMaskDS = GDALOpenShared(mask_file.c_str(), GA_ReadOnly);
+		if (hMaskDS == NULL) {
+			GDALClose(hSrcDS);
+			Rcpp::stop("Open mask raster failed.");
+		}
+		hMaskBand = GDALGetRasterBand(hMaskDS, 1);
+		if (hMaskBand == NULL) {
+			GDALClose(hSrcDS);
+			GDALClose(hMaskDS);
+			Rcpp::stop("Failed to access the mask band.");
+		}
+	}
+
+	hOutDS = GDALOpenEx(out_dsn.c_str(), GDAL_OF_VECTOR | GDAL_OF_UPDATE,
+			NULL, NULL, NULL);
+	if (hOutDS == NULL) {
+		GDALClose(hSrcDS);
+		if (hMaskDS != NULL)
+			GDALClose(hMaskDS);
+		Rcpp::stop("Failed to open the output vector data source.");
+	}
+	
+	hOutLayer = GDALDatasetGetLayerByName(hOutDS, out_layer.c_str());
+	if (hOutLayer == NULL) {
+		GDALClose(hSrcDS);
+		if (hMaskDS != NULL)
+			GDALClose(hMaskDS);
+		GDALClose(hOutDS);
+		Rcpp::stop("Failed to open the output layer.");
+	}
+	
+	iPixValField = _ogr_field_index(out_dsn, out_layer, fld_name);
+	if (iPixValField == -1)
+		Rcpp::warning("Field not found, pixel values will not be written.");
+	
+	std::vector<char *> opt_list = {NULL};
+	if (connectedness == 8) {
+		auto it = opt_list.begin();
+    	it = opt_list.insert(it, (char *) ("8CONNECTED=8"));
+	}
+	
+	err = GDALPolygonize(hSrcBand, hMaskBand, hOutLayer, iPixValField,
+			opt_list.data(), GDALTermProgressR, NULL);
+
+	GDALClose(hSrcDS);
+	GDALClose(hOutDS);
+	if (hMaskDS != NULL)
+		GDALClose(hMaskDS);
+	if (err != CE_None)
+		Rcpp::stop("Error in GDALPolygonize().");
+
+	return true;
+}
+
+
+//' Wrapper for GDALRasterize in the GDAL Algorithms C API
+//'
+//' Called from and documented in R/gdalraster_proc.R
+//' @noRd
+// [[Rcpp::export(name = ".rasterize")]]
+bool _rasterize(std::string src_dsn, std::string dst_filename,
+		Rcpp::CharacterVector cl_arg) {
+
+	GDALDatasetH hSrcDS;
+	hSrcDS = GDALOpenEx(src_dsn.c_str(), GDAL_OF_VECTOR, NULL, NULL, NULL);
+	if (hSrcDS == NULL)
+		Rcpp::stop("Failed to open vector data source.");
+
+	std::vector<char *> argv(cl_arg.size() + 1);
+	for (R_xlen_t i = 0; i < cl_arg.size(); ++i) {
+		argv[i] = (char *) (cl_arg[i]);
+	}
+	argv[cl_arg.size()] = NULL;
+	
+	GDALRasterizeOptions* psOptions;
+	psOptions = GDALRasterizeOptionsNew(argv.data(), NULL);
+	if (psOptions == NULL)
+		Rcpp::stop("Rasterize failed (could not create options struct).");
+	GDALRasterizeOptionsSetProgress(psOptions, GDALTermProgressR, NULL);
+	
+	GDALDatasetH hDstDS;
+	hDstDS = GDALRasterize(dst_filename.c_str(), NULL, hSrcDS, psOptions, NULL);
+							
+	GDALRasterizeOptionsFree(psOptions);
+	GDALClose(hSrcDS);
+	if (hDstDS == NULL)
+		Rcpp::stop("Rasterize failed.");
+
+	GDALClose(hDstDS);
 	return true;
 }
 
@@ -847,19 +1082,41 @@ bool sieveFilter(std::string src_filename, int src_band,
 	if (hSrcDS == NULL)
 		Rcpp::stop("Open source raster failed.");
 	hSrcBand = GDALGetRasterBand(hSrcDS, src_band);
+	if (hSrcBand == NULL) {
+		GDALClose(hSrcDS);
+		Rcpp::stop("Failed to access the source band.");
+	}
 	
 	if (mask_filename != "") {
 		hMaskDS = GDALOpenShared(mask_filename.c_str(), GA_ReadOnly);
-		if (hMaskDS == NULL)
+		if (hMaskDS == NULL) {
+			GDALClose(hSrcDS);
 			Rcpp::stop("Open mask raster failed.");
+		}
 		hMaskBand = GDALGetRasterBand(hMaskDS, mask_band);
+		if (hMaskBand == NULL) {
+			GDALClose(hSrcDS);
+			GDALClose(hMaskDS);
+			Rcpp::stop("Failed to access the mask band.");
+		}
 	}
 	
 	if (!in_place) {
 		hDstDS = GDALOpenShared(dst_filename.c_str(), GA_Update);
-		if (hDstDS == NULL)
+		if (hDstDS == NULL) {
+			GDALClose(hSrcDS);
+			if (hMaskDS != NULL)
+				GDALClose(hMaskDS);
 			Rcpp::stop("Open destination raster failed.");
+		}
 		hDstBand = GDALGetRasterBand(hDstDS, dst_band);
+		if (hDstBand == NULL) {
+			GDALClose(hSrcDS);
+			if (hMaskDS != NULL)
+				GDALClose(hMaskDS);
+			GDALClose(hDstDS);
+			Rcpp::stop("Failed to access the destination band.");
+		}
 	}
 	
 	if (in_place)
@@ -868,46 +1125,253 @@ bool sieveFilter(std::string src_filename, int src_band,
 	else
 		err = GDALSieveFilter(hSrcBand, hMaskBand, hDstBand, size_threshold,
 				connectedness, NULL, GDALTermProgressR, NULL);	
-			
-	if (err != CE_None)
-		Rcpp::stop("sieveFilter() failed.");
 		
 	GDALClose(hSrcDS);
 	if (hMaskDS != NULL)
 		GDALClose(hMaskDS);
 	if (hDstDS != NULL)
 		GDALClose(hDstDS);
-		
+	if (err != CE_None)
+		Rcpp::stop("Error in GDALSieveFilter().");
+
 	return true;
 }
 
 
-//' Raster reprojection
+//' Convert raster data between different formats
 //'
-//' `warp()` is a wrapper for the \command{gdalwarp} command-line utility.
-//' See \url{https://gdal.org/programs/gdalwarp.html} for details.
+//' `translate()` is a wrapper of the \command{gdal_translate} command-line
+//' utility (see \url{https://gdal.org/programs/gdal_translate.html}).
+//' The function can be used to convert raster data between different
+//' formats, potentially performing some operations like subsetting,
+//' resampling, and rescaling pixels in the process. Refer to the GDAL
+//' documentation at the URL above for a list of command-line arguments that
+//' can be passed in `cl_arg`.
 //'
+//' @param src_filename Character string. Filename of the source raster.
+//' @param dst_filename Character string. Filename of the output raster.
+//' @param cl_arg Optional character vector of command-line arguments for 
+//' \code{gdal_translate}.
+//' @returns Logical indicating success (invisible \code{TRUE}).
+//' An error is raised if the operation fails.
+//' 
+//' @seealso
+//' [`GDALRaster-class`][GDALRaster], [rasterFromRaster()], [warp()]
+//'
+//' @examples
+//' # convert the elevation raster to Erdas Imagine format and resample to 90m
+//' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+//'
+//' # command-line arguments for gdal_translate
+//' args <- c("-tr", "90", "90", "-r", "average")
+//' args <- c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
+//'
+//' img_file <- paste0(tempdir(), "/", "storml_elev_90m.img")
+//' translate(elev_file, img_file, args)
+//' 
+//' ds <- new(GDALRaster, img_file, read_only=TRUE)
+//' ds$getDriverLongName()
+//' ds$bbox()
+//' ds$res()
+//' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
+//' ds$close()
+// [[Rcpp::export(invisible = true)]]
+bool translate(std::string src_filename, std::string dst_filename,
+		Rcpp::Nullable<Rcpp::CharacterVector> cl_arg = R_NilValue) {
+
+	GDALDatasetH src_ds = GDALOpenShared(src_filename.c_str(), GA_ReadOnly);
+	if (src_ds == NULL)
+		Rcpp::stop("Open source raster failed.");
+
+	std::vector<char *> argv = {NULL};
+	if (cl_arg.isNotNull()) {
+		// cast Nullable to the underlying type
+		Rcpp::CharacterVector cl_arg_in(cl_arg);
+		argv.resize(cl_arg_in.size() + 1);
+		for (R_xlen_t i = 0; i < cl_arg_in.size(); ++i) {
+			argv[i] = (char *) (cl_arg_in[i]);
+		}
+		argv[cl_arg_in.size()] = NULL;
+	}
+	
+	GDALTranslateOptions* psOptions = GDALTranslateOptionsNew(argv.data(), NULL);
+	if (psOptions == NULL)
+		Rcpp::stop("Translate failed (could not create options struct).");
+	GDALTranslateOptionsSetProgress(psOptions, GDALTermProgressR, NULL);
+	
+	GDALDatasetH hDstDS = GDALTranslate(dst_filename.c_str(), src_ds,
+							psOptions, NULL);
+							
+	GDALTranslateOptionsFree(psOptions);
+	GDALClose(src_ds);
+	if (hDstDS == NULL)
+		Rcpp::stop("Translate raster failed.");
+	
+	GDALClose(hDstDS);
+	return true;
+}
+
+
+//' Raster reprojection and mosaicing
+//'
+//' `warp()` is a wrapper of the \command{gdalwarp} command-line utility for
+//' raster mosaicing, reprojection and warping
+//' (see \url{https://gdal.org/programs/gdalwarp.html}).
+//' The function can reproject to any supported spatial reference system (SRS).
+//' It can also be used to crop, resample, and optionally write output to a
+//' different raster format. See Details for a list of commonly used
+//' processing options that can be passed as arguments to `warp()`.
+//'
+//' @details
+//' Several processing options can be performed in one call to `warp()` by
+//' passing the necessary command-line arguments. The following list describes
+//' several commonly used arguments. Note that `gdalwarp` supports a large
+//' number of arguments that enable a variety of different processing options.
+//' Users are encouraged to review the original source documentation provided
+//' by the GDAL project at the URL above for the full list.
+//'
+//'   * `-te <xmin> <ymin> <xmax> <ymax>`\cr
+//'   Georeferenced extents of output file to be created (in target SRS by
+//'   default).
+//'   * `-te_srs <srs_def>`\cr
+//'   SRS in which to interpret the coordinates given with `-te`
+//'   (if different than `t_srs`).
+//'   * `-tr <xres> <yres>`\cr
+//'   Output pixel resolution (in target georeferenced units).
+//'   * `-tap`\cr
+//'   (target aligned pixels) align the coordinates of the extent of the output
+//'   file to the values of the `-tr`, such that the aligned extent includes
+//'   the minimum extent. Alignment means that xmin / resx, ymin / resy,
+//'   xmax / resx and ymax / resy are integer values.
+//'   * `-ovr <level>|AUTO|AUTO-<n>|NONE`\cr
+//'   Specify which overview level of source files must be used. The default
+//'   choice, `AUTO`, will select the overview level whose resolution is the
+//'   closest to the target resolution. Specify an integer value (0-based,
+//'   i.e., 0=1st overview level) to select a particular level. Specify
+//'   `AUTO-n` where `n` is an integer greater or equal to `1`, to select an
+//'   overview level below the `AUTO` one. Or specify `NONE` to force the base
+//'   resolution to be used (can be useful if overviews have been generated
+//'   with a low quality resampling method, and the warping is done using a
+//'   higher quality resampling method).
+//'   * `-wo <NAME>=<VALUE>`\cr
+//'   Set a warp option as described in the GDAL documentation for
+//'   [`GDALWarpOptions`](https://gdal.org/api/gdalwarp_cpp.html#_CPPv415GDALWarpOptions)
+//'   Multiple `-wo` may be given. See also `-multi` below.
+//'   * `-ot <type>`\cr
+//'   Force the output raster bands to have a specific data type supported by
+//'   the format, which may be one of the following: `Byte`, `Int8`, `UInt16`,
+//'   `Int16`, `UInt32`, `Int32`, `UInt64`, `Int64`, `Float32`, `Float64`,
+//'   `CInt16`, `CInt32`, `CFloat32` or `CFloat64`.
+//'   * `-r <resampling_method>`\cr
+//'   Resampling method to use. Available methods are: `near` (nearest
+//'   neighbour, the default), `bilinear`, `cubic`, `cubicspline`, `lanczos`,
+//'   `average`, `rms` (root mean square, GDAL >= 3.3), `mode`, `max`, `min`,
+//'   `med`, `q1` (first quartile), `q3` (third quartile), `sum` (GDAL >= 3.1).
+//'   * `-srcnodata "<value>[ <value>]..."`\cr
+//'   Set nodata masking values for input bands (different values can be
+//'   supplied for each band). If more than one value is supplied all values
+//'   should be quoted to keep them together as a single operating system
+//'   argument. Masked values will not be used in interpolation. Use a value of
+//'   `None` to ignore intrinsic nodata settings on the source dataset.
+//'   If `-srcnodata` is not explicitly set, but the source dataset has nodata
+//'   values, they will be taken into account by default.
+//'   * `-dstnodata "<value>[ <value>]..."`\cr
+//'   Set nodata values for output bands (different values can be supplied for
+//'   each band). If more than one value is supplied all values should be
+//'   quoted to keep them together as a single operating system argument. New
+//'   files will be initialized to this value and if possible the nodata value
+//'   will be recorded in the output file. Use a value of `"None"` to ensure
+//'   that nodata is not defined. If this argument is not used then nodata
+//'   values will be copied from the source dataset.
+//'   * `-wm <memory_in_mb>`\cr
+//'   Set the amount of memory that the warp API is allowed to use for caching.
+//'   The value is interpreted as being in megabytes if the value is <10000.
+//'   For values >=10000, this is interpreted as bytes. The warper will
+//'   total up the memory required to hold the input and output image arrays
+//'   and any auxiliary masking arrays and if they are larger than the
+//'   "warp memory" allowed it will subdivide the chunk into smaller chunks and
+//'   try again. If the `-wm` value is very small there is some extra overhead
+//'   in doing many small chunks so setting it larger is better but it is a
+//'   matter of diminishing returns.
+//'   * `-multi`\cr
+//'   Use multithreaded warping implementation. Two threads will be used to
+//'   process chunks of image and perform input/output operation
+//'   simultaneously. Note that computation is not multithreaded itself. To do
+//'   that, you can use the `-wo NUM_THREADS=val/ALL_CPUS` option, which can be
+//'   combined with `-multi`.
+//'   * `-of <format>`
+//'   Set the output raster format. Will be guessed from the extension if not
+//'   specified. Use the short format name (e.g., `"GTiff"`).
+//'   * `-co <NAME>=<VALUE>`\cr
+//'   Set one or more format specific creation options for the output dataset.
+//'   For example, the GeoTIFF driver supports creation options to control
+//'   compression, and whether the file should be tiled.
+//'   [getCreationOptions()] can be used to look up available creation options,
+//'   but the GDAL [Raster drivers](https://gdal.org/drivers/raster/index.html)
+//'   documentation is the definitive reference for format specific options.
+//'   Multiple `-co` may be given, e.g.,
+//'   \preformatted{ c("-co", "COMPRESS=LZW", "-co", "BIGTIFF=YES") }
+//'   * `-overwrite`\cr
+//'   Overwrite the target dataset if it already exists. Overwriting means
+//'   deleting and recreating the file from scratch. Note that if this option
+//'   is not specified and the output file already exists, it will be updated
+//'   in place.
+//'
+//' The documentation for [`gdalwarp`](https://gdal.org/programs/gdalwarp.html)
+//' describes additional command-line options related to spatial reference
+//' systems, source nodata values, alpha bands, polygon cutlines as mask
+//' including blending, and more.
+//'
+//' Mosaicing into an existing output file is supported if the output file
+//' already exists. The spatial extent of the existing file will not be
+//' modified to accommodate new data, so you may have to remove it in that
+//' case, or use the `-overwrite` option.
+//'
+//' Command-line options are passed to `warp()` as a character vector. The
+//' elements of the vector are the individual options followed by their
+//' individual values, e.g.,
+//' \preformatted{
+//' cl_arg = c("-tr", "30", "30", "-r", "bilinear"))
+//' }
+//' to set the target pixel resolution to 30 x 30 in target georeferenced
+//' units and use bilinear resampling.
+//' 
 //' @param src_files Character vector of source file(s) to be reprojected.
-//' @param dst_filename Filename of the output raster.
-//' @param t_srs Character. Target spatial reference system. Usually an EPSG 
-//' code ("EPSG:#####") or a well known text (WKT) SRS definition.
+//' @param dst_filename Character string. Filename of the output raster.
+//' @param t_srs Character string. Target spatial reference system. Usually an 
+//' EPSG code ("EPSG:#####") or a well known text (WKT) SRS definition.
+//' If empty string `""`, the spatial reference of `src_files[1]` will be
+//' used (see Note).
 //' @param cl_arg Optional character vector of command-line arguments to 
-//' \code{gdalwarp} in addition to -t_srs.
+//' \code{gdalwarp} in addition to `-t_srs` (see Details).
 //' @returns Logical indicating success (invisible \code{TRUE}).
 //' An error is raised if the operation fails.
 //'
+//' @note
+//' `warp()` can be used to reproject and also perform other processing such
+//' as crop, resample, and mosaic.
+//' This processing is generally done with a single function call by passing
+//' arguments for the target (output) pixel resolution, extent, resampling
+//' method, nodata value, format, and so forth.
+//' If `warp()` is called with `t_srs` set to `""` (empty string),
+//' the target spatial reference will be set to that of `src_files[1]`,
+//' so that the processing options given in `cl_arg` will be performed without
+//' reprojecting (in the case of one input raster or multiple inputs that
+//' all use the same spatial reference system, otherwise would reproject
+//' inputs to the SRS of `src_files[1]` when they are different).
+//'
 //' @seealso
-//' [`GDALRaster-class`][GDALRaster], [srs_to_wkt()]
+//' [`GDALRaster-class`][GDALRaster], [srs_to_wkt()], [translate()]
 //'
 //' @examples
-//' ## reproject the elevation raster to NAD83 / CONUS Albers (EPSG:5070)
+//' # reproject the elevation raster to NAD83 / CONUS Albers (EPSG:5070)
 //' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 //'
-//' ## command-line arguments for gdalwarp
-//' ## resample to 90-m resolution using average and keep pixels aligned:
-//' args = c("-tr", "90", "90", "-r", "average", "-tap")
-//' ## output to Erdas Imagine format (HFA), creation option for compression:
-//' args = c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
+//' # command-line arguments for gdalwarp
+//' # resample to 90-m resolution and keep pixels aligned:
+//' args <- c("-tr", "90", "90", "-r", "cubic", "-tap")
+//' # write to Erdas Imagine format (HFA) with compression:
+//' args <- c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
 //'
 //' alb83_file <- paste0(tempdir(), "/", "storml_elev_alb83.img")
 //' warp(elev_file, alb83_file, t_srs="EPSG:5070", cl_arg = args)
@@ -920,7 +1384,7 @@ bool sieveFilter(std::string src_filename, int src_band,
 //' ds$close()
 // [[Rcpp::export(invisible = true)]]
 bool warp(std::vector<std::string> src_files, std::string dst_filename,
-		Rcpp::CharacterVector t_srs, 
+		std::string t_srs, 
 		Rcpp::Nullable<Rcpp::CharacterVector> cl_arg = R_NilValue) {
 
 	std::vector<GDALDatasetH> src_ds(src_files.size());
@@ -934,17 +1398,21 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 			src_ds[i] = hDS;
 		}
 	}
+	
+	std::string t_srs_in;
+	if (t_srs != "")
+		t_srs_in = t_srs;
+	else
+		t_srs_in = GDALGetProjectionRef(src_ds[0]);
 
-	std::vector<char *> argv = {(char *) ("-t_srs"), (char *) (t_srs[0]), NULL};
-	//Rcpp::Rcout << argv[0] << " " << argv[1] << " ";
+	std::vector<char *> argv =
+			{(char *) ("-t_srs"), (char *) (t_srs_in.c_str()), NULL};
+			
 	if (cl_arg.isNotNull()) {
-		// cast to the underlying type
-		// https://gallery.rcpp.org/articles/optional-null-function-arguments/
 		Rcpp::CharacterVector cl_arg_in(cl_arg);
 		argv.resize(cl_arg_in.size() + 3);
 		for (R_xlen_t i = 0; i < cl_arg_in.size(); ++i) {
 			argv[i+2] = (char *) (cl_arg_in[i]);
-			//Rcpp::Rcout << argv[i+2] << " ";
 		}
 		argv[cl_arg_in.size() + 2] = NULL;
 	}
@@ -959,17 +1427,13 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 							psOptions, NULL);
 							
 	GDALWarpAppOptionsFree(psOptions);
-	for (std::size_t i = 0; i < src_files.size(); ++i) {
+	for (std::size_t i = 0; i < src_files.size(); ++i)
 		GDALClose(src_ds[i]);
-	}
-	
-	if (hDstDS != NULL) {
-		GDALClose(hDstDS);
-		return true;
-	}
-	else {
+	if (hDstDS == NULL)
 		Rcpp::stop("Warp raster failed.");
-	}
+	
+	GDALClose(hDstDS);
+	return true;
 }
 
 
@@ -1186,11 +1650,22 @@ bool bandCopyWholeRaster(std::string src_filename, int src_band,
 	if (hSrcDS == NULL)
 		Rcpp::stop("Open source raster failed.");
 	hSrcBand = GDALGetRasterBand(hSrcDS, src_band);
+	if (hSrcBand == NULL) {
+		GDALClose(hSrcDS);
+		Rcpp::stop("Failed to access the source band.");
+	}
 	
 	hDstDS = GDALOpenShared(dst_filename.c_str(), GA_Update);
-	if (hDstDS == NULL)
+	if (hDstDS == NULL) {
+		GDALClose(hSrcDS);
 		Rcpp::stop("Open destination raster failed.");
+	}
 	hDstBand = GDALGetRasterBand(hDstDS, dst_band);
+	if (hDstBand == NULL) {
+		GDALClose(hSrcDS);
+		GDALClose(hDstDS);
+		Rcpp::stop("Failed to access the destination band.");
+	}
 	
 	std::vector<char *> opt_list = {NULL};
 	if (options.isNotNull()) {
@@ -1206,13 +1681,12 @@ bool bandCopyWholeRaster(std::string src_filename, int src_band,
 	
 	err = GDALRasterBandCopyWholeRaster(hSrcBand, hDstBand, opt_list.data(),
 			GDALTermProgressR, NULL);
-	
-	if (err != CE_None)
-		Rcpp::stop("bandCopyWholeRaster() failed.");
 		
 	GDALClose(hSrcDS);
 	GDALClose(hDstDS);
-		
+	if (err != CE_None)
+		Rcpp::stop("Error in GDALRasterBandCopyWholeRaster().");
+
 	return true;
 }
 

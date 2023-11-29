@@ -11,6 +11,10 @@ tcc_file <- system.file("extdata/storml_tcc.tif", package="gdalraster")
 ds <- new(GDALRaster, tcc_file, read_only=TRUE)
 
 ## -----------------------------------------------------------------------------
+ds
+str(ds)
+
+## -----------------------------------------------------------------------------
 gt <- ds$getGeoTransform()
 gt[1]  # x-coordinate of upper-left corner of the upper-left pixel
 gt[2]  # pixel width (w-e resolution)

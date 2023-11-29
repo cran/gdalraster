@@ -383,22 +383,22 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a>evt_csv &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;extdata/LF20_EVT_220.csv&quot;</span>, <span class="dt">package=</span><span class="st">&quot;gdalraster&quot;</span>)</span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a>evt_df &lt;-<span class="st"> </span><span class="kw">read.csv</span>(evt_csv)</span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a><span class="kw">nrow</span>(evt_df)</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a><span class="co">#&gt; [1] 1068</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a><span class="co">#&gt; [1] 860</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true"></a><span class="kw">head</span>(evt_df)</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true"></a><span class="co">#&gt;   VALUE                                                   EVT_NAME EVT_LF</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true"></a><span class="co">#&gt; 1 -9999                                                Fill-NoData   &lt;NA&gt;</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true"></a><span class="co">#&gt; 2  4401                Alaska Arctic Coastal Sedge-Dwarf-Shrubland  Shrub</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true"></a><span class="co">#&gt; 3  4402                            Alaska Arctic Floodplain Forest   Tree</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true"></a><span class="co">#&gt; 4  4403                Alaska Arctic Large River Floodplain Forest   Tree</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true"></a><span class="co">#&gt; 5  4404                        Alaska Arctic Mesic Alder Shrubland  Shrub</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true"></a><span class="co">#&gt; 6  4405 Alaska Arctic Permafrost Plateau Dwarf-Shrub Lichen Tundra  Shrub</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true"></a><span class="co">#&gt;    EVT_PHYS   R   G   B      RED    GREEN     BLUE</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true"></a><span class="co">#&gt; 1      &lt;NA&gt; 255 255 255 1.000000 1.000000 1.000000</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true"></a><span class="co">#&gt; 2 Shrubland 255 205 112 1.000000 0.803922 0.439216</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true"></a><span class="co">#&gt; 3  Riparian  18  76 135 0.070588 0.298039 0.529412</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true"></a><span class="co">#&gt; 4  Riparian  18  76 135 0.070588 0.298039 0.529412</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true"></a><span class="co">#&gt; 5 Shrubland 146 237 224 0.572549 0.929412 0.878431</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true"></a><span class="co">#&gt; 6 Shrubland 255  37  13 1.000000 0.145098 0.050980</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true"></a><span class="co">#&gt;   VALUE                                            EVT_NAME EVT_LF EVT_PHYS   R</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true"></a><span class="co">#&gt; 1 -9999                                         Fill-NoData   &lt;NA&gt;     &lt;NA&gt; 255</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true"></a><span class="co">#&gt; 2  7008                          North Pacific Oak Woodland   Tree Hardwood 203</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true"></a><span class="co">#&gt; 3  7009 Northwestern Great Plains Aspen Forest and Parkland   Tree Hardwood 192</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true"></a><span class="co">#&gt; 4  7010       Northern Rocky Mountain Western Larch Savanna   Tree  Conifer 180</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true"></a><span class="co">#&gt; 5  7011            Rocky Mountain Aspen Forest and Woodland   Tree Hardwood 192</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true"></a><span class="co">#&gt; 6  7012       Rocky Mountain Bigtooth Maple Ravine Woodland   Tree Hardwood 171</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true"></a><span class="co">#&gt;     G   B      RED GREEN     BLUE</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true"></a><span class="co">#&gt; 1 255 255 1.000000     1 1.000000</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true"></a><span class="co">#&gt; 2 255 171 0.796078     1 0.670588</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true"></a><span class="co">#&gt; 3 255 138 0.752941     1 0.541176</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true"></a><span class="co">#&gt; 4 255 148 0.705882     1 0.580392</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true"></a><span class="co">#&gt; 5 255 138 0.752941     1 0.541176</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true"></a><span class="co">#&gt; 6 255 138 0.670588     1 0.541176</span></span>
 <span id="cb1-34"><a href="#cb1-34" aria-hidden="true"></a></span>
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true"></a><span class="co"># keep just the R, G, B fields (0-255) and drop RED, GREEN, BLUE</span></span>
 <span id="cb1-36"><a href="#cb1-36" aria-hidden="true"></a>evt_df &lt;-<span class="st"> </span>evt_df[,<span class="dv">1</span><span class="op">:</span><span class="dv">7</span>]</span>
@@ -430,91 +430,73 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-62"><a href="#cb1-62" aria-hidden="true"></a><span class="co">#&gt; 6   Tree  Conifer 236 252 204</span></span>
 <span id="cb1-63"><a href="#cb1-63" aria-hidden="true"></a></span>
 <span id="cb1-64"><a href="#cb1-64" aria-hidden="true"></a><span class="co"># attributes on the returned data frame and its columns define RAT metadata</span></span>
-<span id="cb1-65"><a href="#cb1-65" aria-hidden="true"></a><span class="kw">attributes</span>(tbl)</span>
-<span id="cb1-66"><a href="#cb1-66" aria-hidden="true"></a><span class="co">#&gt; $names</span></span>
-<span id="cb1-67"><a href="#cb1-67" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;VALUE&quot;    &quot;COUNT&quot;    &quot;EVT_NAME&quot; &quot;EVT_LF&quot;   &quot;EVT_PHYS&quot; &quot;R&quot;        &quot;G&quot;       </span></span>
-<span id="cb1-68"><a href="#cb1-68" aria-hidden="true"></a><span class="co">#&gt; [8] &quot;B&quot;       </span></span>
-<span id="cb1-69"><a href="#cb1-69" aria-hidden="true"></a><span class="co">#&gt; </span></span>
-<span id="cb1-70"><a href="#cb1-70" aria-hidden="true"></a><span class="co">#&gt; $row.names</span></span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true"></a><span class="co">#&gt;  [1]  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24</span></span>
-<span id="cb1-72"><a href="#cb1-72" aria-hidden="true"></a><span class="co">#&gt; </span></span>
-<span id="cb1-73"><a href="#cb1-73" aria-hidden="true"></a><span class="co">#&gt; $class</span></span>
-<span id="cb1-74"><a href="#cb1-74" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;data.frame&quot;</span></span>
-<span id="cb1-75"><a href="#cb1-75" aria-hidden="true"></a><span class="co">#&gt; </span></span>
-<span id="cb1-76"><a href="#cb1-76" aria-hidden="true"></a><span class="co">#&gt; $GDALRATTableType</span></span>
-<span id="cb1-77"><a href="#cb1-77" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;thematic&quot;</span></span>
-<span id="cb1-78"><a href="#cb1-78" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>VALUE)     <span class="co"># GFU_MinMax for column of discrete pixel values</span></span>
-<span id="cb1-79"><a href="#cb1-79" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-80"><a href="#cb1-80" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;MinMax&quot;</span></span>
-<span id="cb1-81"><a href="#cb1-81" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>COUNT)</span>
-<span id="cb1-82"><a href="#cb1-82" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-83"><a href="#cb1-83" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;PixelCount&quot;</span></span>
-<span id="cb1-84"><a href="#cb1-84" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>EVT_NAME)  <span class="co"># the class names</span></span>
-<span id="cb1-85"><a href="#cb1-85" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-86"><a href="#cb1-86" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Name&quot;</span></span>
-<span id="cb1-87"><a href="#cb1-87" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>EVT_LF)</span>
-<span id="cb1-88"><a href="#cb1-88" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-89"><a href="#cb1-89" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
-<span id="cb1-90"><a href="#cb1-90" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>EVT_PHYS)</span>
-<span id="cb1-91"><a href="#cb1-91" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-92"><a href="#cb1-92" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
-<span id="cb1-93"><a href="#cb1-93" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>R)</span>
-<span id="cb1-94"><a href="#cb1-94" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-95"><a href="#cb1-95" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Red&quot;</span></span>
-<span id="cb1-96"><a href="#cb1-96" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>G)</span>
-<span id="cb1-97"><a href="#cb1-97" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-98"><a href="#cb1-98" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Green&quot;</span></span>
-<span id="cb1-99"><a href="#cb1-99" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>B)</span>
-<span id="cb1-100"><a href="#cb1-100" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-101"><a href="#cb1-101" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Blue&quot;</span></span>
-<span id="cb1-102"><a href="#cb1-102" aria-hidden="true"></a></span>
-<span id="cb1-103"><a href="#cb1-103" aria-hidden="true"></a><span class="co"># set as default RAT on the EVT raster</span></span>
-<span id="cb1-104"><a href="#cb1-104" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">setDefaultRAT</span>(<span class="dt">band=</span><span class="dv">1</span>, tbl)</span>
-<span id="cb1-105"><a href="#cb1-105" aria-hidden="true"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb1-106"><a href="#cb1-106" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">flushCache</span>()</span>
-<span id="cb1-107"><a href="#cb1-107" aria-hidden="true"></a></span>
-<span id="cb1-108"><a href="#cb1-108" aria-hidden="true"></a>tbl2 &lt;-<span class="st"> </span>ds<span class="op">$</span><span class="kw">getDefaultRAT</span>(<span class="dt">band=</span><span class="dv">1</span>)</span>
-<span id="cb1-109"><a href="#cb1-109" aria-hidden="true"></a><span class="kw">nrow</span>(tbl2)</span>
-<span id="cb1-110"><a href="#cb1-110" aria-hidden="true"></a><span class="co">#&gt; [1] 24</span></span>
-<span id="cb1-111"><a href="#cb1-111" aria-hidden="true"></a><span class="kw">head</span>(tbl2)</span>
-<span id="cb1-112"><a href="#cb1-112" aria-hidden="true"></a><span class="co">#&gt;   VALUE COUNT                                                          EVT_NAME</span></span>
-<span id="cb1-113"><a href="#cb1-113" aria-hidden="true"></a><span class="co">#&gt; 1 -9999   876                                                       Fill-NoData</span></span>
-<span id="cb1-114"><a href="#cb1-114" aria-hidden="true"></a><span class="co">#&gt; 2  7011    28                          Rocky Mountain Aspen Forest and Woodland</span></span>
-<span id="cb1-115"><a href="#cb1-115" aria-hidden="true"></a><span class="co">#&gt; 3  7046  4564           Northern Rocky Mountain Subalpine Woodland and Parkland</span></span>
-<span id="cb1-116"><a href="#cb1-116" aria-hidden="true"></a><span class="co">#&gt; 4  7050   570                              Rocky Mountain Lodgepole Pine Forest</span></span>
-<span id="cb1-117"><a href="#cb1-117" aria-hidden="true"></a><span class="co">#&gt; 5  7055   889 Rocky Mountain Subalpine Dry-Mesic Spruce-Fir Forest and Woodland</span></span>
-<span id="cb1-118"><a href="#cb1-118" aria-hidden="true"></a><span class="co">#&gt; 6  7056   304 Rocky Mountain Subalpine Mesic-Wet Spruce-Fir Forest and Woodland</span></span>
-<span id="cb1-119"><a href="#cb1-119" aria-hidden="true"></a><span class="co">#&gt;   EVT_LF EVT_PHYS   R   G   B</span></span>
-<span id="cb1-120"><a href="#cb1-120" aria-hidden="true"></a><span class="co">#&gt; 1     NA       NA 255 255 255</span></span>
-<span id="cb1-121"><a href="#cb1-121" aria-hidden="true"></a><span class="co">#&gt; 2   Tree Hardwood 192 255 138</span></span>
-<span id="cb1-122"><a href="#cb1-122" aria-hidden="true"></a><span class="co">#&gt; 3   Tree  Conifer 191 255 233</span></span>
-<span id="cb1-123"><a href="#cb1-123" aria-hidden="true"></a><span class="co">#&gt; 4   Tree  Conifer 163 240 219</span></span>
-<span id="cb1-124"><a href="#cb1-124" aria-hidden="true"></a><span class="co">#&gt; 5   Tree  Conifer 236 252 204</span></span>
-<span id="cb1-125"><a href="#cb1-125" aria-hidden="true"></a><span class="co">#&gt; 6   Tree  Conifer 236 252 204</span></span>
-<span id="cb1-126"><a href="#cb1-126" aria-hidden="true"></a></span>
-<span id="cb1-127"><a href="#cb1-127" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">close</span>()</span></code></pre></div>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true"></a><span class="kw">attr</span>(tbl, <span class="st">&quot;GDALRATTableType&quot;</span>)</span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;thematic&quot;</span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>VALUE)     <span class="co"># GFU_MinMax for column of discrete pixel values</span></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;MinMax&quot;</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>COUNT)     <span class="co"># pixel counts</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;PixelCount&quot;</span></span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>EVT_NAME)  <span class="co"># the class names</span></span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Name&quot;</span></span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>EVT_LF)    <span class="co"># ancillary attribute</span></span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
+<span id="cb1-79"><a href="#cb1-79" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>EVT_PHYS)  <span class="co"># ancillary attribute</span></span>
+<span id="cb1-80"><a href="#cb1-80" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
+<span id="cb1-82"><a href="#cb1-82" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>R)         <span class="co"># red 0-255</span></span>
+<span id="cb1-83"><a href="#cb1-83" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-84"><a href="#cb1-84" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Red&quot;</span></span>
+<span id="cb1-85"><a href="#cb1-85" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>G)         <span class="co"># green 0-255</span></span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Green&quot;</span></span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true"></a><span class="kw">attributes</span>(tbl<span class="op">$</span>B)         <span class="co"># blue 0-255</span></span>
+<span id="cb1-89"><a href="#cb1-89" aria-hidden="true"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-90"><a href="#cb1-90" aria-hidden="true"></a><span class="co">#&gt; [1] &quot;Blue&quot;</span></span>
+<span id="cb1-91"><a href="#cb1-91" aria-hidden="true"></a></span>
+<span id="cb1-92"><a href="#cb1-92" aria-hidden="true"></a><span class="co"># set as default RAT on the EVT raster</span></span>
+<span id="cb1-93"><a href="#cb1-93" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">setDefaultRAT</span>(<span class="dt">band=</span><span class="dv">1</span>, tbl)</span>
+<span id="cb1-94"><a href="#cb1-94" aria-hidden="true"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb1-95"><a href="#cb1-95" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">flushCache</span>()</span>
+<span id="cb1-96"><a href="#cb1-96" aria-hidden="true"></a></span>
+<span id="cb1-97"><a href="#cb1-97" aria-hidden="true"></a><span class="co"># it can now be read from the raster dataset</span></span>
+<span id="cb1-98"><a href="#cb1-98" aria-hidden="true"></a><span class="kw">rm</span>(tbl)</span>
+<span id="cb1-99"><a href="#cb1-99" aria-hidden="true"></a>tbl &lt;-<span class="st"> </span>ds<span class="op">$</span><span class="kw">getDefaultRAT</span>(<span class="dt">band=</span><span class="dv">1</span>)</span>
+<span id="cb1-100"><a href="#cb1-100" aria-hidden="true"></a><span class="kw">nrow</span>(tbl)</span>
+<span id="cb1-101"><a href="#cb1-101" aria-hidden="true"></a><span class="co">#&gt; [1] 24</span></span></code></pre></div>
 </div>
 <div id="display-attribute-tables" class="section level2">
 <h2>Display attribute tables</h2>
-<p>The function <code>displayRAT()</code> generates a presentation table. Colors are shown if the RAT contains RGB columns:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">displayRAT</span>(tbl, <span class="dt">title =</span> <span class="st">&quot;Raster Attribute Table for Storm Lake EVT&quot;</span>)</span></code></pre></div>
-<div id="droctobbdy" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#droctobbdy table {
+<p>An attribute table with RGB columns can be passed to <code>gdalraster::plot_raster()</code> as a color table (columns <code>VALUE</code>, <code>R</code>, <code>G</code>, <code>B</code>):</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>bb &lt;-<span class="st"> </span>ds<span class="op">$</span><span class="kw">bbox</span>()</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a><span class="kw">plot_raster</span>(<span class="dt">data =</span> ds,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>            <span class="dt">col_tbl =</span> tbl[,<span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">6</span><span class="op">:</span><span class="dv">8</span>)],</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>            <span class="dt">maxColorValue =</span> <span class="dv">255</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>            <span class="dt">interpolate =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>            <span class="dt">main =</span> <span class="st">&quot;Storm Lake LANDFIRE EVT&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAGACAIAAADK+EpIAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAgAElEQVR4nOydeXwUVfb2T5NAEraQQAgIDIssYSAjDsuAEwhRETG4IEFBEIclKOgoKvMBZN5RXGGcCOIyxChuIKAwsi8iBARnFNk0+BMBgRkii2GNCBgS+v3jdFdO162qru4sXU2e7x9auXXr1u1Kk1vPPZvL7XYTAAAAEG5UC/UEAAAAgGDAAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgYAACAswQIGAAAgLMECBgAAICzBAgZscfr06SeffLJ79+6JiYl16tRJTk4eMmTIV199Jfv8+9//fvTRRx999NE9e/aEap4a06dPd7lcLpcrOzs76EFatmzpcrmuvfbakEzplltu4f7Jycnq2VtvvZXPTpw4UbZ//fXX3D5gwABumTx5ssuXmjVrtmrVasyYMQUFBfLasWPHuszZtGkTEXXt2pV/PHnypPxQOurXr3/jjTdu375dG/y5556zGPzee+81fAh2rnr77bf5x6eeekp3+X333adNvk+fPhZDuVyu5557zs7vBTgHLGDAPwcPHmzbtu3TTz/95Zdf/vTTT+fOndu9e/eCBQu6desm/83n5eXNnDlz5syZ//3vf0M42yuDgoKCdevW8fHu3bt3795t1nPmzJn79u0LaPALFy4cPHgwJycnOTl5y5YtZZqoCadOnVq/fn2vXr0q4cswYMCAGjVqENGKFStku9vtXrNmDRFdddVVPXv2rOhpgMonMtQTAGHAiBEjTpw4QUQZGRn9+/d3uVzbtm178803L1y48Le//a1Pnz7dunUL9RyvNBYuXFhcXKz9uGDBgmeffdawZ1FR0aOPPqr7223IiBEj/vCHP7jd7vz8/BUrVnz99dfHjx8fM2ZMXl5eRESE7Dlu3Ljf/e53usvbtm1rMfg999zTq1cvInK73YWFhXPmzPn+++/Pnz+flZU1a9Ys2XPYsGEpKSm6y9u0aWM9eYur6tWr16dPn5UrV+7YsePo0aONGzfms9u3b//pp5+I6K677qpWrdojjzySkZHBp1asWMFPTA7btWtX6zkAx+EGwJKLFy9Wr16diK6//nrZPn/+fP4KPffcc263+89//nPLli25JSkpadSoUdytqKjomWee+eMf/xgbG9uiRYtbb701NzdXjtOlSxciatq06cWLF4cPH163bt1jx461bt2aiDp16rR8+fLWrVvXrFmzc+fOs2fPdrvdH3zwQY8ePWrXrp2UlPT666+bTXvatGk8Gb7KkMuXL8+fP/+Pf/xjw4YNY2Ji2rRpM3bs2P/9739ahxYtWvA0+MetW7dGRUURUefOnX/55Re32713797Bgwe3bt26du3a11577auvvnrp0qWyTEmje/fuRNSoUaNGjRoR0dVXX63r0L9/f/kPeeXKldy+a9cubrnjjju4ZdKkSdwyd+5c7fKLFy/edNNN3D5nzhxufOCBB7hlxYoVZhPj3xcRnThxwuJDffnll9zeq1cvbtEW4DfffNPvx9ewedW7776rdps6dSo3/uc//9H11zYbA5oMcBpQYMAPhYWFly5dIqJz586VlJRor+oDBgyYO3cuEV199dVE9N133x08eJBP7dmzp169ekR09uzZ1NTUr7/+mtvPnj176NChFStWPPPMM1OmTNHd6PHHH3/vvfdky969e2+//fbLly8T0fbt27dv37569eply5a53W6+y7hx4+rVqzdkyJDgPtqLL74oDUj79u3bt2/funXrduzYUadOHV3nn3766c477/z111+bNm26bNmymjVrbtiw4fbbbz937hx32Llz50MPPbRmzZqPP/44MrJM/7IOHDjwxRdfENGgQYPcbverr776ww8/fPXVV4YSoWXLlgcPHnz00UdvvPFG3kmzQ1RU1FNPPfXJJ58Q0YcffjhixIiyTFglISGBD2rWrFm+Ixty++23R0VF/frrrytXrhw1ahQ3rlq1ioiaN2/ObwPgygMLGPBDQkJCq1atDhw4sHXr1qSkpAEDBnTr1u3aa69t1arV0KFDtW7r1q3Lzs7mV/g1a9b07duXiJ566ileve68886HHnroyJEjjz/++PHjx5966qkBAwb89re/1S4/duzYa6+91qVLl0aNGml/hc+fP3/99dePGDFizZo18+bNI6KlS5dyy+rVqz/44AMimj9/fnALWHFxMb+ht2rVavbs2dHR0a+88spHH320f//+TZs26fRNcXHxXXfdlZ+fX7t27eXLl1911VXFxcUPPvjguXPnkpKS3n333YYNG/7jH/947bXXVqxYkZ2d/eCDDwYxJQ3+sEQ0ePBgXsD4kxouYC+88MK99967d+/el19++S9/+Yv9u/To0SM6OvrixYuqCW3t2rXHjh3TdZa/L2sKCwtffvllPtZ27TQ2b96sXnLPPffExMRYjGl9VWxsbN++fZctW7Zu3bqioqIaNWqcOHGCnYwGDx5sc9og/AixAgThwL///e8mTZrovjn16tXLyMjYsGGD1m327Nl8as2aNW6x99ihQ4eSkhLus3HjRu4zZswYbtG2pHJycrSheAuRiP773/+63e6ioiKWdER06NAhHrxu3bpElJycbDhnv/t1R44cGT169OjRo1nSud3ut99+my95+eWXuUXbQnz44YeJqFq1alrn1atXc+fFixdzS3FxMVtftC3HQKek0a5dOyJq1qzZ5cuXL1++3LRpUyK66qqrtMfoFluIu3bteuyxx4ioTp06R48etbmFyLRq1YqIIiIiioqK3GILUeXVV1/lS8y2EFWqVas2fvz4y5cv84VmNjzm2LFjho/C/lW8H0BEn3zyidvtfv/99/nHnTt3qsNiC/HKAF6IwD89evT4/vvvP/jgg9GjR//ud7/jZenMmTOLFi26/vrrWR+o7Nu3j/ce77777mrVPN+01NRUNuroXO2joqK0nR+NNm3a/OY3vyGi6tWrN2jQgIhat27dvHlz7h8fH09Ebrc7uA/VuHHjnJyc6dOnnz9/ftKkSenp6ePGjeNTujG/++47dkNo2LDhjTfeyI3a/KdOndqjR48ePXqkpKTwduI333zD257BsW3btu+//56I7rrrLnbvvuuuu4joyJEjhiqEiJ588smGDRv+/PPPkydPDuheLpcr6Hn6pW3btkOGDKnQW0huu+226Oho8voi8v5h27ZtO3XqVDkTAJUPFjBgi1q1ag0ZMiQnJ+frr78+d+7c559/rq03kydPNvx7/b///Y8PrrrqKtnOYu7QoUOysUGDBupfOvaYkPBfqPLilVdeady48eDBg6dPn75mzRoWOiq//vorHxw7dmzmzJl8/OOPP/LBN99884WXn3/+mYguX75cWFgY9Ky0/cPLly+/9dZbb731lvZ4NccZHXXr1n3++eeJ6N1339W8J+xw5MgRImrRogW/lGioThx+N0Xvueee2bNnz549+/XXX3/ssceqV6++Z8+evn37qo/CUPQkJiZaj+/3qjp16vTr148nX1JSsnbtWsL+4ZUObGDAD3v27Fm6dCkRpaamsjG8Ro0a11133XXXXXf48OFPPvnk3LlzR48eVfcYmzVrxgdHjx6V7fyjrn+lvadr5OXl8QZX165dn3766Z49e3777bd/+MMfDDuPGjVq1apVR48enTZt2ujRoxMSErTVbu/evX5dwO1TUlKyYMECPp4xY4bu7KJFi1599VVDD5ERI0b885//3L59+1//+leb99q6deuFCxfIhgu7HXr16nX//fdrP+7fv3/ZsmVnzpz55ptvVPf3CuKuu+76+OOPDxw48M4775w6dYqI7r777sq5NQgJUGDAD9WqVZvkpaSkRGt3u91nzpwholq1avGuoDxFRG3atOE/tR999JG2KffZZ5/xW3/79u0r7SMY8vnnn7OymTx58s0331yrVq2dO3ca9mzZsmV2dja7TRYWFrLrhxYUJUOM33rrraysrLfeeivoWW3YsEHnPSE5efKkFt2so1q1arzPqUuuYUZRUZFmB1L9LMqOlr5E9/pSofTv3599Op544gkiSk5Otu94AsIRKDDgh7Zt21577bU7d+7ctGlTz549hw4d2rhx4xMnTixcuHDr1q1ElJ6ezr71mof91q1bU1JSateu/cADD7z66qvffPPN4MGD//znP//444/jx4/nnuwWUQls2bJFlSxDhgypVasWH2dnZyckJOTn5//tb3/jFp0NLDY2NiIiIjMz8+9///v//ve/7Ozshx9+uE+fPq1bt96/f/+jjz4aHx/frFmzt956i/fx1AgBm1OqWbOmtn/45ZdfyvDwzZs3c5jwggULeKNM5brrrhs6dKg2gkpubu7FixfdbvePP/64bNmyHTt2EFFSUtKf/vQn6wkHgfauc/HiRd0pQ0uey+UaOXKkxYB2rqpdu3Z6evqiRYs4fhn7h1c+5esTAq5IDh06pGU30NGxY8czZ85wN/knpnv37m63+9SpUx07dtRd4nK5nn76aW1wLZBZ3pG9EDt27GjRwi6CskVi4R1HRPn5+ceO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mo9L94jwjao0sIBVOT766KNu3brFxsbecMMNO3fuDPV0HMH58+fHjx+flJRUp06d6667bvXq1fJsFX9i6gLmtnwmVfBxqY8I36jKweUWG7UAAABAuAAbGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgAAICwBAsYAACAsAQLGAAAgLAECxgATuHTTz+tVq3axo0b+cfFixfXqFHjm2++CemkAHAuLrfbHeo5AAA83HfffVu3bv36669//fXX9u3bjxgx4plnngn1pABwKFjAAHAQJ06caN++/cMPP3zq1Kk1a9bs2rUrKioq1JMCwKFEhnoCAIBSGjRo8NJLL2VmZl6+fDk3NxerFwAWQIEB4CwuXbrUuHHjhg0bfvvtty6XK9TTAcC5wIkDAGfx4osvRkZG/vDDD++8806o5wKAo4ECA8BBfP/999dcc80HH3ywffv27OzsPXv2NGjQINSTAsChYAEDwCm43e7U1NQ6deqsXLnywoULHTp06NWrF3QYAGZgCxEApzB79uxt27a9+uqrRBQTE/PKK6+8++67WlgYAEAHFBgAAICwBAoMAABAWIIFDAAAQFiCBQwAAEBYggUMAABAWIIFDAAAQFiCBQwAAEBYggUMAABAWIIFDAAAQFiCBQwAAEBYggUMgP/fXh2QAAAAAAj6/7odgZ4QWBIYAEsCA2BJYAAsCQyAJYEBsCQwAJYEBsCSwABYEhgASwIDYElgACwJDIAlgQGwJDAAlgK7261DhQjIrgAAAABJRU5ErkJggg==" /><!-- --></p>
+<p>The function <code>displayRAT()</code> generates a nicely formatted table for display. Colors are shown if the RAT contains RGB columns:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">displayRAT</span>(tbl, <span class="dt">title =</span> <span class="st">&quot;Raster Attribute Table for Storm Lake EVT&quot;</span>)</span></code></pre></div>
+<div id="ofblzozrem" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#ofblzozrem table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#droctobbdy thead, #droctobbdy tbody, #droctobbdy tfoot, #droctobbdy tr, #droctobbdy td, #droctobbdy th {
+#ofblzozrem thead, #ofblzozrem tbody, #ofblzozrem tfoot, #ofblzozrem tr, #ofblzozrem td, #ofblzozrem th {
   border-style: none;
 }
 
-#droctobbdy p {
+#ofblzozrem p {
   margin: 0;
   padding: 0;
 }
 
-#droctobbdy .gt_table {
+#ofblzozrem .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -540,12 +522,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-left-color: #D3D3D3;
 }
 
-#droctobbdy .gt_caption {
+#ofblzozrem .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#droctobbdy .gt_title {
+#ofblzozrem .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -557,7 +539,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-bottom-width: 0;
 }
 
-#droctobbdy .gt_subtitle {
+#ofblzozrem .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -569,7 +551,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-top-width: 0;
 }
 
-#droctobbdy .gt_heading {
+#ofblzozrem .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -581,13 +563,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-right-color: #D3D3D3;
 }
 
-#droctobbdy .gt_bottom_border {
+#ofblzozrem .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#droctobbdy .gt_col_headings {
+#ofblzozrem .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -602,7 +584,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-right-color: #D3D3D3;
 }
 
-#droctobbdy .gt_col_heading {
+#ofblzozrem .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -622,7 +604,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   overflow-x: hidden;
 }
 
-#droctobbdy .gt_column_spanner_outer {
+#ofblzozrem .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -634,15 +616,15 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   padding-right: 4px;
 }
 
-#droctobbdy .gt_column_spanner_outer:first-child {
+#ofblzozrem .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#droctobbdy .gt_column_spanner_outer:last-child {
+#ofblzozrem .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#droctobbdy .gt_column_spanner {
+#ofblzozrem .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -654,11 +636,11 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   width: 100%;
 }
 
-#droctobbdy .gt_spanner_row {
+#ofblzozrem .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#droctobbdy .gt_group_heading {
+#ofblzozrem .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -684,7 +666,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   text-align: left;
 }
 
-#droctobbdy .gt_empty_group_heading {
+#ofblzozrem .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -699,15 +681,15 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   vertical-align: middle;
 }
 
-#droctobbdy .gt_from_md > :first-child {
+#ofblzozrem .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#droctobbdy .gt_from_md > :last-child {
+#ofblzozrem .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#droctobbdy .gt_row {
+#ofblzozrem .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -726,7 +708,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   overflow-x: hidden;
 }
 
-#droctobbdy .gt_stub {
+#ofblzozrem .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -739,7 +721,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   padding-right: 5px;
 }
 
-#droctobbdy .gt_stub_row_group {
+#ofblzozrem .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -753,15 +735,15 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   vertical-align: top;
 }
 
-#droctobbdy .gt_row_group_first td {
+#ofblzozrem .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#droctobbdy .gt_row_group_first th {
+#ofblzozrem .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#droctobbdy .gt_summary_row {
+#ofblzozrem .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -771,16 +753,16 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   padding-right: 5px;
 }
 
-#droctobbdy .gt_first_summary_row {
+#ofblzozrem .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#droctobbdy .gt_first_summary_row.thick {
+#ofblzozrem .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#droctobbdy .gt_last_summary_row {
+#ofblzozrem .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -790,7 +772,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-bottom-color: #D3D3D3;
 }
 
-#droctobbdy .gt_grand_summary_row {
+#ofblzozrem .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -800,7 +782,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   padding-right: 5px;
 }
 
-#droctobbdy .gt_first_grand_summary_row {
+#ofblzozrem .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -810,7 +792,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-top-color: #D3D3D3;
 }
 
-#droctobbdy .gt_last_grand_summary_row_top {
+#ofblzozrem .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -820,11 +802,11 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-bottom-color: #D3D3D3;
 }
 
-#droctobbdy .gt_striped {
+#ofblzozrem .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#droctobbdy .gt_table_body {
+#ofblzozrem .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -833,7 +815,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-bottom-color: #D3D3D3;
 }
 
-#droctobbdy .gt_footnotes {
+#ofblzozrem .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -847,7 +829,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-right-color: #D3D3D3;
 }
 
-#droctobbdy .gt_footnote {
+#ofblzozrem .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -856,7 +838,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   padding-right: 5px;
 }
 
-#droctobbdy .gt_sourcenotes {
+#ofblzozrem .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -870,7 +852,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   border-right-color: #D3D3D3;
 }
 
-#droctobbdy .gt_sourcenote {
+#ofblzozrem .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -878,63 +860,63 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   padding-right: 5px;
 }
 
-#droctobbdy .gt_left {
+#ofblzozrem .gt_left {
   text-align: left;
 }
 
-#droctobbdy .gt_center {
+#ofblzozrem .gt_center {
   text-align: center;
 }
 
-#droctobbdy .gt_right {
+#ofblzozrem .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#droctobbdy .gt_font_normal {
+#ofblzozrem .gt_font_normal {
   font-weight: normal;
 }
 
-#droctobbdy .gt_font_bold {
+#ofblzozrem .gt_font_bold {
   font-weight: bold;
 }
 
-#droctobbdy .gt_font_italic {
+#ofblzozrem .gt_font_italic {
   font-style: italic;
 }
 
-#droctobbdy .gt_super {
+#ofblzozrem .gt_super {
   font-size: 65%;
 }
 
-#droctobbdy .gt_footnote_marks {
+#ofblzozrem .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#droctobbdy .gt_asterisk {
+#ofblzozrem .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#droctobbdy .gt_indent_1 {
+#ofblzozrem .gt_indent_1 {
   text-indent: 5px;
 }
 
-#droctobbdy .gt_indent_2 {
+#ofblzozrem .gt_indent_2 {
   text-indent: 10px;
 }
 
-#droctobbdy .gt_indent_3 {
+#ofblzozrem .gt_indent_3 {
   text-indent: 15px;
 }
 
-#droctobbdy .gt_indent_4 {
+#ofblzozrem .gt_indent_4 {
   text-indent: 20px;
 }
 
-#droctobbdy .gt_indent_5 {
+#ofblzozrem .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1178,7 +1160,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
   
 </table>
 </div>
-<p><code>displayRAT()</code> returns an object of class <code>&quot;gt_tbl&quot;</code>. The table object could be modified using functions of the <strong>gt</strong> package.</p>
+<p><code>displayRAT()</code> returns an object of class <code>&quot;gt_tbl&quot;</code>. The table object can be modified using functions of the <strong>gt</strong> package.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a>ds<span class="op">$</span><span class="kw">close</span>()</span></code></pre></div>
 </div>
 <div id="using-in-qgis" class="section level2">
 <h2>Using in QGIS</h2>
@@ -1198,7 +1181,7 @@ LANDFIRE EVT in the Raster Attribute Table QGIS Plugin
 <li><p><a href="https://gdal.org/doxygen/classGDALRasterAttributeTable.html">GDALRasterAttributeTable Class Reference</a></p></li>
 <li><p><a href="https://github.com/qgis/QGIS/pull/50687">Raster Attribute Table QGIS GUI</a> (since QGIS 3.30; examples for different use cases and workflows)</p></li>
 <li><p><a href="https://github.com/noaa-ocs-hydrography/qgis-raster-attribute-table-plugin">Raster Attribute Table QGIS Plugin</a> (QGIS &lt; 3.30)</p></li>
-<li><p>Package <a href="https://CRAN.R-project.org/package=gt"><strong>gt</strong></a></p></li>
+<li><p>Package <a href="https://CRAN.R-project.org/package=gt">gt</a></p></li>
 </ul>
 </div>
 <div id="data-sources" class="section level2">

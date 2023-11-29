@@ -43,8 +43,12 @@ gdal_formats <- function() {
 #' @returns Character. The value of a (key, value) option previously set with 
 #' `set_config_option()`. An empty string (`""`) is returned if `key` is not 
 #' found.
+#'
 #' @seealso
 #' [set_config_option()]
+#'
+#' `vignette("gdal-config-quick-ref")`
+#'
 #' @examples
 #' ## this option is set during initialization of the gdalraster package
 #' get_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER")
@@ -66,10 +70,14 @@ get_config_option <- function(key) {
 #' `value = ""` (empty string) will unset a value previously set by 
 #' `set_config_option()`.
 #' @returns No return value, called for side effects.
+#'
 #' @seealso
 #' [get_config_option()]
+#'
+#' `vignette("gdal-config-quick-ref")`
+#'
 #' @examples
-#' set_config_option("GDAL_CACHEMAX", "64")
+#' set_config_option("GDAL_CACHEMAX", "10%")
 #' get_config_option("GDAL_CACHEMAX")
 #' ## unset:
 #' set_config_option("GDAL_CACHEMAX", "")
@@ -84,6 +92,9 @@ set_config_option <- function(key, value) {
 #' value as MB.
 #'
 #' @returns Integer. Amount of cache memory in use in MB.
+#'
+#' @seealso
+#' [GDAL Block Cache](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)
 #'
 #' @examples
 #' get_cache_used()
@@ -154,7 +165,7 @@ create <- function(format, dst_filename, xsize, ysize, nbands, dataType, options
 #' An error is raised if the operation fails.
 #' @seealso
 #' [`GDALRaster-class`][GDALRaster], [create()], [rasterFromRaster()],
-#' [getCreationOptions()]
+#' [getCreationOptions()], [translate()]
 #' @examples
 #' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 #' tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
@@ -261,6 +272,58 @@ get_pixel_line <- function(xy, gt) {
     .Call(`_gdalraster_get_pixel_line`, xy, gt)
 }
 
+#' Build a GDAL virtual raster from a list of datasets
+#'
+#' `buildVRT()` is a wrapper of the \command{gdalbuildvrt} command-line
+#' utility for building a VRT (Virtual Dataset) that is a mosaic of the list
+#' of input GDAL datasets
+#' (see \url{https://gdal.org/programs/gdalbuildvrt.html}).
+#'
+#' @details
+#' Several command-line options are described in the GDAL documentation at the
+#' URL above. By default, the input files are considered as tiles of a larger
+#' mosaic and the VRT file has as many bands as one of the input files.
+#' Alternatively, the `-separate` argument can be used to put each input
+#' raster into a separate band in the VRT dataset.
+#'
+#' Some amount of checks are done to assure that all files that will be put in
+#' the resulting VRT have similar characteristics: number of bands,
+#' projection, color interpretation.... If not, files that do not match the
+#' common characteristics will be skipped. (This is true in the default
+#' mode for virtual mosaicing, and not when using the `-separate` option).
+#'
+#' In a virtual mosaic, if there is spatial overlap between
+#' input rasters then the order of files appearing in the list of
+#' sources matter: files that are listed at the end are the ones
+#' from which the data will be fetched. Note that nodata will be taken into
+#' account to potentially fetch data from less priority datasets.
+#'
+#' @param vrt_filename Character string. Filename of the output VRT.
+#' @param input_rasters Character vector of input raster filenames.
+#' @param cl_arg Optional character vector of command-line arguments to 
+#' \code{gdalbuildvrt}.
+#' @returns Logical indicating success (invisible \code{TRUE}).
+#' An error is raised if the operation fails.
+#'
+#' @seealso
+#' [rasterToVRT()]
+#'
+#' @examples
+#' # build a virtual 3-band RGB raster from individual Landsat band files
+#' b4_file <- system.file("extdata/sr_b4_20200829.tif", package="gdalraster")
+#' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+#' b6_file <- system.file("extdata/sr_b6_20200829.tif", package="gdalraster")
+#' band_files <- c(b6_file, b5_file, b4_file)
+#' vrt_file <- paste0(tempdir(), "/", "storml_b6_b5_b4.vrt")
+#' buildVRT(vrt_file, band_files, cl_arg = "-separate")
+#' ds <- new(GDALRaster, vrt_file, read_only=TRUE)
+#' ds$getRasterCount()
+#' plot_raster(ds, nbands=3, main="Landsat 6-5-4 (vegetative analysis)")
+#' ds$close()
+buildVRT <- function(vrt_filename, input_rasters, cl_arg = NULL) {
+    invisible(.Call(`_gdalraster_buildVRT`, vrt_filename, input_rasters, cl_arg))
+}
+
 #' Raster overlay for unique combinations
 #' 
 #' @description
@@ -341,6 +404,22 @@ fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_it
     invisible(.Call(`_gdalraster_fillNodata`, filename, band, mask_file, max_dist, smooth_iterations))
 }
 
+#' Wrapper for GDALPolygonize in the GDAL Algorithms C API
+#'
+#' Called from and documented in R/gdalraster_proc.R
+#' @noRd
+.polygonize <- function(src_filename, src_band, out_dsn, out_layer, fld_name, mask_file = "", nomask = FALSE, connectedness = 4L) {
+    .Call(`_gdalraster__polygonize`, src_filename, src_band, out_dsn, out_layer, fld_name, mask_file, nomask, connectedness)
+}
+
+#' Wrapper for GDALRasterize in the GDAL Algorithms C API
+#'
+#' Called from and documented in R/gdalraster_proc.R
+#' @noRd
+.rasterize <- function(src_dsn, dst_filename, cl_arg) {
+    .Call(`_gdalraster__rasterize`, src_dsn, dst_filename, cl_arg)
+}
+
 #' Remove small raster polygons
 #'
 #' `sieveFilter()` is a wrapper for `GDALSieveFilter()` in the GDAL Algorithms
@@ -418,32 +497,207 @@ sieveFilter <- function(src_filename, src_band, dst_filename, dst_band, size_thr
     invisible(.Call(`_gdalraster_sieveFilter`, src_filename, src_band, dst_filename, dst_band, size_threshold, connectedness, mask_filename, mask_band, options))
 }
 
-#' Raster reprojection
+#' Convert raster data between different formats
 #'
-#' `warp()` is a wrapper for the \command{gdalwarp} command-line utility.
-#' See \url{https://gdal.org/programs/gdalwarp.html} for details.
+#' `translate()` is a wrapper of the \command{gdal_translate} command-line
+#' utility (see \url{https://gdal.org/programs/gdal_translate.html}).
+#' The function can be used to convert raster data between different
+#' formats, potentially performing some operations like subsetting,
+#' resampling, and rescaling pixels in the process. Refer to the GDAL
+#' documentation at the URL above for a list of command-line arguments that
+#' can be passed in `cl_arg`.
 #'
+#' @param src_filename Character string. Filename of the source raster.
+#' @param dst_filename Character string. Filename of the output raster.
+#' @param cl_arg Optional character vector of command-line arguments for 
+#' \code{gdal_translate}.
+#' @returns Logical indicating success (invisible \code{TRUE}).
+#' An error is raised if the operation fails.
+#' 
+#' @seealso
+#' [`GDALRaster-class`][GDALRaster], [rasterFromRaster()], [warp()]
+#'
+#' @examples
+#' # convert the elevation raster to Erdas Imagine format and resample to 90m
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#'
+#' # command-line arguments for gdal_translate
+#' args <- c("-tr", "90", "90", "-r", "average")
+#' args <- c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
+#'
+#' img_file <- paste0(tempdir(), "/", "storml_elev_90m.img")
+#' translate(elev_file, img_file, args)
+#' 
+#' ds <- new(GDALRaster, img_file, read_only=TRUE)
+#' ds$getDriverLongName()
+#' ds$bbox()
+#' ds$res()
+#' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
+#' ds$close()
+translate <- function(src_filename, dst_filename, cl_arg = NULL) {
+    invisible(.Call(`_gdalraster_translate`, src_filename, dst_filename, cl_arg))
+}
+
+#' Raster reprojection and mosaicing
+#'
+#' `warp()` is a wrapper of the \command{gdalwarp} command-line utility for
+#' raster mosaicing, reprojection and warping
+#' (see \url{https://gdal.org/programs/gdalwarp.html}).
+#' The function can reproject to any supported spatial reference system (SRS).
+#' It can also be used to crop, resample, and optionally write output to a
+#' different raster format. See Details for a list of commonly used
+#' processing options that can be passed as arguments to `warp()`.
+#'
+#' @details
+#' Several processing options can be performed in one call to `warp()` by
+#' passing the necessary command-line arguments. The following list describes
+#' several commonly used arguments. Note that `gdalwarp` supports a large
+#' number of arguments that enable a variety of different processing options.
+#' Users are encouraged to review the original source documentation provided
+#' by the GDAL project at the URL above for the full list.
+#'
+#'   * `-te <xmin> <ymin> <xmax> <ymax>`\cr
+#'   Georeferenced extents of output file to be created (in target SRS by
+#'   default).
+#'   * `-te_srs <srs_def>`\cr
+#'   SRS in which to interpret the coordinates given with `-te`
+#'   (if different than `t_srs`).
+#'   * `-tr <xres> <yres>`\cr
+#'   Output pixel resolution (in target georeferenced units).
+#'   * `-tap`\cr
+#'   (target aligned pixels) align the coordinates of the extent of the output
+#'   file to the values of the `-tr`, such that the aligned extent includes
+#'   the minimum extent. Alignment means that xmin / resx, ymin / resy,
+#'   xmax / resx and ymax / resy are integer values.
+#'   * `-ovr <level>|AUTO|AUTO-<n>|NONE`\cr
+#'   Specify which overview level of source files must be used. The default
+#'   choice, `AUTO`, will select the overview level whose resolution is the
+#'   closest to the target resolution. Specify an integer value (0-based,
+#'   i.e., 0=1st overview level) to select a particular level. Specify
+#'   `AUTO-n` where `n` is an integer greater or equal to `1`, to select an
+#'   overview level below the `AUTO` one. Or specify `NONE` to force the base
+#'   resolution to be used (can be useful if overviews have been generated
+#'   with a low quality resampling method, and the warping is done using a
+#'   higher quality resampling method).
+#'   * `-wo <NAME>=<VALUE>`\cr
+#'   Set a warp option as described in the GDAL documentation for
+#'   [`GDALWarpOptions`](https://gdal.org/api/gdalwarp_cpp.html#_CPPv415GDALWarpOptions)
+#'   Multiple `-wo` may be given. See also `-multi` below.
+#'   * `-ot <type>`\cr
+#'   Force the output raster bands to have a specific data type supported by
+#'   the format, which may be one of the following: `Byte`, `Int8`, `UInt16`,
+#'   `Int16`, `UInt32`, `Int32`, `UInt64`, `Int64`, `Float32`, `Float64`,
+#'   `CInt16`, `CInt32`, `CFloat32` or `CFloat64`.
+#'   * `-r <resampling_method>`\cr
+#'   Resampling method to use. Available methods are: `near` (nearest
+#'   neighbour, the default), `bilinear`, `cubic`, `cubicspline`, `lanczos`,
+#'   `average`, `rms` (root mean square, GDAL >= 3.3), `mode`, `max`, `min`,
+#'   `med`, `q1` (first quartile), `q3` (third quartile), `sum` (GDAL >= 3.1).
+#'   * `-srcnodata "<value>[ <value>]..."`\cr
+#'   Set nodata masking values for input bands (different values can be
+#'   supplied for each band). If more than one value is supplied all values
+#'   should be quoted to keep them together as a single operating system
+#'   argument. Masked values will not be used in interpolation. Use a value of
+#'   `None` to ignore intrinsic nodata settings on the source dataset.
+#'   If `-srcnodata` is not explicitly set, but the source dataset has nodata
+#'   values, they will be taken into account by default.
+#'   * `-dstnodata "<value>[ <value>]..."`\cr
+#'   Set nodata values for output bands (different values can be supplied for
+#'   each band). If more than one value is supplied all values should be
+#'   quoted to keep them together as a single operating system argument. New
+#'   files will be initialized to this value and if possible the nodata value
+#'   will be recorded in the output file. Use a value of `"None"` to ensure
+#'   that nodata is not defined. If this argument is not used then nodata
+#'   values will be copied from the source dataset.
+#'   * `-wm <memory_in_mb>`\cr
+#'   Set the amount of memory that the warp API is allowed to use for caching.
+#'   The value is interpreted as being in megabytes if the value is <10000.
+#'   For values >=10000, this is interpreted as bytes. The warper will
+#'   total up the memory required to hold the input and output image arrays
+#'   and any auxiliary masking arrays and if they are larger than the
+#'   "warp memory" allowed it will subdivide the chunk into smaller chunks and
+#'   try again. If the `-wm` value is very small there is some extra overhead
+#'   in doing many small chunks so setting it larger is better but it is a
+#'   matter of diminishing returns.
+#'   * `-multi`\cr
+#'   Use multithreaded warping implementation. Two threads will be used to
+#'   process chunks of image and perform input/output operation
+#'   simultaneously. Note that computation is not multithreaded itself. To do
+#'   that, you can use the `-wo NUM_THREADS=val/ALL_CPUS` option, which can be
+#'   combined with `-multi`.
+#'   * `-of <format>`
+#'   Set the output raster format. Will be guessed from the extension if not
+#'   specified. Use the short format name (e.g., `"GTiff"`).
+#'   * `-co <NAME>=<VALUE>`\cr
+#'   Set one or more format specific creation options for the output dataset.
+#'   For example, the GeoTIFF driver supports creation options to control
+#'   compression, and whether the file should be tiled.
+#'   [getCreationOptions()] can be used to look up available creation options,
+#'   but the GDAL [Raster drivers](https://gdal.org/drivers/raster/index.html)
+#'   documentation is the definitive reference for format specific options.
+#'   Multiple `-co` may be given, e.g.,
+#'   \preformatted{ c("-co", "COMPRESS=LZW", "-co", "BIGTIFF=YES") }
+#'   * `-overwrite`\cr
+#'   Overwrite the target dataset if it already exists. Overwriting means
+#'   deleting and recreating the file from scratch. Note that if this option
+#'   is not specified and the output file already exists, it will be updated
+#'   in place.
+#'
+#' The documentation for [`gdalwarp`](https://gdal.org/programs/gdalwarp.html)
+#' describes additional command-line options related to spatial reference
+#' systems, source nodata values, alpha bands, polygon cutlines as mask
+#' including blending, and more.
+#'
+#' Mosaicing into an existing output file is supported if the output file
+#' already exists. The spatial extent of the existing file will not be
+#' modified to accommodate new data, so you may have to remove it in that
+#' case, or use the `-overwrite` option.
+#'
+#' Command-line options are passed to `warp()` as a character vector. The
+#' elements of the vector are the individual options followed by their
+#' individual values, e.g.,
+#' \preformatted{
+#' cl_arg = c("-tr", "30", "30", "-r", "bilinear"))
+#' }
+#' to set the target pixel resolution to 30 x 30 in target georeferenced
+#' units and use bilinear resampling.
+#' 
 #' @param src_files Character vector of source file(s) to be reprojected.
-#' @param dst_filename Filename of the output raster.
-#' @param t_srs Character. Target spatial reference system. Usually an EPSG 
-#' code ("EPSG:#####") or a well known text (WKT) SRS definition.
+#' @param dst_filename Character string. Filename of the output raster.
+#' @param t_srs Character string. Target spatial reference system. Usually an 
+#' EPSG code ("EPSG:#####") or a well known text (WKT) SRS definition.
+#' If empty string `""`, the spatial reference of `src_files[1]` will be
+#' used (see Note).
 #' @param cl_arg Optional character vector of command-line arguments to 
-#' \code{gdalwarp} in addition to -t_srs.
+#' \code{gdalwarp} in addition to `-t_srs` (see Details).
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #'
+#' @note
+#' `warp()` can be used to reproject and also perform other processing such
+#' as crop, resample, and mosaic.
+#' This processing is generally done with a single function call by passing
+#' arguments for the target (output) pixel resolution, extent, resampling
+#' method, nodata value, format, and so forth.
+#' If `warp()` is called with `t_srs` set to `""` (empty string),
+#' the target spatial reference will be set to that of `src_files[1]`,
+#' so that the processing options given in `cl_arg` will be performed without
+#' reprojecting (in the case of one input raster or multiple inputs that
+#' all use the same spatial reference system, otherwise would reproject
+#' inputs to the SRS of `src_files[1]` when they are different).
+#'
 #' @seealso
-#' [`GDALRaster-class`][GDALRaster], [srs_to_wkt()]
+#' [`GDALRaster-class`][GDALRaster], [srs_to_wkt()], [translate()]
 #'
 #' @examples
-#' ## reproject the elevation raster to NAD83 / CONUS Albers (EPSG:5070)
+#' # reproject the elevation raster to NAD83 / CONUS Albers (EPSG:5070)
 #' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 #'
-#' ## command-line arguments for gdalwarp
-#' ## resample to 90-m resolution using average and keep pixels aligned:
-#' args = c("-tr", "90", "90", "-r", "average", "-tap")
-#' ## output to Erdas Imagine format (HFA), creation option for compression:
-#' args = c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
+#' # command-line arguments for gdalwarp
+#' # resample to 90-m resolution and keep pixels aligned:
+#' args <- c("-tr", "90", "90", "-r", "cubic", "-tap")
+#' # write to Erdas Imagine format (HFA) with compression:
+#' args <- c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
 #'
 #' alb83_file <- paste0(tempdir(), "/", "storml_elev_alb83.img")
 #' warp(elev_file, alb83_file, t_srs="EPSG:5070", cl_arg = args)
@@ -836,6 +1090,65 @@ has_geos <- function() {
 #' @noRd
 .g_centroid <- function(geom) {
     .Call(`_gdalraster__g_centroid`, geom)
+}
+
+#' Does vector dataset exist
+#' 
+#' @noRd
+.ogr_ds_exists <- function(dsn, with_update = FALSE) {
+    .Call(`_gdalraster__ogr_ds_exists`, dsn, with_update)
+}
+
+#' Create a vector dataset with layer and field
+#' currently hard coded as layer of wkbPolygon, field of OFTInteger
+#'
+#' @noRd
+.create_ogr <- function(format, dst_filename, xsize, ysize, nbands, dataType, layer, srs = "", fld_name = "", dsco = NULL, lco = NULL) {
+    .Call(`_gdalraster__create_ogr`, format, dst_filename, xsize, ysize, nbands, dataType, layer, srs, fld_name, dsco, lco)
+}
+
+#' Get number of layers in a dataset
+#' 
+#' @noRd
+.ogr_ds_layer_count <- function(dsn) {
+    .Call(`_gdalraster__ogr_ds_layer_count`, dsn)
+}
+
+#' Does layer exist
+#' 
+#' @noRd
+.ogr_layer_exists <- function(dsn, layer) {
+    .Call(`_gdalraster__ogr_layer_exists`, dsn, layer)
+}
+
+#' Create a layer in a vector dataset
+#' currently hard coded as layer of wkbPolygon
+#'
+#' @noRd
+.ogr_layer_create <- function(dsn, layer, srs = "", options = NULL) {
+    .Call(`_gdalraster__ogr_layer_create`, dsn, layer, srs, options)
+}
+
+#' Delete a layer in a vector dataset
+#'
+#' @noRd
+.ogr_layer_delete <- function(dsn, layer) {
+    .Call(`_gdalraster__ogr_layer_delete`, dsn, layer)
+}
+
+#' Get field index or -1 if fld_name not found
+#' 
+#' @noRd
+.ogr_field_index <- function(dsn, layer, fld_name) {
+    .Call(`_gdalraster__ogr_field_index`, dsn, layer, fld_name)
+}
+
+#' Create a new field on layer
+#' currently hard coded for OFTInteger
+#'
+#' @noRd
+.ogr_field_create <- function(dsn, layer, fld_name) {
+    .Call(`_gdalraster__ogr_field_create`, dsn, layer, fld_name)
 }
 
 #' get PROJ version

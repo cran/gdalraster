@@ -35,28 +35,38 @@ nrow(tbl)
 head(tbl)
 
 # attributes on the returned data frame and its columns define RAT metadata
-attributes(tbl)
+attr(tbl, "GDALRATTableType")
 attributes(tbl$VALUE)     # GFU_MinMax for column of discrete pixel values
-attributes(tbl$COUNT)
+attributes(tbl$COUNT)     # pixel counts
 attributes(tbl$EVT_NAME)  # the class names
-attributes(tbl$EVT_LF)
-attributes(tbl$EVT_PHYS)
-attributes(tbl$R)
-attributes(tbl$G)
-attributes(tbl$B)
+attributes(tbl$EVT_LF)    # ancillary attribute
+attributes(tbl$EVT_PHYS)  # ancillary attribute
+attributes(tbl$R)         # red 0-255
+attributes(tbl$G)         # green 0-255
+attributes(tbl$B)         # blue 0-255
 
 # set as default RAT on the EVT raster
 ds$setDefaultRAT(band=1, tbl)
 ds$flushCache()
 
-tbl2 <- ds$getDefaultRAT(band=1)
-nrow(tbl2)
-head(tbl2)
+# it can now be read from the raster dataset
+rm(tbl)
+tbl <- ds$getDefaultRAT(band=1)
+nrow(tbl)
 
-ds$close()
+## ----fig.width=6, fig.height=4, dev="png"-------------------------------------
+bb <- ds$bbox()
+plot_raster(data = ds,
+            col_tbl = tbl[,c(1,6:8)],
+            maxColorValue = 255,
+            interpolate = FALSE,
+            main = "Storm Lake LANDFIRE EVT")
 
 ## -----------------------------------------------------------------------------
 displayRAT(tbl, title = "Raster Attribute Table for Storm Lake EVT")
+
+## -----------------------------------------------------------------------------
+ds$close()
 
 ## ----echo=FALSE, fig.cap="LANDFIRE EVT in the Raster Attribute Table QGIS Plugin", out.width = '90%'----
 knitr::include_graphics("qgis_rat_classify.png")

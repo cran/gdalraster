@@ -11,6 +11,8 @@
 status](https://www.r-pkg.org/badges/version/gdalraster)](https://CRAN.R-project.org/package=gdalraster)
 [![cran
 checks](https://badges.cranchecks.info/worst/gdalraster.svg)](https://cran.r-project.org/web/checks/check_results_gdalraster.html)
+[![r-universe
+status](https://usdaforestservice.r-universe.dev/badges/gdalraster)](https://usdaforestservice.r-universe.dev/gdalraster)
 <!-- badges: end -->
 
 ## Overview
@@ -32,12 +34,14 @@ supporting:
   - low-level I/O
   - read/set color tables and raster attribute tables
   - copy files/move/rename/delete datasets
-  - virtual raster (VRT) for virtual subsetting, resampling and kernel
-    filtering
-  - `gdalwarp` wrapper for reprojection
+  - virtual raster (VRT) for virtual cropping, resampling, kernel
+    filtering, mosaicing
+  - `gdalwarp` wrapper for reproject/resample/crop/mosaic
   - coordinate transformation
   - spatial reference convenience functions
-  - several GDAL algorithms
+  - several GDAL algorithms (`dem_proc()`, `polygonize()`,
+    `rasterize()`,
+    [`...`](https://usdaforestservice.github.io/gdalraster/reference/gdalraster-package.html#details))
 
 Additional functionality includes:
 
@@ -64,10 +68,11 @@ Additional functionality includes:
   - [`plot_raster()`](https://usdaforestservice.github.io/gdalraster/reference/plot_raster.html)
     displays raster data using base R graphics.
 
-**gdalraster** may be suitable for applications that primarily need
-low-level raster I/O or prefer a direct GDAL API. The additional
-functionality is somewhat aimed at thematic data analysis but may have
-other utility.
+**gdalraster** should be useful in applications that need low-level
+raster I/O or prefer a direct GDAL API. The additional functionality is
+somewhat aimed at thematic data analysis but may have other utility.
+Comprehensive [documentation](#documentation) is provided in the package
+and online.
 
 ## Installation
 
@@ -98,15 +103,16 @@ with the following commands:
     sudo apt install libgdal-dev libgeos-dev libproj-dev libsqlite3-dev
 
 The releases in ubuntugis-unstable generally work well and are more
-up-to-date, but the less recent versions in
-[ubuntugis-stable](https://launchpad.net/~ubuntugis/+archive/ubuntu/ppa)
-could be used instead.
+up-to-date, but less recent versions in the [ubuntugis-stable
+PPA](https://launchpad.net/~ubuntugis/+archive/ubuntu/ppa) could be used
+instead.
 
 Package **sf** provides helpful
 [instructions](https://github.com/r-spatial/sf#linux) for installing the
 geospatial libraries on other Linux distributions.
 
-With system requirements met, install **gdalraster** from CRAN:
+With the dependent libraries available on the system, install
+**gdalraster** from CRAN:
 
 ``` r
 install.packages("gdalraster")
@@ -126,8 +132,8 @@ install from source on Windows. RTools since version 4.2 includes GDAL,
 PROJ and all other dependent libraries that are needed to compile
 **gdalraster**. Note that CRAN releases periodic revisions to RTools
 that often include updates to the libraries as new versions become
-available. For example, the [5863
-revision](https://cran.r-project.org/bin/windows/Rtools/rtools43/news.html)
+available. For example,
+[revision 5863](https://cran.r-project.org/bin/windows/Rtools/rtools43/news.html)
 of RTools 4.3 contains GDAL 3.7.2 and PROJ 9.3.0.
 
 With RTools installed:
@@ -143,7 +149,7 @@ GDAL and PROJ can be installed with Homebrew:
 
     brew install pkg-config gdal proj
 
-Then in R, `configure.args` is needed:
+Then `configure.args` is needed:
 
 ``` r
 # Install the development version from GitHub
@@ -162,3 +168,5 @@ remotes::install_github("USDAForestService/gdalraster", configure.args = "--with
     Display](https://usdaforestservice.github.io/gdalraster/articles/raster-display.html)
   - [GDAL Block
     Caching](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)
+  - [GDAL Config Quick
+    Ref](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html)

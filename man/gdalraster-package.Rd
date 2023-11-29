@@ -22,6 +22,7 @@
   \item raster creation: \code{\link[=create]{create()}},
   \code{\link[=createCopy]{createCopy()}},
   \code{\link[=rasterFromRaster]{rasterFromRaster()}},
+  \code{\link[=translate]{translate()}},\cr
   \code{\link[=getCreationOptions]{getCreationOptions()}}
   
   \item data management: \code{\link[=copyDatasetFiles]{copyDatasetFiles()}},
@@ -29,12 +30,15 @@
   \code{\link[=renameDataset]{renameDataset()}},\cr
   \code{\link[=bandCopyWholeRaster]{bandCopyWholeRaster()}}
  
-  \item virtual raster: \code{\link[=rasterToVRT]{rasterToVRT()}}
+  \item virtual raster: \code{\link[=buildVRT]{buildVRT()}},
+  \code{\link[=rasterToVRT]{rasterToVRT()}}
   
-  \item reproject: \code{\link[=warp]{warp()}}
+  \item reproject/resample/crop/mosaic: \code{\link[=warp]{warp()}}
   
   \item algorithms: \code{\link[=dem_proc]{dem_proc()}},
   \code{\link[=fillNodata]{fillNodata()}},
+  \code{\link[=polygonize]{polygonize()}},
+  \code{\link[=rasterize]{rasterize()}},\cr
   \code{\link[=sieveFilter]{sieveFilter()}},
   \code{\link[=GDALRaster]{GDALRaster$getChecksum()}}
   
@@ -128,9 +132,12 @@ Maintainer: Chris Toney <chris.toney at usda.gov>
   Sample datasets included with the package are used in examples throughout
   the documentation. The sample data include
   \href{https://landfire.gov/}{LANDFIRE} raster layers describing terrain,
-  vegetation and wildland fuels (LF 2020 version), and
-  Landsat C2 Analysis Ready Data downloaded from
-  \href{https://earthexplorer.usgs.gov/}{USGS Earth Explorer}.
+  vegetation and wildland fuels (LF 2020 version),
+  Landsat C2 Analysis Ready Data from
+  \href{https://earthexplorer.usgs.gov/}{USGS Earth Explorer}, and
+  Monitoring Trends in Burn Severity (\href{https://www.mtbs.gov/}{MTBS})
+  fire perimeters from 1984-2022. Metadata for the sample datasets are in
+  inst/extdata/metadata.zip.
 
   \code{system.file()} is used in the examples to access the sample datasets. 
   This enables the code to run regardless of where R is installed. Users will 

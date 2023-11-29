@@ -79,6 +79,28 @@ DEFAULT_DEM_PROC <- list(hillshade = c("-z", "1", "-s", "1", "-az", "315",
 	return(NULL)
 }
 
+#' @noRd
+.getOGRformat <- function(file) {
+# Only for guessing common output formats
+	file <- as.character(file)
+	if (startsWith(file, "PG:")) {
+		return("PostgreSQL")
+	}
+	if (endsWith(file, ".gpkg") || endsWith(file, ".GPKG")) {
+		return("GPKG")
+	}
+	if (endsWith(file, ".shp") || endsWith(file, ".SHP")) {
+		return("ESRI Shapefile")
+	}
+	if (endsWith(file, ".sqlite") || endsWith(file, ".SQLITE")) {
+		return("SQLite")
+	}
+	if (endsWith(file, ".fgb") || endsWith(file, ".FGB")) {
+		return("FlatGeobuf")
+	}
+	return(NULL)
+}
+
 
 #' Get a pixel or line offset for a north-up raster
 #' @param coord A georeferenced x or y
@@ -193,7 +215,7 @@ read_ds <- function(ds, bands=NULL, xoff=0, yoff=0,
 #'
 #' @seealso
 #' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
-#' [bandCopyWholeRaster()]
+#' [bandCopyWholeRaster()], [translate()]
 #'
 #' @examples
 #' # band 2 in a FARSITE landscape file has slope degrees
@@ -285,19 +307,17 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 }
 
 
-#' Create a GDAL virtual raster
+#' Create a GDAL virtual raster derived from one source dataset
 #'
 #' @description
 #' `rasterToVRT()` creates a virtual raster dataset (VRT format) derived from
-#' a source raster with options for virtual subsetting, virtually resampling
+#' one source dataset with options for virtual subsetting, virtually resampling
 #' the source data at a different pixel resolution, or applying a virtual
-#' kernel filter.
+#' kernel filter. (See [buildVRT()] for virtual mosaicing.)
 #'
 #' @details
-#' `rasterToVRT()` has similarities to the command-line utility `gdalbuildvrt`
-#' (\url{https://gdal.org/programs/gdalbuildvrt.html}) but is not a wrapper for
-#' it and does not build mosaics. `rasterToVRT()` can be used to virtually clip
-#' and pixel-align various raster layers with each or in relation to vector
+#' `rasterToVRT()` can be used to virtually clip and pixel-align
+#' various raster layers with each other or in relation to vector
 #' polygon boundaries. It also supports VRT kernel filtering.
 #'
 #' A VRT dataset is saved as a plain-text file with extension .vrt. This file 
@@ -322,7 +342,7 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' default).
 #' 
 #' GDAL VRT format has several capabilities and uses beyond those
-#' covered by `rasterToVRT()`. See the URLs above for a full discussion.
+#' covered by `rasterToVRT()`. See the URL above for a full discussion.
 #'
 #' @note
 #' Pixel alignment is specified in terms of the source raster pixels (i.e., 
@@ -390,7 +410,7 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' @returns Returns the VRT filename invisibly.
 #'
 #' @seealso
-#' [`GDALRaster-class`][GDALRaster], [bbox_from_wkt()]
+#' [`GDALRaster-class`][GDALRaster], [bbox_from_wkt()], [buildVRT()]
 #'
 #' [warp()] can write VRT for virtual reprojection
 #'
@@ -870,7 +890,8 @@ rasterToVRT <- function(srcfile,
 #' print(tbl_subset)
 #' sum(tbl_subset$count)
 #' 
-#' # if LCP file format is needed: createCopy(tif_file, <new_lcp_file>)
+#' # if LCP file format is needed:
+#' # createCopy("LCP", "storml_edited.lcp", tif_file)
 #' @export
 calc <- function(expr, 
 					rasterfiles, 
@@ -1215,7 +1236,7 @@ combine <- function(rasterfiles, var.names=NULL, bands=NULL,
 #'
 #' @param mode Character. Name of the DEM processing mode. One of hillshade,
 #' slope, aspect, color-relief, TRI, TPI or roughness.
-#' @param srcfile Filename of the the source elevation raster.
+#' @param srcfile Filename of the source elevation raster.
 #' @param dstfile Filename of the output raster.
 #' @param mode_options An optional character vector of command-line options
 #' (see [DEFAULT_DEM_PROC] for default values).
@@ -1245,5 +1266,455 @@ dem_proc <- function(mode,
 	if (is.null(DEFAULT_DEM_PROC[[mode]]))
 		stop("DEM processing mode not recognized.", call.=FALSE)
 
-	return (invisible(.dem_proc(mode,srcfile,dstfile,mode_options,color_file)))
+	return(invisible(.dem_proc(mode,srcfile,dstfile,mode_options,color_file)))
+}
+
+
+#' Create a polygon feature layer from raster data
+#' 
+#' @description
+#' `polygonize()` creates vector polygons for all connected regions of pixels
+#' in a source raster sharing a common pixel value. Each polygon is created
+#' with an attribute indicating the pixel value of that polygon. A raster mask
+#' may also be provided to determine which pixels are eligible for processing.
+#' The function will create the output vector layer if it does not already
+#' exist, otherwise it will try to append to an existing one.
+#' This function is a wrapper of `GDALPolygonize` in the GDAL Algorithms API.
+#' It provides essentially the same functionality as the `gdal_polygonize.py`
+#' command-line program (\url{https://gdal.org/programs/gdal_polygonize.html}).
+#'
+#' @details
+#' Polygon features will be created on the output layer, with polygon
+#' geometries representing the polygons. The polygon geometries will be in the
+#' georeferenced coordinate system of the raster (based on the geotransform of
+#' the source dataset). It is acceptable for the output layer to already have
+#' features. If the output layer does not already exist, it will be created
+#' with coordinate system matching the source raster.
+#'
+#' The algorithm attempts to minimize memory use so that very large rasters can
+#' be processed. However, if the raster has many polygons or very large/complex
+#' polygons, the memory use for holding polygon enumerations and active polygon
+#' geometries may grow to be quite large.
+#'
+#' The algorithm will generally produce very dense polygon geometries, with
+#' edges that follow exactly on pixel boundaries for all non-interior pixels.
+#' For non-thematic raster data (such as satellite images) the result will
+#' essentially be one small polygon per pixel, and memory and output layer
+#' sizes will be substantial. The algorithm is primarily intended for
+#' relatively simple thematic rasters, masks, and classification results.
+#'
+#' @param raster_file Filename of the source raster.
+#' @param out_dsn The destination vector filename to which the polygons will be
+#' written (or database connection string).
+#' @param out_layer Name of the layer for writing the polygon features. For
+#' single-layer file formats such as `"ESRI Shapefile"`, the layer name is the
+#' same as the filename without the path or extension (e.g., `out_dsn =
+#' "path_to_file/polygon_output.shp"`, the layer name is `"polygon_output"`).
+#' @param fld_name Name of an integer attribute field in `out_layer` to which
+#' the pixel values will be written. Will be created if necessary when using an
+#' existing layer.
+#' @param out_fmt GDAL short name of the output vector format. If unspecified,
+#' the function will attempt to guess the format from the filename/connection
+#' string.
+#' @param connectedness Integer scalar. Must be either `4` or `8`. For the
+#' default 4-connectedness, pixels with the same value are considered connected
+#' only if they touch along one of the four sides, while 8-connectedness
+#' also includes pixels that touch at one of the corners.
+#' @param src_band The band on `raster_file` to build the polygons from
+#' (default is `1`).
+#' @param mask_file Use the first band of the specified raster as a
+#' validity mask (zero is invalid, non-zero is valid). If not specified, the
+#' default validity mask for the input band (such as nodata, or alpha masks)
+#' will be used (unless `nomask` is set to `TRUE`).
+#' @param nomask Logical scalar. If `TRUE`, do not use the default validity
+#' mask for the input band (such as nodata, or alpha masks).
+#' Default is `FALSE`.
+#' @param overwrite Logical scalar. If `TRUE`, overwrite `out_layer` if it
+#' already exists. Default is `FALSE`.
+#' @param dsco Optional character vector of format-specific creation options
+#' for `out_dsn` (`"NAME=VALUE"` pairs).
+#' @param lco Optional character vector of format-specific creation options
+#' for `out_layer` (`"NAME=VALUE"` pairs).
+#'
+#' @note
+#' The source pixel band values are read into a signed 64-bit integer buffer
+#' (`Int64`) by `GDALPolygonize`, so floating point or complex bands will be
+#' implicitly truncated before processing.
+#'
+#' When 8-connectedness is used, many of the resulting polygons will likely be
+#' invalid due to ring self-intersection (in the strict OGC definition of
+#' polygon validity). They may be suitable as-is for certain purposes such as
+#' calculating geometry attributes (area, perimeter). Package **sf** has
+#' `st_make_valid()`, PostGIS has `ST_MakeValid()`, and QGIS has vector
+#' processing utility "Fix geometries" (single polygons can become MultiPolygon
+#' in the case of self-intersections).
+#'
+#' If writing to a SQLite database format as either `GPKG` (GeoPackage
+#' vector) or `SQLite` (Spatialite vector), setting the
+#' `SQLITE_USE_OGR_VFS` and `OGR_SQLITE_JOURNAL` configuration options may
+#' increase performance substantially. If writing to `PostgreSQL`
+#' (PostGIS vector), setting `PG_USE_COPY=YES` is faster:
+#' ```
+#' # SQLite: GPKG (.gpkg) and Spatialite (.sqlite)
+#' # enable extra buffering/caching by the GDAL/OGR I/O layer
+#' set_config_option("SQLITE_USE_OGR_VFS", "YES")}
+#' # set the journal mode for the SQLite database to MEMORY
+#' set_config_option("OGR_SQLITE_JOURNAL", "MEMORY")
+#'
+#' # PostgreSQL / PostGIS
+#' # use COPY for inserting data rather than INSERT
+#' set_config_option("PG_USE_COPY", "YES")
+#' ```
+#'
+#' @seealso
+#' [rasterize()]
+#'
+#' `vignette("gdal-config-quick-ref")`
+#'
+#' @examples
+#' evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
+#' dsn <- paste0(tempdir(), "/", "storm_lake.gpkg")
+#' layer <- "lf_evt"
+#' fld <- "evt_value"
+#' set_config_option("SQLITE_USE_OGR_VFS", "YES")
+#' set_config_option("OGR_SQLITE_JOURNAL", "MEMORY")
+#' polygonize(evt_file, dsn, layer, fld)
+#' set_config_option("SQLITE_USE_OGR_VFS", "")
+#' set_config_option("OGR_SQLITE_JOURNAL", "")
+#' @export
+polygonize <- function(raster_file,
+					out_dsn,
+					out_layer,
+					fld_name = "DN",
+					out_fmt = NULL,
+					connectedness = 4,
+					src_band = 1,
+					mask_file = NULL,
+					nomask = FALSE,
+					overwrite = FALSE,
+					dsco = NULL,
+					lco = NULL) {
+
+	if (connectedness !=4 && connectedness != 8)
+		stop("connectedness must be either 4 or 8.", call. = FALSE)
+		
+	ds <- new(GDALRaster, raster_file, TRUE)
+	srs <- ds$getProjectionRef()
+	ds$close()
+	
+	if (!is.null(mask_file)) {
+		ds <- new(GDALRaster, mask_file, TRUE)
+		ds$close()
+	}
+	else {
+		mask_file = ""
+	}
+	
+	if (!.ogr_ds_exists(out_dsn, with_update=TRUE)) {
+		if (.ogr_ds_exists(out_dsn) && !overwrite) {
+			msg <- "out_dsn exists but cannot be updated.\n"
+			msg <- paste0(msg, "You may need to remove it first, ")
+			msg <- paste0(msg, "or use overwrite = TRUE.")
+			stop(msg, call. = FALSE)
+		}
+	}
+
+	if (.ogr_ds_exists(out_dsn, with_update=TRUE) && overwrite) {
+		deleted <- FALSE
+		if (.ogr_layer_exists(out_dsn, out_layer)) {
+			deleted <- .ogr_layer_delete(out_dsn, out_layer)
+		}
+		if (!deleted) {
+			if (.ogr_ds_layer_count(out_dsn) == 1) {
+				if (utils::file_test("-f", out_dsn))
+					deleted <- deleteDataset(out_dsn)
+			}
+		}
+		if (!deleted) {
+			stop("Cannot overwrite out_layer.", call. = FALSE)
+		}
+	}
+	
+	if (.ogr_layer_exists(out_dsn, out_layer)) {
+		if (!is.null(lco)) {
+			warning("lco ignored since the layer already exists.",
+					call. = FALSE)
+		}
+	}
+	
+	if (!.ogr_ds_exists(out_dsn, with_update=TRUE)) {
+		if (is.null(out_fmt))
+			out_fmt <- .getOGRformat(out_dsn)
+		if (is.null(out_fmt)) {
+			message("Format driver cannot be determined for: ", out_dsn)
+			stop("Specify out_fmt to create a new dataset.", call. = FALSE)
+		}
+		if (!.create_ogr(out_fmt, out_dsn, 0, 0, 0, "Unknown",
+						out_layer, srs, fld_name, dsco, lco))
+			stop("Failed to create out_dsn.", call. = FALSE)
+	}
+	
+	if (!.ogr_layer_exists(out_dsn, out_layer)) {
+		res <- .ogr_layer_create(out_dsn, out_layer, srs, lco)
+		if (!res)
+			stop("Failed to create out_layer.", call. = FALSE)
+		if (fld_name != "") {
+			res <- .ogr_field_create(out_dsn, out_layer, fld_name)
+			if (!res)
+				stop("Failed to create output field.", call. = FALSE)
+		}
+	}
+	
+	return(invisible(.polygonize(raster_file, src_band, out_dsn, out_layer,
+					fld_name, mask_file, nomask, connectedness)))
+}
+
+
+#' Burn vector geometries into a raster
+#' 
+#' @description
+#' `rasterize()` burns vector geometries (points, lines, or polygons) into
+#' the band(s) of a raster dataset. Vectors are read from any GDAL
+#' OGR-supported vector format.
+#' This function is a wrapper for the \command{gdal_rasterize} command-line
+#' utility (\url{https://gdal.org/programs/gdal_rasterize.html}).
+#'
+#' @param src_dsn Data source name for the input vector layer (filename or
+#' connection string).
+#' @param dstfile Filename of the output raster. Must support update mode
+#' access. This file will be created (or overwritten if it already exists -
+#' see Note).
+#' @param band Numeric vector. The band(s) to burn values into (for existing
+#' `dstfile`). The default is to burn into band 1. Not used when creating a
+#' new raster.
+#' @param layer Character vector of layer names(s) from `src_dsn`  that will be
+#' used for input features. At least one layer name or a `sql` option must be
+#' specified.
+#' @param where An optional SQL WHERE style query string to select features to
+#' burn in from the input `layer`(s).
+#' @param sql An SQL statement to be evaluated against `src_dsn` to produce a
+#' virtual layer of features to be burned in (alternative to `layer`).
+#' @param burn_value A fixed numeric value to burn into a band for all
+#' features. A numeric vector can be supplied, one burn value per band being
+#' written to.
+#' @param burn_attr Character string. Name of an attribute field on the
+#' features to be used for a burn-in value. The value will be burned into all
+#' output bands.
+#' @param invert Logical scalar. `TRUE` to invert rasterization. Burn the fixed
+#' burn value, or the burn value associated with the first feature, into all
+#' parts of the raster not inside the provided polygon.
+#' @param te Numeric vector of length four. Sets the output raster extent. The
+#' values must be expressed in georeferenced units. If not specified, the
+#' extent of the output raster will be the extent of the vector layer.
+#' @param tr Numeric vector of length two. Sets the target pixel resolution.
+#' The values must be expressed in georeferenced units. Both must be positive.
+#' @param tap Logical scalar. (target aligned pixels) Align the coordinates of
+#' the extent of the output raster to the values of `tr`, such that the
+#' aligned extent includes the minimum extent. Alignment means that
+#' xmin / resx, ymin / resy, xmax / resx and ymax / resy are integer values.
+#' @param ts Numeric vector of length two. Sets the output raster size in
+#' pixels (xsize, ysize). Note that `ts` cannot be used with `tr`.
+#' @param dtName Character name of output raster data type, e.g., `Byte`,
+#' `Int16`, `UInt16`, `Int32`, `UInt32`, `Float32`, `Float64`.
+#' Defaults to `Float64`.
+#' @param dstnodata	Numeric scalar. Assign a nodata value to output bands.
+#' @param init Numeric vector. Pre-initialize the output raster band(s) with
+#' these value(s). However, it is not marked as the nodata value in the output
+#' file. If only one value is given, the same value is used in all the bands.
+#' @param fmt Output raster format short name (e.g., `"GTiff"`). Will attempt
+#' to guess from the output filename if `fmt` is not specified.
+#' @param co Optional list of format-specific creation options for the output
+#' raster in a vector of "NAME=VALUE" pairs
+#' (e.g., \code{options = c("TILED=YES","COMPRESS=LZW")} to set LZW compression
+#' during creation of a tiled GTiff file).
+#' @param add_options An optional character vector of additional command-line
+#' options to `gdal_rasterize` (see the `gdal_rasterize` documentation at the
+#' URL above for all available options).
+#' @returns Logical indicating success (invisible `TRUE`).
+#' An error is raised if the operation fails.
+#'
+#' @note
+#' The function creates a new target raster when any of the `fmt`, `dstnodata`,
+#' `init`, `co`, `te`, `tr`, `tap`, `ts`, or `dtName` arguments are used. The
+#' resolution or size must be specified using the `tr` or `ts` argument for all
+#' new rasters. The target raster will be overwritten if it already exists and
+#' any of these creation-related options are used.
+#'
+#' @seealso
+#' [polygonize()]
+#'
+#' @examples
+#' # MTBS fire perimeters for Yellowstone National Park 1984-2022
+#' dsn <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+#' sql <- "SELECT * FROM mtbs_perims ORDER BY mtbs_perims.ig_year"
+#' out_file <- paste0(tempdir(), "/", "ynp_fires_1984_2022.tif")
+#'
+#' rasterize(src_dsn = dsn,
+#'           dstfile = out_file,
+#'           sql = sql,
+#'           burn_attr = "ig_year",
+#'           tr = c(90,90),
+#'           tap = TRUE,
+#'           dtName = "Int16",
+#'           dstnodata = -9999,
+#'           init = -9999,
+#'           co = c("TILED=YES","COMPRESS=LZW"))
+#'
+#' ds <- new(GDALRaster, out_file, TRUE)
+#' pal <- scales::viridis_pal(end = 0.8, direction = -1)(6)
+#' ramp <- scales::colour_ramp(pal)
+#' plot_raster(ds, legend = TRUE, col_map_fn = ramp, na_col = "#d9d9d9",
+#'             main="YNP Fires 1984-2022 - Most Recent Burn Year")
+#'
+#' ds$close()
+#' @export
+rasterize <- function(src_dsn,
+					dstfile,
+					band = NULL,
+					layer = NULL,
+					where = NULL,
+					sql = NULL,
+					burn_value = NULL,
+					burn_attr = NULL,
+					invert = NULL,
+					te = NULL,
+					tr = NULL,
+					tap = NULL,
+					ts = NULL,
+					dtName = NULL,
+					dstnodata = NULL,
+					init = NULL,
+					fmt = NULL,
+					co = NULL,
+					add_options = NULL) {
+
+	argv <- character(0)
+	
+	if (!is.null(band)) {
+		if (!is.numeric(band))
+			stop("band must be numeric.", call. = FALSE)
+		for (b in band)
+			argv <- c(argv, "-b", b)
+	}
+
+	if (!is.null(layer)) {
+		if (!is.character(layer))
+			stop("layer must be character type.", call. = FALSE)
+		for (l in layer)
+			argv <- c(argv, "-l", l)
+	}
+
+	if (!is.null(where)) {
+		if (is.character(where) && length(where) == 1)
+			argv <- c(argv, "-where", where)
+		else
+			stop("where must be a length-1 character vector.", call. = FALSE)
+	}
+
+	if (!is.null(sql)) {
+		if (is.character(sql) && length(sql) == 1)
+			argv <- c(argv, "-sql", sql)
+		else
+			stop("sql must be a length-1 character vector.", call. = FALSE)
+	}
+
+	if (!is.null(burn_value)) {
+		if (!is.numeric(burn_value))
+			stop("burn_value must be numeric.", call. = FALSE)
+		for (value in burn_value)
+			argv <- c(argv, "-burn", value)
+	}
+
+	if (!is.null(burn_attr)) {
+		if (is.character(burn_attr) && length(burn_attr) == 1)
+			argv <- c(argv, "-a", burn_attr)
+		else
+			stop("burn_attr must be a length-1 character vector.",
+					call. = FALSE)
+	}
+
+	if (!is.null(invert)) {
+		if (is.logical(invert) && length(invert) == 1)
+			if (invert)
+				argv <- c(argv, "-i")
+		else
+			stop("invert must be a logical scalar.", call. = FALSE)
+	}
+
+	if (!is.null(te)) {
+		if (is.numeric(te) && length(te) == 4)
+			argv <- c(argv, "-te", te)
+		else
+			stop("te must be a numeric vector of length 4.", call. = FALSE)
+	}
+
+	if (!is.null(tr)) {
+		if (is.numeric(tr) && length(tr) == 2)
+			argv <- c(argv, "-tr", tr)
+		else
+			stop("tr must be a numeric vector of length 2.", call. = FALSE)
+	}
+	
+	if (!is.null(tap)) {
+		if (is.logical(tap) && length(tap) == 1)
+			if (tap)
+				argv <- c(argv, "-tap")
+		else
+			stop("tap must be a logical scalar.", call. = FALSE)
+	}
+	
+	if (!is.null(ts)) {
+		if (!is.null(tr))
+			stop("ts cannot be used with tr.", call. = FALSE)
+		if (is.numeric(ts) && length(ts) == 2)
+			argv <- c(argv, "-ts", ts)
+		else
+			stop("ts must be a numeric vector of length 2.", call. = FALSE)
+	}
+
+	if (!is.null(dtName)) {
+		if (is.character(dtName) && length(dtName) == 1)
+			argv <- c(argv, "-ot", dtName)
+		else
+			stop("dtName must be a length-1 character vector.",
+					call. = FALSE)
+	}
+
+	if (!is.null(dstnodata)) {
+		if (is.numeric(dstnodata) && length(dstnodata) == 1)
+			argv <- c(argv, "-a_nodata", dstnodata)
+		else
+			stop("dstnodata must be a numeric scalar.", call. = FALSE)
+	}
+
+	if (!is.null(init)) {
+		if (!is.numeric(init))
+			stop("init must be numeric.", call. = FALSE)
+		for (value in init)
+			argv <- c(argv, "-init", value)
+	}
+
+	if (!is.null(fmt)) {
+		if (is.character(fmt) && length(fmt) == 1)
+			argv <- c(argv, "-of", fmt)
+		else
+			stop("fmt must be a length-1 character vector.",
+					call. = FALSE)
+	}
+
+	if (!is.null(co)) {
+		if (!is.character(co))
+			stop("co must be a character vector.", call. = FALSE)
+		for (name_value in co)
+			argv <- c(argv, "-co", name_value)
+	}
+
+	if (!is.null(add_options)) {
+		if (!is.character(add_options))
+			stop("add_options must be a character vector.", call. = FALSE)
+		else
+			argv <- c(argv, add_options)
+	}
+	
+	return(invisible(.rasterize(src_dsn, dstfile, argv)))
 }
