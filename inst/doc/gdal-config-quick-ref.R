@@ -76,3 +76,15 @@ set_config_option("AWS_SESSION_TOKEN", "<value>") # session token
 # if requester pays:
 set_config_option("AWS_REQUEST_PAYER", "<value>") # requester
 
+## -----------------------------------------------------------------------------
+# specify region
+set_config_option("AWS_REGION", "us-west-2")
+
+## -----------------------------------------------------------------------------
+# SOZip optimization defaults to AUTO
+set_config_option("CPL_SOZIP_ENABLED", "YES")
+
+## -----------------------------------------------------------------------------
+# SOZip minimum file size
+set_config_option("CPL_SOZIP_MIN_FILE_SIZE", "100K")
+

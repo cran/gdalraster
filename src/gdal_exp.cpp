@@ -8,6 +8,7 @@
 #include "cpl_port.h"
 #include "cpl_conv.h"
 #include "cpl_string.h"
+#include "cpl_vsi.h"
 #include "gdal_alg.h"
 #include "gdal_utils.h"
 
@@ -356,7 +357,7 @@ Rcpp::NumericVector _apply_geotransform(const std::vector<double> gt,
 //' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [get_pixel_line()]
 //' @examples
 //' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-//' ds <- new(GDALRaster, elev_file, read_only=TRUE)
+//' ds <- new(GDALRaster, elev_file)
 //' gt <- ds$getGeoTransform()
 //' ds$close()
 //' invgt <- inv_geotransform(gt)
@@ -407,7 +408,7 @@ Rcpp::NumericVector inv_geotransform(const std::vector<double> gt) {
 //' pts <- read.csv(pt_file)
 //' print(pts)
 //' raster_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
-//' ds <- new(GDALRaster, raster_file, read_only=TRUE)
+//' ds <- new(GDALRaster, raster_file)
 //' gt <- ds$getGeoTransform()
 //' get_pixel_line(as.matrix(pts[,-1]), gt)
 //' ds$close()
@@ -479,7 +480,7 @@ Rcpp::IntegerMatrix get_pixel_line(const Rcpp::NumericMatrix xy,
 //' band_files <- c(b6_file, b5_file, b4_file)
 //' vrt_file <- paste0(tempdir(), "/", "storml_b6_b5_b4.vrt")
 //' buildVRT(vrt_file, band_files, cl_arg = "-separate")
-//' ds <- new(GDALRaster, vrt_file, read_only=TRUE)
+//' ds <- new(GDALRaster, vrt_file)
 //' ds$getRasterCount()
 //' plot_raster(ds, nbands=3, main="Landsat 6-5-4 (vegetative analysis)")
 //' ds$close()
@@ -1169,7 +1170,7 @@ bool sieveFilter(std::string src_filename, int src_band,
 //' img_file <- paste0(tempdir(), "/", "storml_elev_90m.img")
 //' translate(elev_file, img_file, args)
 //' 
-//' ds <- new(GDALRaster, img_file, read_only=TRUE)
+//' ds <- new(GDALRaster, img_file)
 //' ds$getDriverLongName()
 //' ds$bbox()
 //' ds$res()
@@ -1179,6 +1180,7 @@ bool sieveFilter(std::string src_filename, int src_band,
 bool translate(std::string src_filename, std::string dst_filename,
 		Rcpp::Nullable<Rcpp::CharacterVector> cl_arg = R_NilValue) {
 
+	bool ret = false;
 	GDALDatasetH src_ds = GDALOpenShared(src_filename.c_str(), GA_ReadOnly);
 	if (src_ds == NULL)
 		Rcpp::stop("Open source raster failed.");
@@ -1203,12 +1205,17 @@ bool translate(std::string src_filename, std::string dst_filename,
 							psOptions, NULL);
 							
 	GDALTranslateOptionsFree(psOptions);
-	GDALClose(src_ds);
-	if (hDstDS == NULL)
-		Rcpp::stop("Translate raster failed.");
 	
-	GDALClose(hDstDS);
-	return true;
+	if (hDstDS != NULL) {
+		GDALClose(hDstDS);
+		ret = true;
+	}
+	GDALClose(src_ds);
+	
+	if (!ret)
+		Rcpp::stop("Warp raster failed.");
+	
+	return ret;
 }
 
 
@@ -1376,7 +1383,7 @@ bool translate(std::string src_filename, std::string dst_filename,
 //' alb83_file <- paste0(tempdir(), "/", "storml_elev_alb83.img")
 //' warp(elev_file, alb83_file, t_srs="EPSG:5070", cl_arg = args)
 //' 
-//' ds <- new(GDALRaster, alb83_file, read_only=TRUE)
+//' ds <- new(GDALRaster, alb83_file)
 //' ds$getDriverLongName()
 //' ds$getProjectionRef()
 //' ds$res()
@@ -1387,6 +1394,7 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 		std::string t_srs, 
 		Rcpp::Nullable<Rcpp::CharacterVector> cl_arg = R_NilValue) {
 
+	bool ret = false;
 	std::vector<GDALDatasetH> src_ds(src_files.size());
 	for (std::size_t i = 0; i < src_files.size(); ++i) {
 		GDALDatasetH hDS = GDALOpenShared(src_files[i].c_str(), GA_ReadOnly);
@@ -1427,13 +1435,18 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 							psOptions, NULL);
 							
 	GDALWarpAppOptionsFree(psOptions);
+	
+	if (hDstDS != NULL) {
+		GDALClose(hDstDS);
+		ret = true;
+	}
 	for (std::size_t i = 0; i < src_files.size(); ++i)
 		GDALClose(src_ds[i]);
-	if (hDstDS == NULL)
+	
+	if (!ret)
 		Rcpp::stop("Warp raster failed.");
 	
-	GDALClose(hDstDS);
-	return true;
+	return ret;
 }
 
 
@@ -1473,7 +1486,7 @@ bool warp(std::vector<std::string> src_files, std::string dst_filename,
 //' # create a color ramp for tree canopy cover percent
 //' # band 5 of an LCP file contains canopy cover
 //' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
-//' ds <- new(GDALRaster, lcp_file, read_only=TRUE)
+//' ds <- new(GDALRaster, lcp_file)
 //' ds$getDescription(band=5)
 //' ds$getMetadata(band=5, domain="")
 //' ds$close()
@@ -1632,7 +1645,7 @@ Rcpp::IntegerMatrix createColorRamp(int start_index,
 //' rasterFromRaster(b5_file, dst_file, nbands=7, init=0)
 //' opt <- c("COMPRESSED=YES", "SKIP_HOLES=YES")
 //' bandCopyWholeRaster(b5_file, 1, dst_file, 5, options=opt)
-//' ds <- new(GDALRaster, dst_file, read_only=TRUE)
+//' ds <- new(GDALRaster, dst_file)
 //' ds$getStatistics(band=5, approx_ok=FALSE, force=TRUE)
 //' ds$close()
 // [[Rcpp::export(invisible = true)]]
@@ -1726,7 +1739,7 @@ bool bandCopyWholeRaster(std::string src_filename, int src_band,
 //' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
 //' file.copy(b5_file,  b5_tmp)
 //' 
-//' ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+//' ds <- new(GDALRaster, b5_tmp)
 //' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
 //' files <- ds$getFileList()
 //' print(files)
@@ -1794,13 +1807,13 @@ bool deleteDataset(std::string filename, std::string format = "") {
 //' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
 //' file.copy(b5_file,  b5_tmp)
 //' 
-//' ds <- new(GDALRaster, b5_tmp, read_only=TRUE)
+//' ds <- new(GDALRaster, b5_tmp)
 //' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
 //' ds$getFileList()
 //' ds$close()
 //' b5_tmp2 <- paste0(tempdir(), "/", "b5_tmp_renamed.tif")
 //' renameDataset(b5_tmp2, b5_tmp)
-//' ds <- new(GDALRaster, b5_tmp2, read_only=TRUE)
+//' ds <- new(GDALRaster, b5_tmp2)
 //' ds$getFileList()
 //' ds$close()
 // [[Rcpp::export]]
@@ -1857,13 +1870,13 @@ bool renameDataset(std::string new_filename, std::string old_filename,
 //'
 //' @examples
 //' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
-//' ds <- new(GDALRaster, lcp_file, read_only=TRUE)
+//' ds <- new(GDALRaster, lcp_file)
 //' ds$getFileList()
 //' ds$close()
 //' 
 //' lcp_tmp <- paste0(tempdir(), "/", "storm_lake_copy.lcp")
 //' copyDatasetFiles(lcp_tmp, lcp_file)
-//' ds_copy <- new(GDALRaster, lcp_tmp, read_only=TRUE)
+//' ds_copy <- new(GDALRaster, lcp_tmp)
 //' ds_copy$getFileList()
 //' ds_copy$close()
 // [[Rcpp::export]]
@@ -1906,5 +1919,68 @@ std::string _getCreationOptions(std::string format) {
 		Rcpp::stop("Failed to get driver from format name.");
 
 	return GDALGetDriverCreationOptionList(hDriver);
+}
+
+
+//' Add a file inside a new or existing ZIP file
+//' Mainly for create/append to Seek-Optimized ZIP
+//'
+//' @noRd
+// [[Rcpp::export(name = ".addFileInZip")]]
+bool _addFileInZip(std::string zip_filename, bool overwrite,
+		std::string archive_filename, std::string in_filename,
+		Rcpp::Nullable<Rcpp::CharacterVector> options,
+		bool quiet) {
+
+#if GDAL_VERSION_NUM < 3070000
+	Rcpp::stop("_addFileInZip() requires GDAL >= 3.7.");
+
+#else
+	bool ret;
+	std::vector<char *> opt_zip_create = {NULL};
+	VSIStatBufL buf;
+	if (overwrite) {
+		VSIUnlink(zip_filename.c_str());
+	}
+	else {
+		if (VSIStatExL(zip_filename.c_str(), &buf, VSI_STAT_EXISTS_FLAG) == 0) {
+			auto it = opt_zip_create.begin();
+			it = opt_zip_create.insert(it, (char *) ("APPEND=TRUE"));
+		}
+	}
+	
+	void *hZIP = CPLCreateZip(zip_filename.c_str(), opt_zip_create.data());
+	if (hZIP == nullptr)
+		Rcpp::stop("Failed to obtain file handle for zip file.");
+	
+	std::vector<char *> opt_list = {NULL};
+	if (options.isNotNull()) {
+		Rcpp::CharacterVector options_in(options);
+		opt_list.resize(options_in.size() + 1);
+		for (R_xlen_t i = 0; i < options_in.size(); ++i) {
+			opt_list[i] = (char *) (options_in[i]);
+		}
+		opt_list[options_in.size()] = NULL;
+	}
+
+	if (!quiet) {
+		Rcpp::Rcout << "Adding " << in_filename.c_str() << " ...\n";
+		GDALTermProgressR(0, NULL, NULL);
+	}
+	
+	CPLErr err = CPLAddFileInZip(hZIP, archive_filename.c_str(),
+							in_filename.c_str(),
+							NULL, opt_list.data(),
+							quiet ? NULL : GDALTermProgressR, NULL);
+	
+	if (err == CE_None)
+		ret = true;
+	else
+		ret = false;
+	
+	CPLCloseZip(hZIP);
+	return ret;
+	
+#endif
 }
 

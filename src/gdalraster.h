@@ -89,6 +89,10 @@ bool renameDataset(std::string new_filename, std::string old_filename,
 bool bandCopyWholeRaster(std::string src_filename, int src_band,
 		std::string dst_filename, int dst_band,
 		Rcpp::Nullable<Rcpp::CharacterVector> options);
+bool _addFileInZip(std::string zip_filename, bool overwrite,
+		std::string archive_filename, std::string in_filename,
+		Rcpp::Nullable<Rcpp::CharacterVector> options,
+		bool quiet);
 
 Rcpp::NumericVector _apply_geotransform(const std::vector<double> gt, 
 		double pixel, double line);
@@ -153,6 +157,7 @@ class GDALRaster {
 	
 	public:
 	GDALRaster();
+	GDALRaster(std::string filename);
 	GDALRaster(std::string filename, bool read_only);
 	
 	std::string getFilename() const;
@@ -204,6 +209,7 @@ class GDALRaster {
 	std::vector<double> getMinMax(int band, bool approx_ok) const;
 	Rcpp::NumericVector getStatistics(int band,	bool approx_ok, 
 			bool force) const;
+	void clearStatistics();
 	std::vector<double> getHistogram(int band, double min, double max,
 			int num_buckets, bool incl_out_of_range, bool approx_ok) const;
 	Rcpp::List getDefaultHistogram(int band, bool force) const;
@@ -241,6 +247,8 @@ class GDALRaster {
 	void _checkAccess(GDALAccess access_needed) const;
 	GDALRasterBandH _getBand(int band) const;
 	bool _readableAsInt(int band) const;
+	bool _hasInt64() const;
+	void _warnInt64() const;
 };
 
 RCPP_EXPOSED_CLASS(GDALRaster)

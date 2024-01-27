@@ -16,8 +16,8 @@ plot_raster(
   minmax_def = NULL,
   minmax_pct_cut = NULL,
   col_map_fn = NULL,
-  xlim = c(0, xsize),
-  ylim = c(ysize, 0),
+  xlim = NULL,
+  ylim = NULL,
   interpolate = TRUE,
   asp = 1,
   axes = TRUE,
@@ -87,11 +87,15 @@ the percentiles to use (e.g., \code{c(2, 98)}). Applied per band. Ignored if
 Ignored if \code{col_tbl} is used. Set \code{normalize} to \code{FALSE} if using a color
 map function that operates on raw pixel values.}
 
-\item{xlim}{Numeric vector of length two giving the x coordinate range. The
-default uses pixel/line coordinates (\code{c(0, xsize)}).}
+\item{xlim}{Numeric vector of length two giving the x coordinate range.
+If \code{data} is a \code{GDALRaster} object, the default is the raster xmin, xmax in
+georeferenced coordinates, otherwise the default uses pixel/line
+coordinates (\code{c(0, xsize)}).}
 
-\item{ylim}{Numeric vector of length two giving the y coordinate range. The
-default uses pixel/line coordinates (\code{c(ysize, 0)}).}
+\item{ylim}{Numeric vector of length two giving the y coordinate range.
+If \code{data} is a \code{GDALRaster} object, the default is the raster ymin, ymax in
+georeferenced coordinates, otherwise the default uses pixel/line
+coordinates (\code{c(ysize, 0)}).}
 
 \item{interpolate}{Logical indicating whether to apply linear interpolation
 to the image when drawing (default \code{TRUE}).}
@@ -152,7 +156,7 @@ set_config_option("GDAL_RASTERIO_RESAMPLING", "BILINEAR")
 \examples{
 ## Elevation
 elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-ds <- new(GDALRaster, elev_file, read_only=TRUE)
+ds <- new(GDALRaster, elev_file)
 
 # grayscale
 plot_raster(ds, legend=TRUE, main="Storm Lake elevation (m)")
@@ -174,7 +178,7 @@ band_files <- c(b6_file, b5_file, b4_file)
 
 r <- vector("integer")
 for (f in band_files) {
-  ds <- new(GDALRaster, f, read_only=TRUE)
+  ds <- new(GDALRaster, f)
   dm <- ds$dim()
   r <- c(r, read_ds(ds))
   ds$close()
@@ -192,7 +196,7 @@ vat <- read.csv(evc_csv)
 head(vat)
 vat <- vat[,c(1,6:8)]
 
-ds <- new(GDALRaster, evc_file, read_only=TRUE)
+ds <- new(GDALRaster, evc_file)
 plot_raster(ds, col_tbl=vat, interpolate=FALSE,
             main="Storm Lake LANDFIRE EVC")
 

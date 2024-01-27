@@ -106,10 +106,17 @@ test_that("statistics are correct", {
 	elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 	mod_file <- paste0(tempdir(), "/", "storml_elev_mod.tif")
 	file.copy(elev_file,  mod_file)
-	ds <- new(GDALRaster, mod_file, read_only=TRUE)
+	ds <- new(GDALRaster, mod_file, read_only=FALSE)
 	expect_equal(ds$getMinMax(band=1, approx_ok=FALSE), c(2438, 3046))
 	stats <- round(ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE))
 	expect_equal(stats, c(2438, 3046, 2676, 133))
+	if (as.integer(gdal_version()[2]) >= 3020000) {
+		ds$flushCache()
+		ds$clearStatistics()
+		ds$flushCache()
+		stats <- round(ds$getStatistics(band=1, approx_ok=TRUE, force=FALSE))
+		expect_true(all(is.na(stats)))
+	}
 	files <- ds$getFileList()
 	on.exit(unlink(files))
 	ds$close()
@@ -266,17 +273,17 @@ test_that("get/set band color interpretation works", {
 })
 
 test_that("Int64 data type is detected", {
-	if (as.integer(gdal_version()[2]) >= 3050000) {
-		f <- system.file("extdata/int64.tif", package="gdalraster")
-		expect_warning(ds <- new(GDALRaster, f, TRUE))
-		expect_equal(ds$getDataTypeName(1), "Int64")
-		ds$close()
-	}
+	skip_if(as.integer(gdal_version()[2]) < 3050000)
+	
+	f <- system.file("extdata/int64.tif", package="gdalraster")
+	expect_warning(ds <- new(GDALRaster, f, TRUE))
+	expect_equal(ds$getDataTypeName(1), "Int64")
+	ds$close()
 })
 
 test_that("get/set default RAT works", {
 	evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
-	f <- paste0(tempdir(), "/", "storml_evt_tmp.tif")
+	f <- tempfile(fileext=".tif")
 	file.copy(evt_file,  f)
 	ds <- new(GDALRaster, f, read_only=FALSE)
 	expect_true(is.null(ds$getDefaultRAT(band=1)))
