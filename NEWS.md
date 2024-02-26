@@ -1,8 +1,50 @@
+# gdalraster 1.9.0
+
+## Behavior change
+
+* remove `OSR_DEFAULT_AXIS_MAPPING_STRATEGY=TRADITIONAL_GIS_ORDER` from `_gdal_init()` (#209), since this could give a different SRS comparison result depending on GDAL version in cases where axis mapping matters and the default options in `OSRIsSameEx()` are used
+
+## GDAL VSI for operations on virtual file systems
+
+* add `vsi_copy_file()`: wrapper for `VSICopyFile()`
+* add `vsi_curl_clear_cache()`: wrapper for `VSICurlClearCache()` and `VSICurlPartialClearCache()`
+* add `vsi_mkdir()`: wrapper for `VSIMkdir()`
+* add `vsi_read_dir()`: wrapper for `VSIReadDirEx()`
+* add `vsi_rename()`: wrapper for `VSIRename()`
+* add `vsi_rmdir()`: wrapper for `VSIRmdir()`
+* add `vsi_stat()`: wrapper for `VSIStatExL()`
+* add `vsi_sync()`: wrapper for `VSISync()`
+* add `vsi_unlink()`: wrapper for `VSIUnlink()`
+* add `vsi_unlink_batch()`: wrapper for `VSIUnlinkBatch()`
+
+## GDALRaster-class
+
+* `GDALRaster$new()`: add a constructor for passing dataset open options
+
+## Stand-alone functions
+
+* add `footprint()`: wrapper of the `gdal_footprint` command-line utility, compute footprint of a raster (GDAL >= 3.8)
+* `read_ds()`: add `as_list` argument for option to return multi-band output in list form; attach attribute `gis` to the output, a list containing bbox, dimension and spatial reference (thanks to input from @mdsumner #185)
+* `plot_raster()`: accept pixel data in list form (band vectors as list elements), and make use of `gis` attribute if present (thanks to input from @mdsumner #185)
+* `srs_is_same()`: add arguments for `criterion`, `ignore_axis_mapping` and `ignore_coord_epoch`
+
+## Documentation
+
+* organize the website [reference index](https://usdaforestservice.github.io/gdalraster/reference/index.html)
+* add Microsoft Azure information in [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html)
+* update DESCRIPTION
+
+## Internal
+
+* add `_check_gdal_filename()`: minimal filename check and UTF-8
+* add `_get_physical_RAM()`: wrapper for `CPLGetUsablePhysicalRAM()` for internal use
+* set test coverage target minimum to 90%, codecov range: 70..90 (previously 80%, 60..80)
+
 # gdalraster 1.8.0
 
 ## Dependencies
 
-* libxml2 is listed in `SystemRequirements` since it is required by dependent package **xml2**
+* libxml2 is listed in `SystemRequirements` since it is required by the imported package **xml2**
 
 ## GDALRaster-class
 

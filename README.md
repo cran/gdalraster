@@ -16,9 +16,12 @@ status](https://usdaforestservice.r-universe.dev/badges/gdalraster)](https://usd
 ## Overview
 
 **gdalraster** is an R interface to the Raster API of the Geospatial
-Data Abstraction Library ([GDAL](https://gdal.org/)). Calling signatures
-resemble those of the native C, C++ and Python APIs provided by the GDAL
-project.
+Data Abstraction Library ([GDAL](https://gdal.org/)). Bindings to a
+subset of the GDAL Virtual Systems Interface
+([VSI](https://gdal.org/api/cpl.html#cpl-vsi-h)) are also provided to
+support filesystem operations on URLs, cloud storage services,
+Zip/GZip/7z/RAR, and in-memory files. Calling signatures resemble those
+of the native C, C++ and Python APIs provided by the GDAL project.
 
 Bindings to GDAL are implemented in the exposed C++ class
 [`GDALRaster`](https://usdaforestservice.github.io/gdalraster/reference/GDALRaster-class.html)
@@ -31,17 +34,18 @@ supporting:
   - read/set raster dataset parameters
   - low-level I/O
   - read/set color tables and raster attribute tables
-  - copy files/move/rename/delete datasets
-  - create/append to Seek-Optimized ZIP
-    ([SOZip](https://github.com/sozip/sozip-spec))
   - virtual raster (VRT) for virtual cropping, resampling, kernel
     filtering, mosaicing
   - `gdalwarp` wrapper for reproject/resample/crop/mosaic
   - coordinate transformation
-  - spatial reference convenience functions
+  - spatial reference systems
   - several GDAL algorithms (`dem_proc()`, `polygonize()`,
     `rasterize()`,
-    [`...`](https://usdaforestservice.github.io/gdalraster/reference/gdalraster-package.html#details))
+    [`...`](https://usdaforestservice.github.io/gdalraster/reference/index.html#algorithms))
+  - copy files/move/rename/delete datasets
+  - abstraction of filesystem operations on URLs and cloud storage
+  - create/append to Seek-Optimized ZIP
+    ([SOZip](https://github.com/sozip/sozip-spec))
 
 Additional functionality includes:
 
@@ -68,11 +72,9 @@ Additional functionality includes:
   - [`plot_raster()`](https://usdaforestservice.github.io/gdalraster/reference/plot_raster.html)
     displays raster data using base R graphics.
 
-**gdalraster** should be useful in applications that need low-level
-raster I/O or prefer a direct GDAL API. The additional functionality is
-somewhat aimed at thematic data analysis but may have other utility.
-Comprehensive [documentation](#documentation) is provided in the package
-and online.
+**gdalraster** may be useful in applications that need scalable,
+low-level I/O, or prefer a direct GDAL API. Comprehensive
+[documentation](#documentation) is provided in the package and online.
 
 ## Installation
 

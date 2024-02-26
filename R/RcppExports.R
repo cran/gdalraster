@@ -18,6 +18,11 @@ gdal_version <- function() {
     .Call(`_gdalraster_gdal_version`)
 }
 
+#' @noRd
+.gdal_version_num <- function() {
+    .Call(`_gdalraster__gdal_version_num`)
+}
+
 #' Report all configured GDAL drivers for raster formats
 #'
 #' `gdal_formats()` prints to the console a list of the supported raster
@@ -100,6 +105,22 @@ set_config_option <- function(key, value) {
 #' get_cache_used()
 get_cache_used <- function() {
     .Call(`_gdalraster_get_cache_used`)
+}
+
+#' Check a filename before passing to GDAL and potentially fix.
+#' filename may be a physical file, URL, connection string, file name with
+#' additional parameters, etc. Returned in UTF-8 encoding.
+#'
+#' @noRd
+.check_gdal_filename <- function(filename) {
+    .Call(`_gdalraster__check_gdal_filename`, filename)
+}
+
+#' Get usable physical RAM in MB
+#'
+#' @noRd
+.get_physical_RAM <- function() {
+    .Call(`_gdalraster__get_physical_RAM`)
 }
 
 #' Create a new uninitialized raster
@@ -402,6 +423,53 @@ buildVRT <- function(vrt_filename, input_rasters, cl_arg = NULL) {
 #' mod_tbl[is.na(mod_tbl$VALUE),]
 fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_iterations = 0L) {
     invisible(.Call(`_gdalraster_fillNodata`, filename, band, mask_file, max_dist, smooth_iterations))
+}
+
+#' Compute footprint of a raster
+#'
+#' `footprint()` is a wrapper of the \command{gdal_footprint} command-line
+#' utility (see \url{https://gdal.org/programs/gdal_footprint.html}).
+#' The function can be used to compute the footprint of a raster file, taking
+#' into account nodata values (or more generally the mask band attached to
+#' the raster bands), and generating polygons/multipolygons corresponding to
+#' areas where pixels are valid, and write to an output vector file.
+#' Refer to the GDAL documentation at the URL above for a list of command-line
+#' arguments that can be passed in `cl_arg`. Requires GDAL >= 3.8.
+#'
+#' @details
+#' Post-vectorization geometric operations are applied in the following order:
+#' * optional splitting (`-split_polys`)
+#' * optional densification (`-densify`)
+#' * optional reprojection (`-t_srs`)
+#' * optional filtering by minimum ring area (`-min_ring_area`)
+#' * optional application of convex hull (`-convex_hull`)
+#' * optional simplification (`-simplify`)
+#' * limitation of number of points (`-max_points`)
+#'
+#' @param src_filename Character string. Filename of the source raster.
+#' @param dst_filename Character string. Filename of the destination vector.
+#' If the file and the output layer exist, the new footprint is appended to
+#' them, unless the `-overwrite` command-line argument is used.
+#' @param cl_arg Optional character vector of command-line arguments for 
+#' \code{gdal_footprint}.
+#' @returns Logical indicating success (invisible \code{TRUE}).
+#' An error is raised if the operation fails.
+#' 
+#' @seealso
+#' [polygonize()]
+#'
+#' @examples
+#' evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
+#' out_file <- paste0(tempdir(), "/", "storml.geojson")
+#'
+#' # Requires GDAL >= 3.8
+#' if (as.integer(gdal_version()[2]) >= 3080000) {
+#'   # command-line arguments for gdal_footprint
+#'   args <- c("-t_srs", "EPSG:4326")
+#'   footprint(evt_file, out_file, args)
+#' }
+footprint <- function(src_filename, dst_filename, cl_arg = NULL) {
+    invisible(.Call(`_gdalraster_footprint`, src_filename, dst_filename, cl_arg))
 }
 
 #' Wrapper for GDALPolygonize in the GDAL Algorithms C API
@@ -947,7 +1015,7 @@ renameDataset <- function(new_filename, old_filename, format = "") {
 #'
 #' @seealso
 #' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()],
-#' [deleteDataset()], [renameDataset()]
+#' [deleteDataset()], [renameDataset()], [vsi_copy_file()]
 #'
 #' @examples
 #' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
@@ -978,6 +1046,446 @@ copyDatasetFiles <- function(new_filename, old_filename, format = "") {
 #' @noRd
 .addFileInZip <- function(zip_filename, overwrite, archive_filename, in_filename, options, quiet) {
     .Call(`_gdalraster__addFileInZip`, zip_filename, overwrite, archive_filename, in_filename, options, quiet)
+}
+
+#' Copy a source file to a target filename
+#'
+#' `vsi_copy_file()` is a wrapper for `VSICopyFile()` in the GDAL Common
+#' Portability Library. The GDAL VSI functions allow virtualization of disk
+#' I/O so that non file data sources can be made to appear as files.
+#' See \url{https://gdal.org/user/virtual_file_systems.html}.
+#' Requires GDAL >= 3.7.
+#'
+#' @details
+#' The following copies are made fully on the target server, without local
+#' download from source and upload to target:
+#' * /vsis3/ -> /vsis3/
+#' * /vsigs/ -> /vsigs/
+#' * /vsiaz/ -> /vsiaz/
+#' * /vsiadls/ -> /vsiadls/
+#' * any of the above or /vsicurl/ -> /vsiaz/ (starting with GDAL 3.8)
+#'
+#' @param src_file Character string. Filename of the source file.
+#' @param target_file Character string. Filename of the target file.
+#' @param show_progess Logical scalar. If `TRUE`, a progress bar will be
+#' displayed (the size of `src_file` will be retrieved in GDAL with
+#' `VSIStatL()`). Default is `FALSE`.
+#' @returns Invisibly, `0` on success or `-1` on an error.
+#'
+#' @note
+#' If `target_file` has the form /vsizip/foo.zip/bar, the default options
+#' described for the function `addFilesInZip()` will be in effect.
+#' 
+#' @seealso
+#' [copyDatasetFiles()], [vsi_stat()], [vsi_sync()]
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual file systems
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#' tmp_file <- tempfile(fileext = ".tif")
+#'
+#' # Requires GDAL >= 3.7
+#' if (as.integer(gdal_version()[2]) >= 3070000) {
+#'   result <- vsi_copy_file(elev_file, tmp_file)
+#'   print(result)
+#' }
+vsi_copy_file <- function(src_file, target_file, show_progess = FALSE) {
+    invisible(.Call(`_gdalraster_vsi_copy_file`, src_file, target_file, show_progess))
+}
+
+#' Clean cache associated with /vsicurl/ and related file systems
+#'
+#' `vsi_curl_clear_cache()` cleans the local cache associated with /vsicurl/
+#' (and related file systems). This function is a wrapper for
+#' `VSICurlClearCache()` and `VSICurlPartialClearCache()` in the GDAL Common
+#' Portability Library. See Details for the GDAL documentation.
+#'
+#' @details
+#' /vsicurl (and related file systems like /vsis3/, /vsigs/, /vsiaz/,
+#' /vsioss/, /vsiswift/) cache a number of metadata and data for faster
+#' execution in read-only scenarios. But when the content on the server-side
+#' may change during the same process, those mechanisms can prevent opening
+#' new files, or give an outdated version of them.
+#' If `partial = TRUE`, cleans the local cache associated for a given filename
+#' (and its subfiles and subdirectories if it is a directory).
+#'
+#' @param partial Logical scalar. Whether to clear the cache only for a given
+#' filename (see Details).
+#' @param file_prefix Character string. Filename prefix to use if
+#' `partial = TRUE`.
+#' @returns No return value, called for side effects.
+#'
+#' @examples
+#' vsi_curl_clear_cache()
+vsi_curl_clear_cache <- function(partial = FALSE, file_prefix = "") {
+    invisible(.Call(`_gdalraster_vsi_curl_clear_cache`, partial, file_prefix))
+}
+
+#' Read names in a directory
+#'
+#' `vsi_read_dir()` abstracts access to directory contents. It returns a
+#' character vector containing the names of files and directories in this
+#' directory. This function is a wrapper for `VSIReadDirEx()` in the GDAL
+#' Common Portability Library.
+#'
+#' @param path Character string. The relative or absolute path of a
+#' directory to read.
+#' @param max_files Integer scalar. The maximum number of files after which to
+#' stop, or 0 for no limit (see Note).
+#' @returns A character vector containing the names of files and directories
+#' in the directory given by `path`. An empty string (`""`) is returned if
+#' `path` does not exist.
+#'
+#' @note
+#' If `max_files` is set to a positive number, directory listing will stop
+#' after that limit has been reached. Note that to indicate truncation, at
+#' least one element more than the `max_files` limit will be returned. If the
+#' length of the returned character vector is lesser or equal to `max_files`,
+#' then no truncation occurred.
+#'
+#' @seealso
+#' [vsi_mkdir()], [vsi_rmdir()], [vsi_stat()], [vsi_sync()]
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual file systems
+#' data_dir <- system.file("extdata", package="gdalraster")
+#' vsi_read_dir(data_dir)
+vsi_read_dir <- function(path, max_files = 0L) {
+    .Call(`_gdalraster_vsi_read_dir`, path, max_files)
+}
+
+#' Synchronize a source file/directory with a target file/directory
+#'
+#' `vsi_sync()` is a wrapper for `VSISync()` in the GDAL Common Portability
+#' Library. The GDAL documentation is given in Details.
+#'
+#' @details
+#' `VSISync()` is an analog of the Linux `rsync` utility. In the current
+#' implementation, `rsync` would be more efficient for local file copying,
+#' but `VSISync()` main interest is when the source or target is a remote
+#' file system like /vsis3/ or /vsigs/, in which case it can take into account
+#' the timestamps of the files (or optionally the ETag/MD5Sum) to avoid
+#' unneeded copy operations.
+#' This is only implemented efficiently for:
+#' * local filesystem <--> remote filesystem
+#' * remote filesystem <--> remote filesystem (starting with GDAL 3.1)\cr
+#' Where the source and target remote filesystems are the same and one of
+#' /vsis3/, /vsigs/ or /vsiaz/. Or when the target is /vsiaz/ and the source
+#' is /vsis3/, /vsigs/, /vsiadls/ or /vsicurl/ (starting with GDAL 3.8)
+#'
+#' Similarly to `rsync` behavior, if the source filename ends with a slash, it
+#' means that the content of the directory must be copied, but not the
+#' directory name. For example, assuming "/home/even/foo" contains a file
+#' "bar", `VSISync("/home/even/foo/", "/mnt/media", ...)` will create a
+#' "/mnt/media/bar" file.
+#' Whereas `VSISync("/home/even/foo", "/mnt/media", ...)` will create a
+#' "/mnt/media/foo" directory which contains a bar file.
+#'
+#' The `options` argument accepts a character vector of name=value pairs.
+#' Currently accepted options are:\cr
+#' * `RECURSIVE=NO` (the default is `YES`)
+#' * `SYNC_STRATEGY=TIMESTAMP/ETAG/OVERWRITE`. Determines which criterion is
+#' used to determine if a target file must be replaced when it already exists
+#' and has the same file size as the source. Only applies for a source or
+#' target being a network filesystem.
+#' The default is `TIMESTAMP` (similarly to how 'aws s3 sync' works), that is
+#' to say that for an upload operation, a remote file is replaced if it has a
+#' different size or if it is older than the source. For a download operation,
+#' a local file is replaced if it has a different size or if it is newer than
+#' the remote file.
+#' The `ETAG` strategy assumes that the ETag metadata of the remote file is
+#' the MD5Sum of the file content, which is only true in the case of /vsis3/
+#' for files not using KMS server side encryption and uploaded in a single PUT
+#' operation (so smaller than 50 MB given the default used by GDAL). Only to
+#' be used for /vsis3/, /vsigs/ or other filesystems using a MD5Sum as ETAG.
+#' The `OVERWRITE` strategy (GDAL >= 3.2) will always overwrite the target
+#' file with the source one.\cr
+#' * `NUM_THREADS=integer`. (GDAL >= 3.1) Number of threads to use for parallel
+#' file copying. Only use for when /vsis3/, /vsigs/, /vsiaz/ or /vsiadls/ is
+#' in source or target. The default is 10 since GDAL 3.3.\cr
+#' * `CHUNK_SIZE=integer`. (GDAL >= 3.1) Maximum size of chunk (in bytes) to use
+#' to split large objects when downloading them from /vsis3/, /vsigs/, /vsiaz/
+#' or /vsiadls/ to local file system, or for upload to /vsis3/, /vsiaz/ or
+#' /vsiadls/ from local file system. Only used if `NUM_THREADS > 1`.
+#' For upload to /vsis3/, this chunk size must be set at least to 5 MB. The
+#' default is 8 MB since GDAL 3.3.\cr
+#' * `x-amz-KEY=value`. (GDAL >= 3.5) MIME header to pass during creation of a
+#' /vsis3/ object.\cr
+#' * `x-goog-KEY=value`. (GDAL >= 3.5) MIME header to pass during creation of a
+#' /vsigs/ object.\cr
+#' * `x-ms-KEY=value`. (GDAL >= 3.5) MIME header to pass during creation of a
+#' /vsiaz/ or /vsiadls/ object.
+#'
+#' @param src Character string. Source file or directory.
+#' @param target Character string. Target file or directory.
+#' @param show_progess Logical scalar. If `TRUE`, a progress bar will be
+#' displayed. Defaults to `FALSE`.
+#' @param options Character vector of `NAME=VALUE` pairs (see Details).
+#' @returns Invisibly, `TRUE` on success or `FALSE` on an error.
+#'
+#' @seealso
+#' [copyDatasetFiles()], [vsi_copy_file()]
+#'
+#' @examples
+#' \dontrun{
+#' # sample-data is a directory in the git repository for gdalraster that is
+#' # not included in the R package:
+#' # https://github.com/USDAForestService/gdalraster/tree/main/sample-data
+#' # A copy of sample-data in an AWS S3 bucket, and a partial copy in an
+#' # Azure Blob container, were used to generate the example below.
+#' 
+#' src <- "/vsis3/gdalraster-sample-data/"
+#' # s3://gdalraster-sample-data is not public, set credentials
+#' set_config_option("AWS_ACCESS_KEY_ID", "xxxxxxxxxxxxxx")
+#' set_config_option("AWS_SECRET_ACCESS_KEY", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+#' vsi_read_dir(src)
+#' #> [1] "README.md"
+#' #> [2] "bl_mrbl_ng_jul2004_rgb_720x360.tif"
+#' #> [3] "blue_marble_ng_neo_metadata.xml"
+#' #> [4] "landsat_c2ard_sr_mt_hood_jul2022_utm.json"
+#' #> [5] "landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
+#' #> [6] "lf_elev_220_metadata.html"
+#' #> [7] "lf_elev_220_mt_hood_utm.tif"
+#' #> [8] "lf_fbfm40_220_metadata.html"
+#' #> [9] "lf_fbfm40_220_mt_hood_utm.tif"
+#' 
+#' dst <- "/vsiaz/sampledata"
+#' set_config_option("AZURE_STORAGE_CONNECTION_STRING",
+#'                   "<connection_string_for_gdalraster_account>")
+#' vsi_read_dir(dst)
+#' #> [1] "lf_elev_220_metadata.html"   "lf_elev_220_mt_hood_utm.tif"
+#' 
+#' # GDAL VSISync() supports direct copy for /vsis3/ -> /vsiaz/ (GDAL >= 3.8)
+#' result <- vsi_sync(src, dst, show_progess = TRUE)
+#' #> 0...10...20...30...40...50...60...70...80...90...100 - done.
+#' print(result)
+#' #> [1] TRUE
+#' vsi_read_dir(dst)
+#' #> [1] "README.md"
+#' #> [2] "bl_mrbl_ng_jul2004_rgb_720x360.tif"
+#' #> [3] "blue_marble_ng_neo_metadata.xml"
+#' #> [4] "landsat_c2ard_sr_mt_hood_jul2022_utm.json"
+#' #> [5] "landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
+#' #> [6] "lf_elev_220_metadata.html"
+#' #> [7] "lf_elev_220_mt_hood_utm.tif"
+#' #> [8] "lf_fbfm40_220_metadata.html"
+#' #> [9] "lf_fbfm40_220_mt_hood_utm.tif"
+#' }
+vsi_sync <- function(src, target, show_progess = FALSE, options = NULL) {
+    invisible(.Call(`_gdalraster_vsi_sync`, src, target, show_progess, options))
+}
+
+#' Create a directory
+#'
+#' `vsi_mkdir()` creates a new directory with the indicated mode.
+#' For POSIX-style systems, the mode is modified by the file creation mask
+#' (umask). However, some file systems and platforms may not use umask, or
+#' they may ignore the mode completely. So a reasonable cross-platform
+#' default mode value is 0755.
+#' This function is a wrapper for `VSIMkdir()` in the GDAL
+#' Common Portability Library. Analog of the POSIX `mkdir()` function.
+#'
+#' @param path Character string. The path to the directory to create.
+#' @param mode Integer scalar. The permissions mode.
+#' @returns Invisibly, `0` on success or `-1` on an error.
+#'
+#' @seealso
+#' [vsi_read_dir()], [vsi_rmdir()]
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual file systems
+#' new_dir <- file.path(tempdir(), "newdir")
+#' result <- vsi_mkdir(new_dir)
+#' print(result)
+#' result <- vsi_rmdir(new_dir)
+#' print(result)
+vsi_mkdir <- function(path, mode = 755L) {
+    invisible(.Call(`_gdalraster_vsi_mkdir`, path, mode))
+}
+
+#' Delete a directory
+#'
+#' `vsi_rmdir()` deletes a directory object from the file system. On some
+#' systems the directory must be empty before it can be deleted.
+#' This function goes through the GDAL `VSIFileHandler` virtualization and may
+#' work on unusual filesystems such as in memory.
+#' It is a wrapper for `VSIRmdir()` in the GDAL Common Portability Library.
+#' Analog of the POSIX `rmdir()` function.
+#'
+#' @param path Character string. The path to the directory to be deleted.
+#' @returns Invisibly, `0` on success or `-1` on an error.
+#'
+#' @seealso
+#' [deleteDataset()], [vsi_mkdir()], [vsi_read_dir()], [vsi_unlink()]
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual file systems
+#' new_dir <- file.path(tempdir(), "newdir")
+#' result <- vsi_mkdir(new_dir)
+#' print(result)
+#' result <- vsi_rmdir(new_dir)
+#' print(result)
+vsi_rmdir <- function(path) {
+    invisible(.Call(`_gdalraster_vsi_rmdir`, path))
+}
+
+#' Delete a file
+#'
+#' `vsi_unlink()` deletes a file object from the file system.
+#' This function goes through the GDAL `VSIFileHandler` virtualization and may
+#' work on unusual filesystems such as in memory.
+#' It is a wrapper for `VSIUnlink()` in the GDAL Common Portability Library.
+#' Analog of the POSIX `unlink()` function.
+#'
+#' @param filename Character string. The path of the file to be deleted.
+#' @returns Invisibly, `0` on success or `-1` on an error.
+#'
+#' @seealso
+#' [deleteDataset()], [vsi_rmdir()], [vsi_unlink_batch()]
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual file systems
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#' tmp_file <- paste0(tempdir(), "/", "tmp.tif")
+#' file.copy(elev_file,  tmp_file)
+#' result <- vsi_unlink(tmp_file)
+#' print(result)
+vsi_unlink <- function(filename) {
+    invisible(.Call(`_gdalraster_vsi_unlink`, filename))
+}
+
+#' Delete several files in a batch
+#'
+#' `vsi_unlink_batch()` deletes a list of files passed in a character vector.
+#' All files should belong to the same file system handler.
+#' This is implemented efficiently for /vsis3/ and /vsigs/ (provided for
+#' /vsigs/ that OAuth2 authentication is used).
+#' This function is a wrapper for `VSIUnlinkBatch()` in the GDAL Common
+#' Portability Library. Requires GDAL >= 3.1
+#'
+#' @param filenames Character vector. The list of files to delete.
+#' @returns Invisibly, a logical vector of `length(filenames)` with values
+#' depending on the success of deletion of the corresponding file.
+#'
+#' @seealso
+#' [deleteDataset()], [vsi_rmdir()], [vsi_unlink()]
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual file systems
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#' tcc_file <- system.file("extdata/storml_tcc.tif", package="gdalraster")
+#'
+#' # Requires GDAL >= 3.1
+#' if (as.integer(gdal_version()[2]) >= 3010000) {
+#'   tmp_elev <- paste0(tempdir(), "/", "tmp_elev.tif")
+#'   file.copy(elev_file,  tmp_elev)
+#'   tmp_tcc <- paste0(tempdir(), "/", "tmp_tcc.tif")
+#'   file.copy(tcc_file,  tmp_tcc)
+#'   result <- vsi_unlink_batch(c(tmp_elev, tmp_tcc))
+#'   print(result)
+#' }
+vsi_unlink_batch <- function(filenames) {
+    invisible(.Call(`_gdalraster_vsi_unlink_batch`, filenames))
+}
+
+#' Get filesystem object info
+#'
+#' `vsi_stat()` fetches status information about a filesystem object (file,
+#' directory, etc).
+#' This function goes through the GDAL `VSIFileHandler` virtualization and may
+#' work on unusual filesystems such as in memory.
+#' It is a wrapper for `VSIStatExL()` in the GDAL Common Portability Library.
+#' Analog of the POSIX `stat()` function.
+#'
+#' @param filename Character string. The path of the filesystem object to be
+#' queried.
+#' @param info Character string. The type of information to fetch, one of
+#' `"exists"` (the default), `"type"` or `"size"`.
+#' @returns If `info = "exists"`, returns logical `TRUE` if the file system
+#' object exists, otherwise `FALSE`. If `info = "type"`, returns a character
+#' string with one of `"file"` (regular file), `"dir"` (directory),
+#' `"symlink"` (symbolic link), or empty string (`""`). If `info = "size"`,
+#' returns the file size in bytes, or `-1` if an error occurs.
+#'
+#' @note
+#' For portability, `vsi_stat()` supports a subset of `stat()`-type
+#' information for filesystem objects. This function is primarily intended
+#' for use with GDAL virtual file systems (e.g., URLs, cloud storage systems,
+#' ZIP/GZip/7z/RAR archives, in-memory files).
+#' The base R function `utils::file_test()` could be used instead for file
+#' tests on regular local filesystems.
+#'
+#' @seealso
+#' GDAL Virtual File Systems:\cr
+#' \url{https://gdal.org/user/virtual_file_systems.html}
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual filesystems
+#' data_dir <- system.file("extdata", package="gdalraster")
+#' vsi_stat(data_dir)
+#' vsi_stat(data_dir, "type")
+#' # stat() on a directory doesn't return the sum of the file sizes in it,
+#' # but rather how much space is used by the directory entry
+#' vsi_stat(data_dir, "size")
+#'
+#' elev_file <- file.path(data_dir, "storml_elev.tif")
+#' vsi_stat(elev_file)
+#' vsi_stat(elev_file, "type")
+#' vsi_stat(elev_file, "size")
+#'
+#' nonexistent <- file.path(data_dir, "nonexistent.tif")
+#' vsi_stat(nonexistent)
+#' vsi_stat(nonexistent, "type")
+#' vsi_stat(nonexistent, "size")
+#'
+#' # /vsicurl/ file system handler 
+#' base_url <- "https://raw.githubusercontent.com/usdaforestservice/"
+#' f <- "gdalraster/main/sample-data/landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
+#' url_file <- paste0("/vsicurl/", base_url, f)
+#' 
+#' vsi_stat(url_file)
+#' vsi_stat(url_file, "type")
+#' vsi_stat(url_file, "size")
+vsi_stat <- function(filename, info = "exists") {
+    .Call(`_gdalraster_vsi_stat`, filename, info)
+}
+
+#' Rename a file
+#'
+#' `vsi_rename()` renames a file object in the file system. The GDAL
+#' documentation states it should be possible to rename a file onto a new
+#' filesystem, but it is safest if this function is only used to rename files
+#' that remain in the same directory.
+#' This function goes through the GDAL `VSIFileHandler` virtualization and may
+#' work on unusual filesystems such as in memory.
+#' It is a wrapper for `VSIRename()` in the GDAL Common Portability Library.
+#' Analog of the POSIX `rename()` function.
+#'
+#' @param oldpath Character string. The name of the file to be renamed.
+#' @param newpath Character string. The name the file should be given.
+#' @returns Invisibly, `0` on success or `-1` on an error.
+#'
+#' @seealso
+#' [renameDataset()], [vsi_copy_file()]
+#'
+#' @examples
+#' # for illustration only
+#' # this would normally be used with GDAL virtual file systems
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#' tmp_file <- tempfile(fileext = ".tif")
+#' file.copy(elev_file, tmp_file)
+#' new_file <- file.path(dirname(tmp_file), "storml_elev_copy.tif")
+#' result <- vsi_rename(tmp_file, new_file)
+#' print(result)
+vsi_rename <- function(oldpath, newpath) {
+    invisible(.Call(`_gdalraster_vsi_rename`, oldpath, newpath))
 }
 
 #' @noRd
@@ -1403,8 +1911,17 @@ srs_is_projected <- function(srs) {
 #' the same system. This is a wrapper for `OSRIsSame()` in the GDAL Spatial 
 #' Reference System C API.
 #'
-#' @param srs1 Character OGC WKT string for a spatial reference system
-#' @param srs2 Character OGC WKT string for a spatial reference system
+#' @param srs1 Character string. OGC WKT for a spatial reference system.
+#' @param srs2 Character string. OGC WKT for a spatial reference system.
+#' @param criterion Character string. One of `STRICT`, `EQUIVALENT`,
+#' `EQUIVALENT_EXCEPT_AXIS_ORDER_GEOGCRS`.
+#' Defaults to `EQUIVALENT_EXCEPT_AXIS_ORDER_GEOGCRS`.
+#' @param ignore_axis_mapping Logical scalar. If `TRUE`, sets
+#' `IGNORE_DATA_AXIS_TO_SRS_AXIS_MAPPING=YES` in the call to `OSRIsSameEx()`
+#' in the GDAL Spatial Reference System API. Defaults to `NO`.
+#' @param ignore_coord_epoch Logical scalar. If `TRUE`, sets
+#' `IGNORE_COORDINATE_EPOCH=YES` in the call to `OSRIsSameEx()`
+#' in the GDAL Spatial Reference System API. Defaults to `NO`.
 #' @return Logical. `TRUE` if these two spatial references describe the same 
 #' system, otherwise `FALSE`.
 #'
@@ -1417,8 +1934,8 @@ srs_is_projected <- function(srs) {
 #' srs_is_same(ds$getProjectionRef(), epsg_to_wkt(26912))
 #' srs_is_same(ds$getProjectionRef(), epsg_to_wkt(5070))
 #' ds$close()
-srs_is_same <- function(srs1, srs2) {
-    .Call(`_gdalraster_srs_is_same`, srs1, srs2)
+srs_is_same <- function(srs1, srs2, criterion = "", ignore_axis_mapping = FALSE, ignore_coord_epoch = FALSE) {
+    .Call(`_gdalraster_srs_is_same`, srs1, srs2, criterion, ignore_axis_mapping, ignore_coord_epoch)
 }
 
 #' Get the bounding box of a geometry specified in OGC WKT format

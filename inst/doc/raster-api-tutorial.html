@@ -356,7 +356,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<p><strong>gdalraster</strong> provides bindings to the Raster API of the Geospatial Data Abstraction Library (<a href="https://gdal.org/">GDAL</a>). Using the API natively enables fast and scalable raster I/O from R. This vignette is an R port of the <a href="https://gdal.org/tutorials/raster_api_tut.html">GDAL Raster API tutorial</a> for C++, C and Python, (c) 1998-2023 <a href="https://github.com/warmerdam">Frank Warmerdam</a>, <a href="https://github.com/rouault">Even Rouault</a>, and <a href="https://github.com/OSGeo/gdal/graphs/contributors">others</a> (<a href="https://gdal.org/license.html">MIT license</a>).</p>
+<p><strong>gdalraster</strong> provides bindings to the Raster API of the Geospatial Data Abstraction Library (<a href="https://gdal.org/">GDAL</a>). Using the API natively enables fast and scalable raster I/O from R. This vignette is an R port of the <a href="https://gdal.org/tutorials/raster_api_tut.html">GDAL Raster API tutorial</a> for C++, C and Python, (c) 1998-2024 <a href="https://github.com/warmerdam">Frank Warmerdam</a>, <a href="https://github.com/rouault">Even Rouault</a>, and <a href="https://github.com/OSGeo/gdal/graphs/contributors">others</a> (<a href="https://gdal.org/license.html">MIT license</a>).</p>
 <div id="opening-a-raster-dataset" class="section level2">
 <h2>Opening a raster dataset</h2>
 <p>Before opening a GDAL-supported data store it is necessary to register drivers. There is a driver for each supported raster format. <strong>gdalraster</strong> automatically registers drivers when the package is loaded. A raster dataset is opened by creating a new instance of <code>GDALRaster-class</code> passing the <code>filename</code> and the access desired (<code>read_only = TRUE</code> is the default if not specified, or <code>read_only = FALSE</code> to open with update access):</p>
@@ -367,7 +367,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>An error is returned if the dataset cannot be opened (and creation of the <code>GDALRaster</code> object fails). Also, note that <code>filename</code> may not actually be the name of a physical file (though it usually is). Its interpretation is driver dependent, and it might be a URL, a database connection string, a file name with additional parameters, etc.</p>
 <p><code>GDALRaster</code> is a C++ class exposed directly to R (via <code>RCPP_EXPOSED_CLASS</code>) that encapsulates a GDAL dataset object and its associated raster band objects. Methods of the class are accessed in R using the <code>$</code> operator:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>ds</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a><span class="co">#&gt; C++ object &lt;0x562c7ba6f090&gt; of class &#39;GDALRaster&#39; &lt;0x562c7b4c2460&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a><span class="co">#&gt; C++ object &lt;0x55c8b6f6c980&gt; of class &#39;GDALRaster&#39; &lt;0x55c8b49870a0&gt;</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a><span class="kw">str</span>(ds)</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a><span class="co">#&gt; Reference class &#39;Rcpp_GDALRaster&#39; [package &quot;gdalraster&quot;] with 0 fields</span></span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a><span class="co">#&gt;  list()</span></span>

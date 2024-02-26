@@ -9,6 +9,17 @@ test_that("gdal_formats prints output", {
 	expect_output(gdal_formats())
 })
 
+test_that("_check_gdal_filename works", {
+	elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+	b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+	expect_error(.check_gdal_filename(c(elev_file, b5_file)))
+	vsifn <- paste0("/vsi/", b5_file)
+	expect_equal(vsifn, .check_gdal_filename(vsifn))
+	fn <- "~/_r82jRwnT.test"
+	expect_warning(fn_out <- .check_gdal_filename(fn))
+	expect_equal(basename(fn_out), basename(fn))
+})
+
 test_that("get/set_config_option work", {
 	co <- get_config_option("GDAL_CACHEMAX")
 	set_config_option("GDAL_CACHEMAX", "64")
@@ -18,6 +29,10 @@ test_that("get/set_config_option work", {
 
 test_that("get_cache_used returns integer", {
 	expect_type(get_cache_used(), "integer")
+})
+
+test_that(".get_physical_RAM returns integer", {
+	expect_type(.get_physical_RAM(), "integer")
 })
 
 test_that("createCopy writes correct output", {
@@ -261,5 +276,15 @@ test_that("translate runs without error", {
 	img_file <- paste0(tempdir(), "/", "storml_elev_90m.img")
 	expect_true(translate(elev_file, img_file, args))
 	deleteDataset(img_file)
+})
+
+test_that("footprint runs without error", {
+	skip_if(.gdal_version_num() < 3080000)
+	
+	evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
+	args <- c("-t_srs", "EPSG:4326")
+	out_file <- paste0(tempdir(), "/", "storml.geojson")
+	expect_true(footprint(evt_file, out_file, args))
+	deleteDataset(out_file)
 })
 

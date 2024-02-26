@@ -21,8 +21,6 @@
 void _gdal_init(DllInfo *dll) {
     GDALAllRegister();
     CPLSetConfigOption("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", "YES");
-    CPLSetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY",
-    		"TRADITIONAL_GIS_ORDER");
 }
 
 // Internal lookup of GDALColorInterp by string descriptor
@@ -76,47 +74,73 @@ std::string _getGFU_string(GDALRATFieldUsage gfu) {
 }
 
 
-GDALRaster::GDALRaster() : 
-				fname(""),
-				hDataset(NULL),
-				eAccess(GA_ReadOnly) {}
+GDALRaster::GDALRaster() :
+			fname_in(""),
+			open_options_in(Rcpp::CharacterVector::create()),
+			hDataset(NULL),
+			eAccess(GA_ReadOnly) {}
 
-GDALRaster::GDALRaster(std::string filename) : 
-				GDALRaster(filename, true) {}
+GDALRaster::GDALRaster(Rcpp::CharacterVector filename) :
+			GDALRaster(
+				filename,
+				true,
+				Rcpp::CharacterVector::create()) {}
 
-GDALRaster::GDALRaster(std::string filename, bool read_only) : 
-				fname(filename),
+GDALRaster::GDALRaster(Rcpp::CharacterVector filename, bool read_only) :
+			GDALRaster(
+				filename,
+				read_only,
+				Rcpp::CharacterVector::create()) {}
+
+GDALRaster::GDALRaster(Rcpp::CharacterVector filename, bool read_only,
+		Rcpp::CharacterVector open_options) :
+				open_options_in(open_options),
 				hDataset(NULL),
 				eAccess(GA_ReadOnly) {
-						
-	if (!read_only)
-		eAccess = GA_Update;
-	hDataset = GDALOpenShared(fname.c_str(), eAccess);
-	if (hDataset == NULL)
-		Rcpp::stop("Open raster failed.");
-	
+
+	fname_in = Rcpp::as<std::string>(_check_gdal_filename(filename));
+	open(read_only);
 	// warn for now if 64-bit integer
 	if (_hasInt64())
 		_warnInt64();
 }
 
 std::string GDALRaster::getFilename() const {
-	return fname;
+	return fname_in;
 }
 
 void GDALRaster::open(bool read_only) {
-	if (fname == "")
+	if (fname_in == "")
 		Rcpp::stop("Filename is not set.");
 	
-	GDALClose(hDataset);
-	hDataset = NULL;
+	if (hDataset != NULL) {
+		GDALClose(hDataset);
+		hDataset = NULL;
+	}
+	
 	if (read_only)
 		eAccess = GA_ReadOnly;
 	else
 		eAccess = GA_Update;
-	hDataset = GDALOpenShared(fname.c_str(), eAccess);
-	if (hDataset == NULL)
+	
+	std::vector<char *> dsoo(open_options_in.size() + 1);
+	if (open_options_in.size() > 0) {
+		for (R_xlen_t i = 0; i < open_options_in.size(); ++i) {
+			dsoo[i] = (char *) (open_options_in[i]);
+		}
+	}
+	dsoo.push_back(NULL);
+
+	unsigned int nOpenFlags = GDAL_OF_RASTER | GDAL_OF_SHARED;
+	if (read_only)
+		nOpenFlags |= GDAL_OF_READONLY;
+	else
+		nOpenFlags |= GDAL_OF_UPDATE;
+
+	hDataset = GDALOpenEx(fname_in.c_str(), nOpenFlags, NULL, dsoo.data(), NULL);
+	if (hDataset == NULL) {
 		Rcpp::stop("Open raster failed.");
+	}
 }
 
 bool GDALRaster::isOpen() const {
@@ -1347,10 +1371,12 @@ RCPP_MODULE(mod_GDALRaster) {
 
     .constructor
     	("Default constructor, no dataset opened.")
-    .constructor<std::string>
+    .constructor<Rcpp::CharacterVector>
     	("Usage: new(GDALRaster, filename)")
-    .constructor<std::string, bool>
-    	("Usage: new(GDALRaster, filename, read_only=FALSE)")
+    .constructor<Rcpp::CharacterVector, bool>
+    	("Usage: new(GDALRaster, filename, read_only=[TRUE|FALSE])")
+    .constructor<Rcpp::CharacterVector, bool, Rcpp::CharacterVector>
+    	("Usage: new(GDALRaster, filename, read_only, open_options)")
     
     // exposed member functions
     .const_method("getFilename", &GDALRaster::getFilename, 

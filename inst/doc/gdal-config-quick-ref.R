@@ -81,6 +81,13 @@ set_config_option("AWS_REQUEST_PAYER", "<value>") # requester
 set_config_option("AWS_REGION", "us-west-2")
 
 ## -----------------------------------------------------------------------------
+# public access
+set_config_option("AZURE_NO_SIGN_REQUEST", "YES")
+
+## -----------------------------------------------------------------------------
+set_config_option("AZURE_STORAGE_CONNECTION_STRING", "<my_connection_string>")
+
+## -----------------------------------------------------------------------------
 # SOZip optimization defaults to AUTO
 set_config_option("CPL_SOZIP_ENABLED", "YES")
 

@@ -19,11 +19,11 @@ test_that("infoAsJSON() returns string output", {
 
 test_that("dataset parameters are correct", {
 	lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
-	ds <- new(GDALRaster, lcp_file, TRUE)
+	ds <- new(GDALRaster, lcp_file)
 	expect_length(ds$getFileList(), 2)
 	ds$close()
 	evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
-	ds <- new(GDALRaster, evt_file, TRUE)
+	ds <- new(GDALRaster, evt_file)
 	expect_equal(ds$getDriverShortName(), "GTiff")
 	expect_equal(ds$getDriverLongName(), "GeoTIFF")
 	expect_equal(ds$getRasterXSize(), 143)
@@ -34,6 +34,21 @@ test_that("dataset parameters are correct", {
 	expect_equal(ds$res(), c(30,30))
 	expect_equal(ds$dim(), c(143,107,1))
 	ds$close()
+
+	# using dataset open options
+	elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+	oo <- "NUM_THREADS=2"
+	ds_oo <- new(GDALRaster, elev_file, TRUE, oo)
+	expect_equal(ds_oo$getDriverShortName(), "GTiff")
+	expect_equal(ds_oo$getDriverLongName(), "GeoTIFF")
+	expect_equal(ds_oo$getRasterXSize(), 143)
+	expect_equal(ds_oo$getRasterYSize(), 107)
+	expect_equal(ds_oo$getGeoTransform(),
+					c(323476.1,30.0,0.0,5105082.0,0.0,-30.0))
+	expect_equal(ds_oo$bbox(), c(323476.1,5101872.0,327766.1,5105082.0))
+	expect_equal(ds_oo$res(), c(30,30))
+	expect_equal(ds_oo$dim(), c(143,107,1))
+	ds_oo$close()
 })
 
 test_that("band-level parameters are correct", {
@@ -87,7 +102,7 @@ test_that("open/close/re-open works", {
 	expect_true(all(is.na(read_ds(ds))))
 	ds$close()
 	expect_false(ds$isOpen())
-	expect_equal(ds$getFilename(), mod_file)
+	expect_equal(ds$getFilename(), .check_gdal_filename(mod_file))
 	ds$open(read_only=FALSE)
 	expect_true(ds$isOpen())
 	ds$setDescription(band=1, "test")
@@ -153,7 +168,9 @@ test_that("floating point I/O works", {
 	z <- runif(10*10)
 	ds$write(band=1, xoff=0, yoff=0, xsize=10, ysize=10, z)
 	ds$open(read_only=TRUE)
-	expect_equal(round(read_ds(ds),5), round(z,5))
+	r <- read_ds(ds)
+	attributes(r) <- NULL
+	expect_equal(round(r,5), round(z,5))
 	ds$open(read_only=FALSE)
 	ds$setNoDataValue(band=1, -99999)
 	ds$write(band=1, xoff=0, yoff=0, xsize=10, ysize=10, rep(-99999, 100))
@@ -162,7 +179,9 @@ test_that("floating point I/O works", {
 	ds$open(read_only=FALSE)
 	ds$deleteNoDataValue(band=1)
 	ds$open(read_only=TRUE)
-	expect_equal(read_ds(ds), rep(-99999, 100))
+	r <- read_ds(ds)
+	attributes(r) <- NULL
+	expect_equal(r, rep(-99999, 100))
 	files <- ds$getFileList()
 	on.exit(unlink(files))
 	ds$close()
@@ -177,7 +196,9 @@ test_that("complex I/O works", {
 	z <- complex(real = stats::rnorm(100), imaginary = stats::rnorm(100))
 	ds$write(band=1, xoff=0, yoff=0, xsize=10, ysize=10, z)
 	ds$open(read_only=TRUE)
-	expect_vector(read_ds(ds), ptype=complex(0), size=100)
+	r <- read_ds(ds)
+	attributes(r) <- NULL
+	expect_vector(r, ptype=complex(0), size=100)
 	files <- ds$getFileList()
 	on.exit(unlink(files))
 	ds$close()
