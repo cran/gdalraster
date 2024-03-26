@@ -160,6 +160,7 @@ ds <- new(GDALRaster, vrt_file)
 ds$res()
 ds$bbox()
 ds$close()
+vsi_unlink(vrt_file)
 
 
 ## clip
@@ -169,8 +170,8 @@ ds_evt <- new(GDALRaster, evt_file)
 ds_evt$bbox()
 
 # WKT string for a boundary within the EVT extent
-bnd = "POLYGON ((324467.3 5104814.2, 323909.4 5104365.4, 323794.2 
-5103455.8, 324970.7 5102885.8, 326420.0 5103595.3, 326389.6 5104747.5, 
+bnd = "POLYGON ((324467.3 5104814.2, 323909.4 5104365.4, 323794.2
+5103455.8, 324970.7 5102885.8, 326420.0 5103595.3, 326389.6 5104747.5,
 325298.1 5104929.4, 325298.1 5104929.4, 324467.3 5104814.2))"
 
 # src_align = TRUE
@@ -184,6 +185,9 @@ bbox_from_wkt(bnd)
 ds_vrt$bbox()
 ds_vrt$res()
 
+ds_vrt$close()
+vsi_unlink(vrt_file)
+
 # src_align = FALSE
 vrt_file <- rasterToVRT(evt_file,
                         subwindow = bbox_from_wkt(bnd),
@@ -194,8 +198,8 @@ ds_vrt_noalign <- new(GDALRaster, vrt_file)
 ds_vrt_noalign$bbox()
 ds_vrt_noalign$res()
 
-ds_vrt$close()
 ds_vrt_noalign$close()
+vsi_unlink(vrt_file)
 ds_evt$close()
 
 
@@ -225,8 +229,8 @@ ds_b5vrt <- new(GDALRaster, vrt_file)
 ds_b5vrt$bbox() # 323476.1 5101872.0  327766.1 5105082.0
 ds_b5vrt$res()  # 30 30
 
-# read the the Landsat file pixel-aligned with the LCP file 
-# summarize band 5 reflectance where FBFM = 165 
+# read the the Landsat file pixel-aligned with the LCP file
+# summarize band 5 reflectance where FBFM = 165
 # LCP band 4 contains FBFM (a classification of fuel beds):
 ds_lcp$getMetadata(band=4, domain="")
 
@@ -255,6 +259,7 @@ rs$get_var()
 rs$get_sd()
 
 ds_b5vrt$close()
+vsi_unlink(vrt_file)
 ds_lcp$close()
 ds_b5$close()
 }

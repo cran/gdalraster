@@ -1,3 +1,48 @@
+# gdalraster 1.10.0
+
+## System requirements
+
+* GDAL built against GEOS is now required
+
+## GDAL VSI for operations on virtual file systems
+
+* add `vsi_get_fs_prefixes()`: get the list of prefixes for virtual file system handlers currently registered
+* add `vsi_get_fs_options()`: get the list of options associated with a virtual file system handler (for setting with `set_config_option()`)
+* add `vsi_supports_rnd_write()` and `vsi_supports_seq_write()`: test whether the filesystem supports random write or sequential write, conditional on whether a local temp file is allowed before uploading to the target location
+* add `vsi_get_disk_free_space()`: return the free disk space available on the filesystem
+* fixed misspelled argument in `vsi_copy_file()` and `vsi_sync()` (#233)
+
+## Other stand-alone functions
+
+* add `ogrinfo()`: wrapper of the `ogrinfo` command-line utility, retrieve information about a vector data source and potentially edit data with SQL statements (GDAL >= 3.7)
+* add `ogr2ogr()`: wrapper of the `ogr2ogr` command-line utility, convert vector data between different formats
+* add `g_transform()`: apply a coordinate transformation to a WKT geometry
+* add `geos_version()`: get version information for the GEOS library in use by GDAL
+* add `push_error_handler()`: wrapper for `CPLPushErrorHandler()` in the GDAL Common Portability Library
+* add `pop_error_handler()`: wrapper for `CPLPopErrorHandler()` in the GDAL Common Portability Library
+* `calc()`: the argument `usePixelLonLat` is deprecated as unnecessary, variables `pixelLon` / `pixelLat` are now auto-detected if used in the calc expression; small performance improvement from computing `pixelY` only when needed
+* add optional argument `quiet` in several functions to configure progress reporting (#237)
+* make the dataset management functions quieter (#282)
+* `gdal_formats()` now returns a data frame with the supported raster and vector formats, and information about the capabilities of each format driver
+
+## CmbTable-class
+
+* `new()`: assign default variable names in the constructor if names are not given
+
+## Internal
+
+* `src/geos_wkt.cpp`, `src/transform.cpp`, `src/wkt_conv.cpp`: deallocate some OGR geometry and OSR spatial ref objects to fix memory leaks
+* add more unit tests for geometry operations using GEOS via GDAL headers
+* `GDALRaster::getMetadataDomainList()`: deallocate the returned string list to avoid memory leak
+* `GDALRaster::close()`: clear cache if needed, and check the return values of `GDALClose()` and `GDALFlushCache()` if GDAL >= 3.7
+* `configure.ac`: add back `proj-include` and `proj-lib`, the latter needed in some cases for source install on macOS; rework for the system requirement of GDAL built against GEOS
+* remove internal `has_geos()` checks and update the documentation, since GDAL with GEOS is now required
+* add `.editorconfig` file and bulk reformat code style
+* fix up R code for `lintr` and add `.lintr` file
+* mass replace `NULL` -> `nullptr` in C++ code
+* format diagnostic messages throughout for consistency and follow guidelines given in "Writing R Extensions"
+* clean up temp files in the examples throughout
+
 # gdalraster 1.9.0
 
 ## Behavior change

@@ -4,7 +4,7 @@
 \alias{buildVRT}
 \title{Build a GDAL virtual raster from a list of datasets}
 \usage{
-buildVRT(vrt_filename, input_rasters, cl_arg = NULL)
+buildVRT(vrt_filename, input_rasters, cl_arg = NULL, quiet = FALSE)
 }
 \arguments{
 \item{vrt_filename}{Character string. Filename of the output VRT.}
@@ -13,6 +13,9 @@ buildVRT(vrt_filename, input_rasters, cl_arg = NULL)
 
 \item{cl_arg}{Optional character vector of command-line arguments to
 \code{gdalbuildvrt}.}
+
+\item{quiet}{Logical scalar. If \code{TRUE}, a progress bar will not be
+displayed. Defaults to \code{FALSE}.}
 }
 \value{
 Logical indicating success (invisible \code{TRUE}).
@@ -55,6 +58,8 @@ ds <- new(GDALRaster, vrt_file)
 ds$getRasterCount()
 plot_raster(ds, nbands=3, main="Landsat 6-5-4 (vegetative analysis)")
 ds$close()
+
+vsi_unlink(vrt_file)
 }
 \seealso{
 \code{\link[=rasterToVRT]{rasterToVRT()}}

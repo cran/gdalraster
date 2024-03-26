@@ -16,7 +16,8 @@ polygonize(
   nomask = FALSE,
   overwrite = FALSE,
   dsco = NULL,
-  lco = NULL
+  lco = NULL,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -62,6 +63,9 @@ for \code{out_dsn} (\code{"NAME=VALUE"} pairs).}
 
 \item{lco}{Optional character vector of format-specific creation options
 for \code{out_layer} (\code{"NAME=VALUE"} pairs).}
+
+\item{quiet}{Logical scalar. If \code{TRUE}, a progress bar will not be
+displayed. Defaults to \code{FALSE}.}
 }
 \description{
 \code{polygonize()} creates vector polygons for all connected regions of pixels
@@ -115,7 +119,7 @@ increase performance substantially. If writing to \code{PostgreSQL}
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{# SQLite: GPKG (.gpkg) and Spatialite (.sqlite)
 # enable extra buffering/caching by the GDAL/OGR I/O layer
-set_config_option("SQLITE_USE_OGR_VFS", "YES")\}
+set_config_option("SQLITE_USE_OGR_VFS", "YES")
 # set the journal mode for the SQLite database to MEMORY
 set_config_option("OGR_SQLITE_JOURNAL", "MEMORY")
 
@@ -134,6 +138,7 @@ set_config_option("OGR_SQLITE_JOURNAL", "MEMORY")
 polygonize(evt_file, dsn, layer, fld)
 set_config_option("SQLITE_USE_OGR_VFS", "")
 set_config_option("OGR_SQLITE_JOURNAL", "")
+deleteDataset(dsn)
 }
 \seealso{
 \code{\link[=rasterize]{rasterize()}}

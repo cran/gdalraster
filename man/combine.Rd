@@ -11,7 +11,8 @@ combine(
   dstfile = NULL,
   fmt = NULL,
   dtName = "UInt32",
-  options = NULL
+  options = NULL,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -41,6 +42,9 @@ combinations of the input values
 vector of "NAME=VALUE" pairs
 (e.g., \code{options = c("COMPRESS=LZW")} to set LZW compression
 during creation of a GTiff file).}
+
+\item{quiet}{Logical scalar. If \code{TRUE}, progress bar and messages will be
+suppressed. Defaults to \code{FALSE}.}
 }
 \value{
 A data frame with column \code{cmbid} containing the combination IDs,
@@ -88,7 +92,7 @@ nrow(tbl)
 tbl <- tbl[order(-tbl$count),]
 head(tbl, n = 20)
 
-# combine two bands from a multi-band file and write the combination IDs 
+# combine two bands from a multi-band file and write the combination IDs
 # to an output raster
 lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 rasterfiles <- c(lcp_file, lcp_file)
@@ -101,6 +105,7 @@ head(tbl)
 ds <- new(GDALRaster, cmb_file)
 ds$info()
 ds$close()
+deleteDataset(cmb_file)
 }
 \seealso{
 \code{\link[=CmbTable]{CmbTable-class}}, \code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=calc]{calc()}},

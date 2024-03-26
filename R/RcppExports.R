@@ -6,9 +6,9 @@
 #' `gdal_version()` returns runtime version information.
 #'
 #' @returns Character vector of length four containing:
-#'   * "–version" - one line version message, e.g., “GDAL 3.6.3, released 
+#'   * "–version" - one line version message, e.g., “GDAL 3.6.3, released
 #'   2023/03/12”
-#'   * "GDAL_VERSION_NUM" - formatted as a string, e.g., “3060300” for 
+#'   * "GDAL_VERSION_NUM" - formatted as a string, e.g., “3060300” for
 #'   GDAL 3.6.3.0
 #'   * "GDAL_RELEASE_DATE" - formatted as a string, e.g., “20230312”
 #'   * "GDAL_RELEASE_NAME" - e.g., “3.6.3”
@@ -23,30 +23,44 @@ gdal_version <- function() {
     .Call(`_gdalraster__gdal_version_num`)
 }
 
-#' Report all configured GDAL drivers for raster formats
+#' Retrieve information on GDAL format drivers for raster and vector
 #'
-#' `gdal_formats()` prints to the console a list of the supported raster
-#' formats.
+#' `gdal_formats()` returns a table of the supported raster and vector
+#' formats, with information about the capabilities of each format driver.
 #'
-#' @returns No return value, called for reporting only.
+#' @param format A character string containing a driver short name. By default,
+#' information for all configured raster and vector format drivers will be
+#' returned.
+#' @returns A data frame containing the format short name, long name, raster
+#' (logical), vector (logical), read/write flag (`ro` is read-only,
+#' `w` supports CreateCopy, `w+` supports Create), virtual I/O supported
+#' (logical), and subdatasets (logical).
+#'
+#' @note
+#' Virtual I/O refers to operations on GDAL Virtual File Systems. See
+#' \url{https://gdal.org/user/virtual_file_systems.html#virtual-file-systems}.
+#'
 #' @examples
-#' gdal_formats()
-gdal_formats <- function() {
-    invisible(.Call(`_gdalraster_gdal_formats`))
+#' nrow(gdal_formats())
+#' head(gdal_formats())
+#'
+#' gdal_formats("GPKG")
+gdal_formats <- function(format = "") {
+    .Call(`_gdalraster_gdal_formats`, format)
 }
 
 #' Get GDAL configuration option
 #'
 #' `get_config_option()` gets the value of GDAL runtime configuration option.
 #' Configuration options are essentially global variables the user can set.
-#' They are used to alter the default behavior of certain raster format 
-#' drivers, and in some cases the GDAL core. For a full description and 
-#' listing of available options see 
+#' They are used to alter the default behavior of certain raster format
+#' drivers, and in some cases the GDAL core. For a full description and
+#' listing of available options see
 #' \url{https://gdal.org/user/configoptions.html}.
 #'
 #' @param key Character name of a configuration option.
-#' @returns Character. The value of a (key, value) option previously set with 
-#' `set_config_option()`. An empty string (`""`) is returned if `key` is not 
+#' @returns Character. The value of a (key, value) option previously set with
+#' `set_config_option()`. An empty string (`""`) is returned if `key` is not
 #' found.
 #'
 #' @seealso
@@ -63,16 +77,16 @@ get_config_option <- function(key) {
 
 #' Set GDAL configuration option
 #'
-#' `set_config_option()` sets a GDAL runtime configuration option. 
+#' `set_config_option()` sets a GDAL runtime configuration option.
 #' Configuration options are essentially global variables the user can set.
-#' They are used to alter the default behavior of certain raster format 
-#' drivers, and in some cases the GDAL core. For a full description and 
-#' listing of available options see 
+#' They are used to alter the default behavior of certain raster format
+#' drivers, and in some cases the GDAL core. For a full description and
+#' listing of available options see
 #' \url{https://gdal.org/user/configoptions.html}.
 #'
 #' @param key Character name of a configuration option.
-#' @param value Character value to set for the option. 
-#' `value = ""` (empty string) will unset a value previously set by 
+#' @param value Character value to set for the option.
+#' `value = ""` (empty string) will unset a value previously set by
 #' `set_config_option()`.
 #' @returns No return value, called for side effects.
 #'
@@ -107,6 +121,61 @@ get_cache_used <- function() {
     .Call(`_gdalraster_get_cache_used`)
 }
 
+#' Push a new GDAL CPLError handler
+#'
+#' `push_error_handler()` is a wrapper for
+#' `CPLPushErrorHandler()` in the GDAL Common Portability
+#' Library.
+#' This pushes a new error handler on the thread-local error handler stack.
+#' This handler will be used until removed with `pop_error_handler()`.
+#' A typical use is to temporarily set `CPLQuietErrorHandler()` which doesn't
+#' make any attempt to report passed error or warning messages, but will
+#' process debug messages via `CPLDefaultErrorHandler`.
+#'
+#' @param handler Character name of the error handler to push.
+#' One of `quiet`, `logging` or `default`.
+#' @returns No return value, called for side effects.
+#'
+#' @note
+#' Setting `handler = "logging"` will use `CPLLoggingErrorHandler()`, error
+#' handler that logs into the file defined by the `CPL_LOG` configuration
+#' option, or `stderr` otherwise.
+#'
+#' This only affects error reporting from GDAL.
+#'
+#' @seealso
+#' [pop_error_handler()]
+#'
+#' @examples
+#' push_error_handler("quiet")
+#' # ...
+#' pop_error_handler()
+push_error_handler <- function(handler) {
+    invisible(.Call(`_gdalraster_push_error_handler`, handler))
+}
+
+#' Pop error handler off stack
+#'
+#' `pop_error_handler()` is a wrapper for `CPLPopErrorHandler()` in the GDAL
+#' Common Portability Library.
+#' Discards the current error handler on the error handler stack, and restores
+#' the one in use before the last `push_error_handler()` call. This method has
+#' no effect if there are no error handlers on the current thread's error
+#' handler stack.
+#'
+#' @returns No return value, called for side effects.
+#'
+#' @seealso
+#' [push_error_handler()]
+#'
+#' @examples
+#' push_error_handler("quiet")
+#' # ...
+#' pop_error_handler()
+pop_error_handler <- function() {
+    invisible(.Call(`_gdalraster_pop_error_handler`))
+}
+
 #' Check a filename before passing to GDAL and potentially fix.
 #' filename may be a physical file, URL, connection string, file name with
 #' additional parameters, etc. Returned in UTF-8 encoding.
@@ -135,10 +204,10 @@ get_cache_used <- function() {
 #' @param dataType Character data type name.
 #' (e.g., common data types include Byte, Int16, UInt16, Int32, Float32).
 #' @param options Optional list of format-specific creation options in a
-#' vector of `"NAME=VALUE"` pairs 
-#' (e.g., \code{options = c("COMPRESS=LZW")} to set LZW 
+#' vector of `"NAME=VALUE"` pairs
+#' (e.g., \code{options = c("COMPRESS=LZW")} to set LZW
 #' compression during creation of a GTiff file).
-#' The APPEND_SUBDATASET=YES option can be 
+#' The APPEND_SUBDATASET=YES option can be
 #' specified to avoid prior destruction of existing dataset.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
@@ -159,6 +228,8 @@ get_cache_used <- function() {
 #' ## ...
 #' ## close the dataset when done
 #' ds$close()
+#'
+#' deleteDataset(new_file)
 create <- function(format, dst_filename, xsize, ysize, nbands, dataType, options = NULL) {
     invisible(.Call(`_gdalraster_create`, format, dst_filename, xsize, ysize, nbands, dataType, options))
 }
@@ -166,22 +237,24 @@ create <- function(format, dst_filename, xsize, ysize, nbands, dataType, options
 #' Create a copy of a raster
 #'
 #' `createCopy()` copies a raster dataset, optionally changing the format.
-#' The extent, cell size, number of bands, data type, projection, and 
+#' The extent, cell size, number of bands, data type, projection, and
 #' geotransform are all copied from the source raster.
 #'
-#' @param format Format short name for the output raster 
+#' @param format Format short name for the output raster
 #' (e.g., "GTiff" or "HFA").
 #' @param dst_filename Filename to create.
 #' @param src_filename Filename of source raster.
-#' @param strict Logical. TRUE if the copy must be strictly equivalent, 
-#' or more normally FALSE indicating that the copy may adapt as needed for  
+#' @param strict Logical. TRUE if the copy must be strictly equivalent,
+#' or more normally FALSE indicating that the copy may adapt as needed for
 #' the output format.
 #' @param options Optional list of format-specific creation options in a
-#' vector of `"NAME=VALUE"` pairs 
+#' vector of `"NAME=VALUE"` pairs
 #' (e.g., \code{options = c("COMPRESS=LZW")} to set \code{LZW}
 #' compression during creation of a GTiff file).
-#' The APPEND_SUBDATASET=YES option can be 
+#' The APPEND_SUBDATASET=YES option can be
 #' specified to avoid prior destruction of existing dataset.
+#' @param quiet Logical scalar. If `TRUE`, a progress bar will be not be
+#' displayed. Defaults to `FALSE`.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #' @seealso
@@ -201,23 +274,25 @@ create <- function(format, dst_filename, xsize, ysize, nbands, dataType, options
 #'     ds$setNoDataValue(band, -9999)
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-createCopy <- function(format, dst_filename, src_filename, strict = FALSE, options = NULL) {
-    invisible(.Call(`_gdalraster_createCopy`, format, dst_filename, src_filename, strict, options))
+#'
+#' deleteDataset(tif_file)
+createCopy <- function(format, dst_filename, src_filename, strict = FALSE, options = NULL, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_createCopy`, format, dst_filename, src_filename, strict, options, quiet))
 }
 
 #' Apply geotransform
 #'
-#' `_apply_geotransform()` applies geotransform coefficients to a raster 
-#' coordinate in pixel/line space (colum/row), converting into a 
+#' `_apply_geotransform()` applies geotransform coefficients to a raster
+#' coordinate in pixel/line space (colum/row), converting into a
 #' georeferenced (x, y) coordinate.
 #'
-#' @param gt Numeric vector of length six containing the geotransform to 
+#' @param gt Numeric vector of length six containing the geotransform to
 #' apply.
 #' @param pixel Numeric scalar. A raster pixel (column) coordinate.
 #' @param line Numeric scalar. A raster line (row) coordinate.
-#' @returns Numeric vector of length two containing a geospatial x/y 
+#' @returns Numeric vector of length two containing a geospatial x/y
 #' coordinate (spatial reference system of `gt`).
-#' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [get_pixel_line()], 
+#' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [get_pixel_line()],
 #' [inv_geotransform()]
 #' @noRd
 .apply_geotransform <- function(gt, pixel, line) {
@@ -226,15 +301,15 @@ createCopy <- function(format, dst_filename, src_filename, strict = FALSE, optio
 
 #' Invert geotransform
 #'
-#' `inv_geotransform()` inverts a vector of geotransform coefficients. This 
+#' `inv_geotransform()` inverts a vector of geotransform coefficients. This
 #' converts the equation from being:\cr
 #' raster pixel/line (column/row) -> geospatial x/y coordinate\cr
 #' to:\cr
 #' geospatial x/y coordinate -> raster pixel/line (column/row)
 #'
-#' @param gt Numeric vector of length six containing the geotransform to 
+#' @param gt Numeric vector of length six containing the geotransform to
 #' invert.
-#' @returns Numeric vector of length six containing the inverted 
+#' @returns Numeric vector of length six containing the inverted
 #' geotransform. The output vector will contain NAs if the input geotransform
 #' is uninvertable.
 #' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [get_pixel_line()]
@@ -244,21 +319,21 @@ createCopy <- function(format, dst_filename, src_filename, strict = FALSE, optio
 #' gt <- ds$getGeoTransform()
 #' ds$close()
 #' invgt <- inv_geotransform(gt)
-#' 
+#'
 #' ptX = 324181.7
 #' ptY = 5103901.4
-#' 
+#'
 #' ## for a point x, y in the spatial reference system of elev_file
 #' ## raster pixel (column number):
 #' pixel <- floor(invgt[1] +
 #'                invgt[2] * ptX +
 #'                invgt[3] * ptY)
-#' 
+#'
 #' ## raster line (row number):
 #' line <- floor(invgt[4] +
 #'               invgt[5] * ptX +
 #'               invgt[6] * ptY)
-#' 
+#'
 #' ## get_pixel_line() applies this conversion
 inv_geotransform <- function(gt) {
     .Call(`_gdalraster_inv_geotransform`, gt)
@@ -266,14 +341,14 @@ inv_geotransform <- function(gt) {
 
 #' Raster pixel/line from geospatial x,y coordinates
 #'
-#' `get_pixel_line()` converts geospatial coordinates to pixel/line (raster 
+#' `get_pixel_line()` converts geospatial coordinates to pixel/line (raster
 #' column, row numbers).
 #' The upper left corner pixel is the raster origin (0,0) with column, row
 #' increasing left to right, top to bottom.
 #'
 #' @param xy Numeric array of geospatial x,y coordinates in the same
-#' spatial reference system as \code{gt}. 
-#' @param gt Numeric vector of length six. The affine geotransform for the 
+#' spatial reference system as \code{gt}.
+#' @param gt Numeric vector of length six. The affine geotransform for the
 #' raster.
 #' @returns Integer array of raster pixel/line.
 #'
@@ -321,8 +396,10 @@ get_pixel_line <- function(xy, gt) {
 #'
 #' @param vrt_filename Character string. Filename of the output VRT.
 #' @param input_rasters Character vector of input raster filenames.
-#' @param cl_arg Optional character vector of command-line arguments to 
+#' @param cl_arg Optional character vector of command-line arguments to
 #' \code{gdalbuildvrt}.
+#' @param quiet Logical scalar. If `TRUE`, a progress bar will not be
+#' displayed. Defaults to `FALSE`.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #'
@@ -341,51 +418,53 @@ get_pixel_line <- function(xy, gt) {
 #' ds$getRasterCount()
 #' plot_raster(ds, nbands=3, main="Landsat 6-5-4 (vegetative analysis)")
 #' ds$close()
-buildVRT <- function(vrt_filename, input_rasters, cl_arg = NULL) {
-    invisible(.Call(`_gdalraster_buildVRT`, vrt_filename, input_rasters, cl_arg))
+#'
+#' vsi_unlink(vrt_file)
+buildVRT <- function(vrt_filename, input_rasters, cl_arg = NULL, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_buildVRT`, vrt_filename, input_rasters, cl_arg, quiet))
 }
 
 #' Raster overlay for unique combinations
-#' 
+#'
 #' @description
-#' `combine()` overlays multiple rasters so that a unique ID is assigned to 
-#' each unique combination of input values. The input raster layers  
-#' typically have integer data types (floating point will be coerced to 
-#' integer by truncation), and must have the same projection, extent and cell 
-#' size. Pixel counts for each unique combination are obtained, and 
+#' `combine()` overlays multiple rasters so that a unique ID is assigned to
+#' each unique combination of input values. The input raster layers
+#' typically have integer data types (floating point will be coerced to
+#' integer by truncation), and must have the same projection, extent and cell
+#' size. Pixel counts for each unique combination are obtained, and
 #' combination IDs are optionally written to an output raster.
 #'
 #' Called from and documented in R/gdalraster_proc.R
 #' @noRd
-.combine <- function(src_files, var_names, bands, dst_filename = "", fmt = "", dataType = "UInt32", options = NULL) {
-    .Call(`_gdalraster__combine`, src_files, var_names, bands, dst_filename, fmt, dataType, options)
+.combine <- function(src_files, var_names, bands, dst_filename = "", fmt = "", dataType = "UInt32", options = NULL, quiet = FALSE) {
+    .Call(`_gdalraster__combine`, src_files, var_names, bands, dst_filename, fmt, dataType, options, quiet)
 }
 
 #' Compute for a raster band the set of unique pixel values and their counts
-#' 
+#'
 #' @noRd
-.value_count <- function(src_filename, band = 1L) {
-    .Call(`_gdalraster__value_count`, src_filename, band)
+.value_count <- function(src_filename, band = 1L, quiet = FALSE) {
+    .Call(`_gdalraster__value_count`, src_filename, band, quiet)
 }
 
 #' Wrapper for GDALDEMProcessing in the GDAL Algorithms C API
 #'
 #' Called from and documented in R/gdalraster_proc.R
 #' @noRd
-.dem_proc <- function(mode, src_filename, dst_filename, cl_arg = NULL, col_file = NULL) {
-    .Call(`_gdalraster__dem_proc`, mode, src_filename, dst_filename, cl_arg, col_file)
+.dem_proc <- function(mode, src_filename, dst_filename, cl_arg = NULL, col_file = NULL, quiet = FALSE) {
+    .Call(`_gdalraster__dem_proc`, mode, src_filename, dst_filename, cl_arg, col_file, quiet)
 }
 
 #' Fill selected pixels by interpolation from surrounding areas
 #'
 #' `fillNodata()` is a wrapper for `GDALFillNodata()` in the GDAL Algorithms
-#' API. This algorithm will interpolate values for all designated nodata 
+#' API. This algorithm will interpolate values for all designated nodata
 #' pixels (pixels having an intrinsic nodata value, or marked by zero-valued
-#' pixels in the optional raster specified in `mask_file`). For each nodata 
+#' pixels in the optional raster specified in `mask_file`). For each nodata
 #' pixel, a four direction conic search is done to find values to interpolate
 #' from (using inverse distance weighting).
 #' Once all values are interpolated, zero or more smoothing iterations
-#' (3x3 average filters on interpolated pixels) are applied to smooth out 
+#' (3x3 average filters on interpolated pixels) are applied to smooth out
 #' artifacts.
 #'
 #' @note
@@ -396,33 +475,37 @@ buildVRT <- function(vrt_filename, input_rasters, cl_arg = NULL) {
 #' @param band Integer band number to modify in place.
 #' @param mask_file Optional filename of raster to use as a validity mask
 #' (band 1 is used, zero marks nodata pixels, non-zero marks valid pixels).
-#' @param max_dist Maximum distance (in pixels) that the algorithm 
+#' @param max_dist Maximum distance (in pixels) that the algorithm
 #' will search out for values to interpolate (100 pixels by default).
 #' @param smooth_iterations The number of 3x3 average filter smoothing
 #' iterations to run after the interpolation to dampen artifacts
 #' (0 by default).
+#' @param quiet Logical scalar. If `TRUE`, a progress bar will not be
+#' displayed. Defaults to `FALSE`.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #' @examples
 #' ## fill nodata edge pixels in the elevation raster
 #' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-#' 
+#'
 #' ## get count of nodata
 #' tbl <- buildRAT(elev_file)
 #' head(tbl)
 #' tbl[is.na(tbl$VALUE),]
-#' 
+#'
 #' ## make a copy that will be modified
 #' mod_file <- paste0(tempdir(), "/", "storml_elev_fill.tif")
 #' file.copy(elev_file,  mod_file)
-#' 
+#'
 #' fillNodata(mod_file, band=1)
-#' 
+#'
 #' mod_tbl = buildRAT(mod_file)
 #' head(mod_tbl)
 #' mod_tbl[is.na(mod_tbl$VALUE),]
-fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_iterations = 0L) {
-    invisible(.Call(`_gdalraster_fillNodata`, filename, band, mask_file, max_dist, smooth_iterations))
+#'
+#' deleteDataset(mod_file)
+fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_iterations = 0L, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_fillNodata`, filename, band, mask_file, max_dist, smooth_iterations, quiet))
 }
 
 #' Compute footprint of a raster
@@ -450,11 +533,11 @@ fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_it
 #' @param dst_filename Character string. Filename of the destination vector.
 #' If the file and the output layer exist, the new footprint is appended to
 #' them, unless the `-overwrite` command-line argument is used.
-#' @param cl_arg Optional character vector of command-line arguments for 
+#' @param cl_arg Optional character vector of command-line arguments for
 #' \code{gdal_footprint}.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
-#' 
+#'
 #' @seealso
 #' [polygonize()]
 #'
@@ -467,25 +550,170 @@ fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_it
 #'   # command-line arguments for gdal_footprint
 #'   args <- c("-t_srs", "EPSG:4326")
 #'   footprint(evt_file, out_file, args)
+#'
+#'   deleteDataset(out_file)
 #' }
 footprint <- function(src_filename, dst_filename, cl_arg = NULL) {
     invisible(.Call(`_gdalraster_footprint`, src_filename, dst_filename, cl_arg))
+}
+
+#' Convert vector data between different formats
+#'
+#' `ogr2ogr()` is a wrapper of the \command{ogr2ogr} command-line
+#' utility (see \url{https://gdal.org/programs/ogr2ogr.html}).
+#' This function can be used to convert simple features data between file
+#' formats. It can also perform various operations during the process, such
+#' as spatial or attribute selection, reducing the set of attributes, setting
+#' the output coordinate system or even reprojecting the features during
+#' translation.
+#' Refer to the GDAL documentation at the URL above for a description of
+#' command-line arguments that can be passed in `cl_arg`.
+#'
+#' @param src_dsn Character string. Data source name of the source vector
+#' dataset.
+#' @param dst_dsn Character string. Data source name of the destination vector
+#' dataset.
+#' @param src_layers Optional character vector of layer names in the source
+#' dataset. Defaults to all layers.
+#' @param cl_arg Optional character vector of command-line arguments for
+#' the GDAL \code{ogr2ogr} command-line utility (see URL above).
+#' @returns Logical indicating success (invisible \code{TRUE}).
+#' An error is raised if the operation fails.
+#'
+#' @note
+#' For progress reporting, see command-line argument `-progress`: Display
+#' progress on terminal. Only works if input layers have the "fast feature
+#' count" capability.
+#'
+#' @seealso
+#' [ogrinfo()]
+#'
+#' [translate()] for raster data
+#'
+#' @examples
+#' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+#'
+#' # Convert GeoPackage to Shapefile
+#' shp_file <- file.path(tempdir(), "ynp_fires.shp")
+#' ogr2ogr(src, shp_file, src_layers = "mtbs_perims")
+#'
+#' # Reproject to WGS84
+#' ynp_wgs84 <- file.path(tempdir(), "ynp_fires_wgs84.gpkg")
+#' args <- c("-t_srs", "EPSG:4326")
+#' ogr2ogr(src, ynp_wgs84, cl_arg = args)
+#'
+#' # Clip to a bounding box (xmin, ymin, xmax, ymax in the source SRS)
+#' # This will select features whose geometry intersects the bounding box.
+#' # The geometries themselves will not be clipped unless "-clipsrc" is
+#' # specified.
+#' # The source SRS can be overridden with "-spat_srs" "<srs_def>"
+#' ynp_clip <- file.path(tempdir(), "ynp_fires_aoi_clip.gpkg")
+#' bb <- c(469685.97, 11442.45, 544069.63, 85508.15)
+#' args <- c("-spat", bb)
+#' ogr2ogr(src, ynp_clip, cl_arg = args)
+#'
+#' # Filter features by a -where clause
+#' ynp_filtered <- file.path(tempdir(), "ynp_fires_2000_2022.gpkg")
+#' sql <- "ig_year >= 2000 ORDER BY ig_year"
+#' args <- c("-where", sql)
+#' ogr2ogr(src, ynp_filtered, src_layers = "mtbs_perims", cl_arg = args)
+#'
+#' deleteDataset(shp_file)
+#' deleteDataset(ynp_wgs84)
+#' deleteDataset(ynp_clip)
+#' deleteDataset(ynp_filtered)
+ogr2ogr <- function(src_dsn, dst_dsn, src_layers = NULL, cl_arg = NULL) {
+    invisible(.Call(`_gdalraster_ogr2ogr`, src_dsn, dst_dsn, src_layers, cl_arg))
+}
+
+#' Retrieve information about a vector data source
+#'
+#' `ogrinfo()` is a wrapper of the \command{ogrinfo} command-line
+#' utility (see \url{https://gdal.org/programs/ogrinfo.html}).
+#' This function lists information about an OGR-supported data source.
+#' It is also possible to edit data with SQL statements.
+#' Refer to the GDAL documentation at the URL above for a description of
+#' command-line arguments that can be passed in `cl_arg`.
+#' Requires GDAL >= 3.7.
+#'
+#' @param dsn Character string. Data source name (e.g., filename, database
+#' connection string, etc.)
+#' @param layers Optional character vector of layer names in the source
+#' dataset.
+#' @param cl_arg Optional character vector of command-line arguments for
+#' the \code{ogrinfo} command-line utility in GDAL (see URL above for
+#' reference). The default is `c("-so", "-nomd")` (see Note).
+#' @param open_options Optional character vector of dataset open options.
+#' @param read_only Logical scalar. `TRUE` to open the data source read-only
+#' (the default), or `FALSE` to open with write access.
+#' @param cout Logical scalar. `TRUE` to write info to the standard C output
+#' stream (the default). `FALSE` to suppress console output.
+#' @returns Invisibly, a character string containing information about the
+#' vector dataset, or empty string (`""`) in case of error.
+#'
+#' @note
+#' The command-line argument `-so` provides a summary only, i.e., does not
+#' include details about every single feature of a layer.
+#' `-nomd` suppresses metadata printing. Some datasets may contain a lot of
+#' metadata strings.
+#'
+#' @seealso
+#' [ogr2ogr()]
+#'
+#' @examples
+#' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+#'
+#' # Requires GDAL >= 3.7
+#' if (as.integer(gdal_version()[2]) >= 3070000) {
+#'   # Get the names of the layers in a GeoPackage file.
+#'   ogrinfo(src)
+#'
+#'   # Summary of a layer
+#'   ogrinfo(src, "mtbs_perims")
+#'
+#'   # JSON format
+#'   args <- c("-json", "-nomd")
+#'   json <- ogrinfo(src, "mtbs_perims", args, cout = FALSE)
+#'   #info <- jsonlite::fromJSON(json)
+#'
+#'   # Query an attribute to restrict the output of the features in a layer
+#'   args <- c("-ro", "-nomd", "-where", "ig_year = 2020")
+#'   ogrinfo(src, "mtbs_perims", args)
+#'
+#'   # Copy to a temporary in-memory file that is writeable
+#'   src_mem <- paste0("/vsimem/", basename(src))
+#'   vsi_copy_file(src, src_mem)
+#'   print(src_mem)
+#'
+#'   # Add a column to a layer
+#'   args <- c("-sql", "ALTER TABLE mtbs_perims ADD burn_bnd_ha float")
+#'   ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
+#'
+#'   # Update values of the column with SQL and specify a dialect
+#'   sql <- "UPDATE mtbs_perims SET burn_bnd_ha = (burn_bnd_ac / 2.471)"
+#'   args <- c("-dialect", "sqlite", "-sql", sql)
+#'   ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
+#'
+#'   vsi_unlink(src_mem)
+#' }
+ogrinfo <- function(dsn, layers = NULL, cl_arg = as.character( c("-so", "-nomd")), open_options = NULL, read_only = TRUE, cout = TRUE) {
+    invisible(.Call(`_gdalraster_ogrinfo`, dsn, layers, cl_arg, open_options, read_only, cout))
 }
 
 #' Wrapper for GDALPolygonize in the GDAL Algorithms C API
 #'
 #' Called from and documented in R/gdalraster_proc.R
 #' @noRd
-.polygonize <- function(src_filename, src_band, out_dsn, out_layer, fld_name, mask_file = "", nomask = FALSE, connectedness = 4L) {
-    .Call(`_gdalraster__polygonize`, src_filename, src_band, out_dsn, out_layer, fld_name, mask_file, nomask, connectedness)
+.polygonize <- function(src_filename, src_band, out_dsn, out_layer, fld_name, mask_file = "", nomask = FALSE, connectedness = 4L, quiet = FALSE) {
+    .Call(`_gdalraster__polygonize`, src_filename, src_band, out_dsn, out_layer, fld_name, mask_file, nomask, connectedness, quiet)
 }
 
 #' Wrapper for GDALRasterize in the GDAL Algorithms C API
 #'
 #' Called from and documented in R/gdalraster_proc.R
 #' @noRd
-.rasterize <- function(src_dsn, dst_filename, cl_arg) {
-    .Call(`_gdalraster__rasterize`, src_dsn, dst_filename, cl_arg)
+.rasterize <- function(src_dsn, dst_filename, cl_arg, quiet = FALSE) {
+    .Call(`_gdalraster__rasterize`, src_dsn, dst_filename, cl_arg, quiet)
 }
 
 #' Remove small raster polygons
@@ -532,6 +760,8 @@ footprint <- function(src_filename, dst_filename, cl_arg = NULL) {
 #' suitable for inclusion in polygons.
 #' @param options Algorithm options as a character vector of name=value pairs.
 #' None currently supported.
+#' @param quiet Logical scalar. If `TRUE`, a progress bar will not be
+#' displayed. Defaults to `FALSE`.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #'
@@ -561,8 +791,11 @@ footprint <- function(src_filename, dst_filename, cl_arg = NULL) {
 #'             connectedness = 8,
 #'             mask_filename = mask_file,
 #'             mask_band = 1)
-sieveFilter <- function(src_filename, src_band, dst_filename, dst_band, size_threshold, connectedness, mask_filename = "", mask_band = 0L, options = NULL) {
-    invisible(.Call(`_gdalraster_sieveFilter`, src_filename, src_band, dst_filename, dst_band, size_threshold, connectedness, mask_filename, mask_band, options))
+#'
+#' deleteDataset(mask_file)
+#' deleteDataset(evt_mmu_file)
+sieveFilter <- function(src_filename, src_band, dst_filename, dst_band, size_threshold, connectedness, mask_filename = "", mask_band = 0L, options = NULL, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_sieveFilter`, src_filename, src_band, dst_filename, dst_band, size_threshold, connectedness, mask_filename, mask_band, options, quiet))
 }
 
 #' Convert raster data between different formats
@@ -577,13 +810,17 @@ sieveFilter <- function(src_filename, src_band, dst_filename, dst_band, size_thr
 #'
 #' @param src_filename Character string. Filename of the source raster.
 #' @param dst_filename Character string. Filename of the output raster.
-#' @param cl_arg Optional character vector of command-line arguments for 
-#' \code{gdal_translate}.
+#' @param cl_arg Optional character vector of command-line arguments for
+#' \code{gdal_translate} (see URL above).
+#' @param quiet Logical scalar. If `TRUE`, a progress bar will not be
+#' displayed. Defaults to `FALSE`.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
-#' 
+#'
 #' @seealso
 #' [`GDALRaster-class`][GDALRaster], [rasterFromRaster()], [warp()]
+#'
+#' [ogr2ogr()] for vector data
 #'
 #' @examples
 #' # convert the elevation raster to Erdas Imagine format and resample to 90m
@@ -595,15 +832,17 @@ sieveFilter <- function(src_filename, src_band, dst_filename, dst_band, size_thr
 #'
 #' img_file <- paste0(tempdir(), "/", "storml_elev_90m.img")
 #' translate(elev_file, img_file, args)
-#' 
+#'
 #' ds <- new(GDALRaster, img_file)
 #' ds$getDriverLongName()
 #' ds$bbox()
 #' ds$res()
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-translate <- function(src_filename, dst_filename, cl_arg = NULL) {
-    invisible(.Call(`_gdalraster_translate`, src_filename, dst_filename, cl_arg))
+#'
+#' deleteDataset(img_file)
+translate <- function(src_filename, dst_filename, cl_arg = NULL, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_translate`, src_filename, dst_filename, cl_arg, quiet))
 }
 
 #' Raster reprojection and mosaicing
@@ -729,15 +968,17 @@ translate <- function(src_filename, dst_filename, cl_arg = NULL) {
 #' }
 #' to set the target pixel resolution to 30 x 30 in target georeferenced
 #' units and use bilinear resampling.
-#' 
+#'
 #' @param src_files Character vector of source file(s) to be reprojected.
 #' @param dst_filename Character string. Filename of the output raster.
-#' @param t_srs Character string. Target spatial reference system. Usually an 
+#' @param t_srs Character string. Target spatial reference system. Usually an
 #' EPSG code ("EPSG:#####") or a well known text (WKT) SRS definition.
 #' If empty string `""`, the spatial reference of `src_files[1]` will be
 #' used (see Note).
-#' @param cl_arg Optional character vector of command-line arguments to 
+#' @param cl_arg Optional character vector of command-line arguments to
 #' \code{gdalwarp} in addition to `-t_srs` (see Details).
+#' @param quiet Logical scalar. If `TRUE`, a progress bar will not be
+#' displayed. Defaults to `FALSE`.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #'
@@ -769,15 +1010,17 @@ translate <- function(src_filename, dst_filename, cl_arg = NULL) {
 #'
 #' alb83_file <- paste0(tempdir(), "/", "storml_elev_alb83.img")
 #' warp(elev_file, alb83_file, t_srs="EPSG:5070", cl_arg = args)
-#' 
+#'
 #' ds <- new(GDALRaster, alb83_file)
 #' ds$getDriverLongName()
 #' ds$getProjectionRef()
 #' ds$res()
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL) {
-    invisible(.Call(`_gdalraster_warp`, src_files, dst_filename, t_srs, cl_arg))
+#'
+#' deleteDataset(alb83_file)
+warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_warp`, src_files, dst_filename, t_srs, cl_arg, quiet))
 }
 
 #' Create a color ramp
@@ -802,7 +1045,7 @@ warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL) {
 #' A color entry value to end the ramp (e.g., RGB values).
 #' @param palette_interp One of "Gray", "RGB" (the default), "CMYK" or "HLS"
 #' describing interpretation of `start_color` and `end_color` values
-#' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL 
+#' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
 #' Color Table}).
 #' @returns Integer matrix with five columns containing the color ramp from
 #' `start_index` to `end_index`, with raster index values in column 1 and
@@ -831,25 +1074,27 @@ warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL) {
 #'                  dtName = "Byte",
 #'                  nodata_value = 255,
 #'                  setRasterNodataValue = TRUE)
-#' 
+#'
 #' ds_tcc <- new(GDALRaster, tcc_file, read_only=FALSE)
-#' 
+#'
 #' # create a color ramp from 0 to 100 and set as the color table
 #' colors <- createColorRamp(start_index = 0,
 #'                           start_color = c(211, 211, 211),
 #'                           end_index = 100,
 #'                           end_color = c(0, 100, 0))
-#' 
+#'
 #' print(colors)
 #' ds_tcc$setColorTable(band=1, col_tbl=colors, palette_interp="RGB")
 #' ds_tcc$setRasterColorInterp(band=1, col_interp="Palette")
-#' 
+#'
 #' # close and re-open the dataset in read_only mode
 #' ds_tcc$open(read_only=TRUE)
-#' 
+#'
 #' plot_raster(ds_tcc, interpolate=FALSE, legend=TRUE,
 #'             main="Storm Lake Tree Canopy Cover (%)")
 #' ds_tcc$close()
+#'
+#' deleteDataset(tcc_file)
 createColorRamp <- function(start_index, start_color, end_index, end_color, palette_interp = "RGB") {
     .Call(`_gdalraster_createColorRamp`, start_index, start_color, end_index, end_color, palette_interp)
 }
@@ -870,7 +1115,7 @@ createColorRamp <- function(start_index, start_color, end_index, end_color, pale
 #' @param options Optional list of transfer hints in a vector of `"NAME=VALUE"`
 #' pairs. The currently supported `options` are:
 #'   * `"COMPRESSED=YES"` to force alignment on target dataset block sizes to
-#'   achieve best compression. 
+#'   achieve best compression.
 #'    * `"SKIP_HOLES=YES"` to skip chunks that contain only empty blocks.
 #'    Empty blocks are blocks that are generally not physically present in the
 #'    file, and when read through GDAL, contain only pixels whose value is the
@@ -878,6 +1123,8 @@ createColorRamp <- function(start_index, start_color, end_index, end_color, pale
 #'    not set. The query is done in an efficient way without reading the actual
 #'    pixel values (if implemented by the raster format driver, otherwise will
 #'    not be skipped).
+#' @param quiet Logical scalar. If `TRUE`, a progress bar will not be
+#' displayed. Defaults to `FALSE`.
 #' @returns Logical indicating success (invisible \code{TRUE}).
 #' An error is raised if the operation fails.
 #'
@@ -895,8 +1142,10 @@ createColorRamp <- function(start_index, start_color, end_index, end_color, pale
 #' ds <- new(GDALRaster, dst_file)
 #' ds$getStatistics(band=5, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-bandCopyWholeRaster <- function(src_filename, src_band, dst_filename, dst_band, options = NULL) {
-    invisible(.Call(`_gdalraster_bandCopyWholeRaster`, src_filename, src_band, dst_filename, dst_band, options))
+#'
+#' deleteDataset(dst_file)
+bandCopyWholeRaster <- function(src_filename, src_band, dst_filename, dst_band, options = NULL, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_bandCopyWholeRaster`, src_filename, src_band, dst_filename, dst_band, options, quiet))
 }
 
 #' Delete named dataset
@@ -933,7 +1182,7 @@ bandCopyWholeRaster <- function(src_filename, src_band, dst_filename, dst_band, 
 #' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
 #' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
 #' file.copy(b5_file,  b5_tmp)
-#' 
+#'
 #' ds <- new(GDALRaster, b5_tmp)
 #' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
 #' files <- ds$getFileList()
@@ -979,7 +1228,7 @@ deleteDataset <- function(filename, format = "") {
 #' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
 #' b5_tmp <- paste0(tempdir(), "/", "b5_tmp.tif")
 #' file.copy(b5_file,  b5_tmp)
-#' 
+#'
 #' ds <- new(GDALRaster, b5_tmp)
 #' ds$buildOverviews("BILINEAR", levels = c(2, 4, 8), bands = c(1))
 #' ds$getFileList()
@@ -989,6 +1238,8 @@ deleteDataset <- function(filename, format = "") {
 #' ds <- new(GDALRaster, b5_tmp2)
 #' ds$getFileList()
 #' ds$close()
+#'
+#' deleteDataset(b5_tmp2)
 renameDataset <- function(new_filename, old_filename, format = "") {
     .Call(`_gdalraster_renameDataset`, new_filename, old_filename, format)
 }
@@ -1022,12 +1273,14 @@ renameDataset <- function(new_filename, old_filename, format = "") {
 #' ds <- new(GDALRaster, lcp_file)
 #' ds$getFileList()
 #' ds$close()
-#' 
+#'
 #' lcp_tmp <- paste0(tempdir(), "/", "storm_lake_copy.lcp")
 #' copyDatasetFiles(lcp_tmp, lcp_file)
 #' ds_copy <- new(GDALRaster, lcp_tmp)
 #' ds_copy$getFileList()
 #' ds_copy$close()
+#'
+#' deleteDataset(lcp_tmp)
 copyDatasetFiles <- function(new_filename, old_filename, format = "") {
     .Call(`_gdalraster_copyDatasetFiles`, new_filename, old_filename, format)
 }
@@ -1067,7 +1320,7 @@ copyDatasetFiles <- function(new_filename, old_filename, format = "") {
 #'
 #' @param src_file Character string. Filename of the source file.
 #' @param target_file Character string. Filename of the target file.
-#' @param show_progess Logical scalar. If `TRUE`, a progress bar will be
+#' @param show_progress Logical scalar. If `TRUE`, a progress bar will be
 #' displayed (the size of `src_file` will be retrieved in GDAL with
 #' `VSIStatL()`). Default is `FALSE`.
 #' @returns Invisibly, `0` on success or `-1` on an error.
@@ -1075,7 +1328,7 @@ copyDatasetFiles <- function(new_filename, old_filename, format = "") {
 #' @note
 #' If `target_file` has the form /vsizip/foo.zip/bar, the default options
 #' described for the function `addFilesInZip()` will be in effect.
-#' 
+#'
 #' @seealso
 #' [copyDatasetFiles()], [vsi_stat()], [vsi_sync()]
 #'
@@ -1089,9 +1342,11 @@ copyDatasetFiles <- function(new_filename, old_filename, format = "") {
 #' if (as.integer(gdal_version()[2]) >= 3070000) {
 #'   result <- vsi_copy_file(elev_file, tmp_file)
 #'   print(result)
+#'
+#'   vsi_unlink(tmp_file)
 #' }
-vsi_copy_file <- function(src_file, target_file, show_progess = FALSE) {
-    invisible(.Call(`_gdalraster_vsi_copy_file`, src_file, target_file, show_progess))
+vsi_copy_file <- function(src_file, target_file, show_progress = FALSE) {
+    invisible(.Call(`_gdalraster_vsi_copy_file`, src_file, target_file, show_progress))
 }
 
 #' Clean cache associated with /vsicurl/ and related file systems
@@ -1102,7 +1357,7 @@ vsi_copy_file <- function(src_file, target_file, show_progess = FALSE) {
 #' Portability Library. See Details for the GDAL documentation.
 #'
 #' @details
-#' /vsicurl (and related file systems like /vsis3/, /vsigs/, /vsiaz/,
+#' /vsicurl/ (and related file systems like /vsis3/, /vsigs/, /vsiaz/,
 #' /vsioss/, /vsiswift/) cache a number of metadata and data for faster
 #' execution in read-only scenarios. But when the content on the server-side
 #' may change during the same process, those mechanisms can prevent opening
@@ -1220,7 +1475,7 @@ vsi_read_dir <- function(path, max_files = 0L) {
 #'
 #' @param src Character string. Source file or directory.
 #' @param target Character string. Target file or directory.
-#' @param show_progess Logical scalar. If `TRUE`, a progress bar will be
+#' @param show_progress Logical scalar. If `TRUE`, a progress bar will be
 #' displayed. Defaults to `FALSE`.
 #' @param options Character vector of `NAME=VALUE` pairs (see Details).
 #' @returns Invisibly, `TRUE` on success or `FALSE` on an error.
@@ -1235,7 +1490,7 @@ vsi_read_dir <- function(path, max_files = 0L) {
 #' # https://github.com/USDAForestService/gdalraster/tree/main/sample-data
 #' # A copy of sample-data in an AWS S3 bucket, and a partial copy in an
 #' # Azure Blob container, were used to generate the example below.
-#' 
+#'
 #' src <- "/vsis3/gdalraster-sample-data/"
 #' # s3://gdalraster-sample-data is not public, set credentials
 #' set_config_option("AWS_ACCESS_KEY_ID", "xxxxxxxxxxxxxx")
@@ -1250,15 +1505,15 @@ vsi_read_dir <- function(path, max_files = 0L) {
 #' #> [7] "lf_elev_220_mt_hood_utm.tif"
 #' #> [8] "lf_fbfm40_220_metadata.html"
 #' #> [9] "lf_fbfm40_220_mt_hood_utm.tif"
-#' 
+#'
 #' dst <- "/vsiaz/sampledata"
 #' set_config_option("AZURE_STORAGE_CONNECTION_STRING",
 #'                   "<connection_string_for_gdalraster_account>")
 #' vsi_read_dir(dst)
 #' #> [1] "lf_elev_220_metadata.html"   "lf_elev_220_mt_hood_utm.tif"
-#' 
+#'
 #' # GDAL VSISync() supports direct copy for /vsis3/ -> /vsiaz/ (GDAL >= 3.8)
-#' result <- vsi_sync(src, dst, show_progess = TRUE)
+#' result <- vsi_sync(src, dst, show_progress = TRUE)
 #' #> 0...10...20...30...40...50...60...70...80...90...100 - done.
 #' print(result)
 #' #> [1] TRUE
@@ -1273,8 +1528,8 @@ vsi_read_dir <- function(path, max_files = 0L) {
 #' #> [8] "lf_fbfm40_220_metadata.html"
 #' #> [9] "lf_fbfm40_220_mt_hood_utm.tif"
 #' }
-vsi_sync <- function(src, target, show_progess = FALSE, options = NULL) {
-    invisible(.Call(`_gdalraster_vsi_sync`, src, target, show_progess, options))
+vsi_sync <- function(src, target, show_progress = FALSE, options = NULL) {
+    invisible(.Call(`_gdalraster_vsi_sync`, src, target, show_progress, options))
 }
 
 #' Create a directory
@@ -1371,6 +1626,8 @@ vsi_unlink <- function(filename) {
 #' @param filenames Character vector. The list of files to delete.
 #' @returns Invisibly, a logical vector of `length(filenames)` with values
 #' depending on the success of deletion of the corresponding file.
+#' `NULL` might be returned in case of a more general error (for example,
+#' files belonging to different file system handlers).
 #'
 #' @seealso
 #' [deleteDataset()], [vsi_rmdir()], [vsi_unlink()]
@@ -1426,8 +1683,6 @@ vsi_unlink_batch <- function(filenames) {
 #' \url{https://gdal.org/user/virtual_file_systems.html}
 #'
 #' @examples
-#' # for illustration only
-#' # this would normally be used with GDAL virtual filesystems
 #' data_dir <- system.file("extdata", package="gdalraster")
 #' vsi_stat(data_dir)
 #' vsi_stat(data_dir, "type")
@@ -1445,11 +1700,11 @@ vsi_unlink_batch <- function(filenames) {
 #' vsi_stat(nonexistent, "type")
 #' vsi_stat(nonexistent, "size")
 #'
-#' # /vsicurl/ file system handler 
+#' # /vsicurl/ file system handler
 #' base_url <- "https://raw.githubusercontent.com/usdaforestservice/"
 #' f <- "gdalraster/main/sample-data/landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
 #' url_file <- paste0("/vsicurl/", base_url, f)
-#' 
+#'
 #' vsi_stat(url_file)
 #' vsi_stat(url_file, "type")
 #' vsi_stat(url_file, "size")
@@ -1484,8 +1739,112 @@ vsi_stat <- function(filename, info = "exists") {
 #' new_file <- file.path(dirname(tmp_file), "storml_elev_copy.tif")
 #' result <- vsi_rename(tmp_file, new_file)
 #' print(result)
+#' vsi_unlink(new_file)
 vsi_rename <- function(oldpath, newpath) {
     invisible(.Call(`_gdalraster_vsi_rename`, oldpath, newpath))
+}
+
+#' Return the list of virtual file system handlers currently registered
+#'
+#' `vsi_get_fs_prefixes()` returns the list of prefixes for virtual file
+#' system handlers currently registered (e.g., `"/vsimem/"`, `"/vsicurl/"`,
+#' etc). Wrapper for `VSIGetFileSystemsPrefixes()` in the GDAL API.
+#'
+#' @returns Character vector containing prefixes of the virtual file system
+#' handlers.
+#'
+#' @seealso
+#' [vsi_get_fs_options()]
+#'
+#' \url{https://gdal.org/user/virtual_file_systems.html}
+#'
+#' @examples
+#' vsi_get_fs_prefixes()
+vsi_get_fs_prefixes <- function() {
+    .Call(`_gdalraster_vsi_get_fs_prefixes`)
+}
+
+#' Return the list of options associated with a virtual file system handler
+#' as a serialized XML string.
+#'
+#' Called from and documented in R/gdal_helpers.R
+#' @noRd
+.vsi_get_fs_options <- function(filename) {
+    .Call(`_gdalraster__vsi_get_fs_options`, filename)
+}
+
+#' Return whether the filesystem supports sequential write
+#'
+#' `vsi_supports_seq_write()` returns whether the filesystem supports
+#' sequential write.
+#' Wrapper for `VSISupportsSequentialWrite()` in the GDAL API.
+#'
+#' @param filename Character string. The path of the filesystem object to be
+#' tested.
+#' @param allow_local_tmpfile Logical scalar. `TRUE` if the filesystem is
+#' allowed to use a local temporary file before uploading to the target
+#' location.
+#' @returns Logical scalar. `TRUE` if sequential write is supported.
+#'
+#' @note
+#' The location GDAL uses for temporary files can be forced via the
+#' `CPL_TMPDIR` configuration option.
+#'
+#' @seealso
+#' [vsi_supports_rnd_write()]
+#'
+#' @examples
+#' # Requires GDAL >= 3.6
+#' if (as.integer(gdal_version()[2]) >= 3060000)
+#'   vsi_supports_seq_write("/vsimem/test-mem-file.gpkg", TRUE)
+vsi_supports_seq_write <- function(filename, allow_local_tmpfile) {
+    .Call(`_gdalraster_vsi_supports_seq_write`, filename, allow_local_tmpfile)
+}
+
+#' Return whether the filesystem supports random write
+#'
+#' `vsi_supports_rnd_write()` returns whether the filesystem supports
+#' random write.
+#' Wrapper for `VSISupportsRandomWrite()` in the GDAL API.
+#'
+#' @param filename Character string. The path of the filesystem object to be
+#' tested.
+#' @param allow_local_tmpfile Logical scalar. `TRUE` if the filesystem is
+#' allowed to use a local temporary file before uploading to the target
+#' location.
+#' @returns Logical scalar. `TRUE` if random write is supported.
+#'
+#' @note
+#' The location GDAL uses for temporary files can be forced via the
+#' `CPL_TMPDIR` configuration option.
+#'
+#' @seealso
+#' [vsi_supports_seq_write()]
+#'
+#' @examples
+#' # Requires GDAL >= 3.6
+#' if (as.integer(gdal_version()[2]) >= 3060000)
+#'   vsi_supports_rnd_write("/vsimem/test-mem-file.gpkg", TRUE)
+vsi_supports_rnd_write <- function(filename, allow_local_tmpfile) {
+    .Call(`_gdalraster_vsi_supports_rnd_write`, filename, allow_local_tmpfile)
+}
+
+#' Return free disk space available on the filesystem
+#'
+#' `vsi_get_disk_free_space()` returns the free disk space available on the
+#' filesystem. Wrapper for `VSIGetDiskFreeSpace()` in the GDAL Common
+#' Portability Library.
+#'
+#' @param path Character string. A directory of the filesystem to query.
+#' @returns Numeric scalar. The free space in bytes, or `-1` in case of error.
+#'
+#' @examples
+#' tmp_dir <- file.path(tempdir(), "tmpdir")
+#' vsi_mkdir(tmp_dir)
+#' vsi_get_disk_free_space(tmp_dir)
+#' vsi_rmdir(tmp_dir)
+vsi_get_disk_free_space <- function(path) {
+    .Call(`_gdalraster_vsi_get_disk_free_space`, path)
 }
 
 #' @noRd
@@ -1500,10 +1859,18 @@ NULL
 #' @noRd
 NULL
 
+#' get GEOS version
+#' @noRd
+.getGEOSVersion <- function() {
+    .Call(`_gdalraster__getGEOSVersion`)
+}
+
 #' Is GEOS available?
 #'
 #' `has_geos()` returns a logical value indicating whether GDAL was built
-#' against the GEOS library.
+#' against the GEOS library. GDAL built with GEOS is a system requirement
+#' as of `gdalraster` 1.10.0, so this function will always return `TRUE`
+#' (may be removed in a future version).
 #'
 #' @return Logical. `TRUE` if GEOS is available, otherwise `FALSE`.
 #'
@@ -1608,8 +1975,13 @@ has_geos <- function() {
     .Call(`_gdalraster__g_centroid`, geom)
 }
 
+#' @noRd
+.g_transform <- function(geom, srs_from, srs_to) {
+    .Call(`_gdalraster__g_transform`, geom, srs_from, srs_to)
+}
+
 #' Does vector dataset exist
-#' 
+#'
 #' @noRd
 .ogr_ds_exists <- function(dsn, with_update = FALSE) {
     .Call(`_gdalraster__ogr_ds_exists`, dsn, with_update)
@@ -1624,14 +1996,14 @@ has_geos <- function() {
 }
 
 #' Get number of layers in a dataset
-#' 
+#'
 #' @noRd
 .ogr_ds_layer_count <- function(dsn) {
     .Call(`_gdalraster__ogr_ds_layer_count`, dsn)
 }
 
 #' Does layer exist
-#' 
+#'
 #' @noRd
 .ogr_layer_exists <- function(dsn, layer) {
     .Call(`_gdalraster__ogr_layer_exists`, dsn, layer)
@@ -1653,7 +2025,7 @@ has_geos <- function() {
 }
 
 #' Get field index or -1 if fld_name not found
-#' 
+#'
 #' @noRd
 .ogr_field_index <- function(dsn, layer, fld_name) {
     .Call(`_gdalraster__ogr_field_index`, dsn, layer, fld_name)
@@ -1726,12 +2098,12 @@ has_geos <- function() {
 #'
 #' @param pts A two-column data frame or numeric matrix containing geospatial
 #' x/y coordinates.
-#' @param srs Character string in OGC WKT format specifying the projected 
+#' @param srs Character string in OGC WKT format specifying the projected
 #' spatial reference system for `pts`.
-#' @param well_known_gcs Optional character string containing a supported 
-#' well known name of a geographic coordinate system (see Details for 
+#' @param well_known_gcs Optional character string containing a supported
+#' well known name of a geographic coordinate system (see Details for
 #' supported values).
-#' @returns Numeric array of longitude, latitude. An error is raised if the 
+#' @returns Numeric array of longitude, latitude. An error is raised if the
 #' transformation cannot be performed.
 #' @seealso
 #' [transform_xy()]
@@ -1752,11 +2124,11 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #'
 #' @param pts A two-column data frame or numeric matrix containing geospatial
 #' x/y coordinates.
-#' @param srs_from Character string in OGC WKT format specifying the  
+#' @param srs_from Character string in OGC WKT format specifying the
 #' spatial reference system for `pts`.
-#' @param srs_to Character string in OGC WKT format specifying the output 
+#' @param srs_to Character string in OGC WKT format specifying the output
 #' spatial reference system.
-#' @returns Numeric array of geospatial x/y coordinates in the projection 
+#' @returns Numeric array of geospatial x/y coordinates in the projection
 #' specified by `srs_to`.
 #'
 #' @seealso
@@ -1767,8 +2139,8 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #' print(pts)
 #' ## id, x, y in NAD83 / UTM zone 12N
 #' ## transform to NAD83 / CONUS Albers
-#' transform_xy(pts = pts[,-1], 
-#'              srs_from = epsg_to_wkt(26912), 
+#' transform_xy(pts = pts[,-1],
+#'              srs_from = epsg_to_wkt(26912),
 #'              srs_to = epsg_to_wkt(5070))
 transform_xy <- function(pts, srs_from, srs_to) {
     .Call(`_gdalraster_transform_xy`, pts, srs_from, srs_to)
@@ -1776,24 +2148,24 @@ transform_xy <- function(pts, srs_from, srs_to) {
 
 #' Convert spatial reference from EPSG code to OGC Well Known Text
 #'
-#' `epsg_to_wkt()` exports the spatial reference for an EPSG code to 
+#' `epsg_to_wkt()` exports the spatial reference for an EPSG code to
 #' WKT format.
 #'
 #' @details
 #' As of GDAL 3.0, the default format for WKT export is OGC WKT 1.
-#' The WKT version can be overridden by using the OSR_WKT_FORMAT 
+#' The WKT version can be overridden by using the OSR_WKT_FORMAT
 #' configuration option (see [set_config_option()]).
-#' Valid values are one of: SFSQL, WKT1_SIMPLE, WKT1, WKT1_GDAL, 
+#' Valid values are one of: SFSQL, WKT1_SIMPLE, WKT1, WKT1_GDAL,
 #' WKT1_ESRI, WKT2_2015, WKT2_2018, WKT2, DEFAULT.
-#' If SFSQL, a WKT1 string without AXIS, TOWGS84, AUTHORITY or 
-#' EXTENSION node is returned. If WKT1_SIMPLE, a WKT1 string without 
-#' AXIS, AUTHORITY or EXTENSION node is returned. WKT1 is an alias of 
-#' WKT1_GDAL. WKT2 will default to the latest revision implemented 
-#' (currently WKT2_2018). WKT2_2019 can be used as an alias of 
+#' If SFSQL, a WKT1 string without AXIS, TOWGS84, AUTHORITY or
+#' EXTENSION node is returned. If WKT1_SIMPLE, a WKT1 string without
+#' AXIS, AUTHORITY or EXTENSION node is returned. WKT1 is an alias of
+#' WKT1_GDAL. WKT2 will default to the latest revision implemented
+#' (currently WKT2_2018). WKT2_2019 can be used as an alias of
 #' WKT2_2018 since GDAL 3.2
 #'
 #' @param epsg Integer EPSG code.
-#' @param pretty Logical. `TRUE` to return a nicely formatted WKT string 
+#' @param pretty Logical. `TRUE` to return a nicely formatted WKT string
 #' for display to a person. `FALSE` for a regular WKT string (the default).
 #' @return Character string containing OGC WKT.
 #'
@@ -1812,13 +2184,13 @@ epsg_to_wkt <- function(epsg, pretty = FALSE) {
 
 #' Convert spatial reference definition to OGC Well Known Text
 #'
-#' `srs_to_wkt()` converts a spatial reference system (SRS) definition 
-#' in various text formats to WKT. The function will examine the input SRS, 
+#' `srs_to_wkt()` converts a spatial reference system (SRS) definition
+#' in various text formats to WKT. The function will examine the input SRS,
 #' try to deduce the format, and then export it to WKT.
 #'
 #' @details
-#' This is a wrapper for `OSRSetFromUserInput()` in the GDAL Spatial 
-#' Reference System C API with output to WKT. 
+#' This is a wrapper for `OSRSetFromUserInput()` in the GDAL Spatial
+#' Reference System C API with output to WKT.
 #' The input SRS may take the following forms:
 #'   * WKT - to convert WKT versions (see below)
 #'   * EPSG:n - EPSG code n
@@ -1830,25 +2202,25 @@ epsg_to_wkt <- function(epsg, pretty = FALSE) {
 #'   * IGNF:xxxx, ESRI:xxxx - definitions from the PROJ database
 #'   * PROJJSON (PROJ >= 6.2)
 #'
-#' This function is intended to be flexible, but by its nature it is 
-#' imprecise as it must guess information about the format intended. 
+#' This function is intended to be flexible, but by its nature it is
+#' imprecise as it must guess information about the format intended.
 #' [epsg_to_wkt()] could be used instead for EPSG codes.
 #'
 #' As of GDAL 3.0, the default format for WKT export is OGC WKT 1.
-#' The WKT version can be overridden by using the OSR_WKT_FORMAT 
+#' The WKT version can be overridden by using the OSR_WKT_FORMAT
 #' configuration option (see [set_config_option()]).
-#' Valid values are one of: SFSQL, WKT1_SIMPLE, WKT1, WKT1_GDAL, 
+#' Valid values are one of: SFSQL, WKT1_SIMPLE, WKT1, WKT1_GDAL,
 #' WKT1_ESRI, WKT2_2015, WKT2_2018, WKT2, DEFAULT.
-#' If SFSQL, a WKT1 string without AXIS, TOWGS84, AUTHORITY or 
-#' EXTENSION node is returned. If WKT1_SIMPLE, a WKT1 string without 
-#' AXIS, AUTHORITY or EXTENSION node is returned. WKT1 is an alias of 
-#' WKT1_GDAL. WKT2 will default to the latest revision implemented 
-#' (currently WKT2_2018). WKT2_2019 can be used as an alias of 
+#' If SFSQL, a WKT1 string without AXIS, TOWGS84, AUTHORITY or
+#' EXTENSION node is returned. If WKT1_SIMPLE, a WKT1 string without
+#' AXIS, AUTHORITY or EXTENSION node is returned. WKT1 is an alias of
+#' WKT1_GDAL. WKT2 will default to the latest revision implemented
+#' (currently WKT2_2018). WKT2_2019 can be used as an alias of
 #' WKT2_2018 since GDAL 3.2
 #'
 #' @param srs Character string containing an SRS definition in various
 #' formats (see Details).
-#' @param pretty Logical. `TRUE` to return a nicely formatted WKT string 
+#' @param pretty Logical. `TRUE` to return a nicely formatted WKT string
 #' for display to a person. `FALSE` for a regular WKT string (the default).
 #' @return Character string containing OGC WKT.
 #'
@@ -1867,9 +2239,9 @@ srs_to_wkt <- function(srs, pretty = FALSE) {
 
 #' Check if WKT definition is a geographic coordinate system
 #'
-#' `srs_is_geographic()` will attempt to import the given WKT string as a 
-#' spatial reference system, and returns `TRUE`  if the root is a 
-#' GEOGCS node. This is a wrapper for `OSRIsGeographic()` in the GDAL Spatial 
+#' `srs_is_geographic()` will attempt to import the given WKT string as a
+#' spatial reference system, and returns `TRUE`  if the root is a
+#' GEOGCS node. This is a wrapper for `OSRIsGeographic()` in the GDAL Spatial
 #' Reference System C API.
 #'
 #' @param srs Character OGC WKT string for a spatial reference system
@@ -1887,9 +2259,9 @@ srs_is_geographic <- function(srs) {
 
 #' Check if WKT definition is a projected coordinate system
 #'
-#' `srs_is_projected()` will attempt to import the given WKT string as a 
-#' spatial reference system (SRS), and returns `TRUE` if the SRS contains a 
-#' PROJCS node indicating a it is a projected coordinate system. This is a 
+#' `srs_is_projected()` will attempt to import the given WKT string as a
+#' spatial reference system (SRS), and returns `TRUE` if the SRS contains a
+#' PROJCS node indicating a it is a projected coordinate system. This is a
 #' wrapper for `OSRIsProjected()` in the GDAL Spatial Reference System C API.
 #'
 #' @param srs Character OGC WKT string for a spatial reference system
@@ -1907,8 +2279,8 @@ srs_is_projected <- function(srs) {
 
 #' Do these two spatial references describe the same system?
 #'
-#' `srs_is_same()` returns `TRUE` if these two spatial references describe 
-#' the same system. This is a wrapper for `OSRIsSame()` in the GDAL Spatial 
+#' `srs_is_same()` returns `TRUE` if these two spatial references describe
+#' the same system. This is a wrapper for `OSRIsSame()` in the GDAL Spatial
 #' Reference System C API.
 #'
 #' @param srs1 Character string. OGC WKT for a spatial reference system.
@@ -1922,7 +2294,7 @@ srs_is_projected <- function(srs) {
 #' @param ignore_coord_epoch Logical scalar. If `TRUE`, sets
 #' `IGNORE_COORDINATE_EPOCH=YES` in the call to `OSRIsSameEx()`
 #' in the GDAL Spatial Reference System API. Defaults to `NO`.
-#' @return Logical. `TRUE` if these two spatial references describe the same 
+#' @return Logical. `TRUE` if these two spatial references describe the same
 #' system, otherwise `FALSE`.
 #'
 #' @seealso
@@ -1940,7 +2312,7 @@ srs_is_same <- function(srs1, srs2, criterion = "", ignore_axis_mapping = FALSE,
 
 #' Get the bounding box of a geometry specified in OGC WKT format
 #'
-#' `bbox_from_wkt()` returns the bounding box of a WKT 2D geometry 
+#' `bbox_from_wkt()` returns the bounding box of a WKT 2D geometry
 #' (e.g., LINE, POLYGON, MULTIPOLYGON).
 #'
 #' @param wkt Character. OGC WKT string for a simple feature 2D geometry.
@@ -1950,7 +2322,7 @@ srs_is_same <- function(srs1, srs2, criterion = "", ignore_axis_mapping = FALSE,
 #' @param extend_y Numeric scalar. Distance to extend the output bounding box
 #' in both directions along the y-axis
 #' (results in `ymin = bbox[2] - extend_y`, `ymax = bbox[4] + extend_y`).
-#' @return Numeric vector of length four containing the xmin, ymin, 
+#' @return Numeric vector of length four containing the xmin, ymin,
 #' xmax, ymax of the geometry specified by `wkt` (possibly extended by values
 #' in `extend_x`, `extend_y`).
 #'
@@ -1958,8 +2330,8 @@ srs_is_same <- function(srs1, srs2, criterion = "", ignore_axis_mapping = FALSE,
 #' [bbox_to_wkt()]
 #'
 #' @examples
-#' bnd <- "POLYGON ((324467.3 5104814.2, 323909.4 5104365.4, 323794.2 
-#' 5103455.8, 324970.7 5102885.8, 326420.0 5103595.3, 326389.6 5104747.5, 
+#' bnd <- "POLYGON ((324467.3 5104814.2, 323909.4 5104365.4, 323794.2
+#' 5103455.8, 324970.7 5102885.8, 326420.0 5103595.3, 326389.6 5104747.5,
 #' 325298.1 5104929.4, 325298.1 5104929.4, 324467.3 5104814.2))"
 #' bbox_from_wkt(bnd, 100, 100)
 bbox_from_wkt <- function(wkt, extend_x = 0, extend_y = 0) {
@@ -1971,7 +2343,7 @@ bbox_from_wkt <- function(wkt, extend_x = 0, extend_y = 0) {
 #' `bbox_to_wkt()` returns a WKT POLYGON string for the given bounding box.
 #' Requires GDAL built with the GEOS library.
 #'
-#' @param bbox Numeric vector of length four containing xmin, ymin, 
+#' @param bbox Numeric vector of length four containing xmin, ymin,
 #' xmax, ymax.
 #' @param extend_x Numeric scalar. Distance in units of `bbox` to extend the
 #' rectangle in both directions along the x-axis

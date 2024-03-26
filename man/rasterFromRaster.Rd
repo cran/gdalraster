@@ -77,7 +77,7 @@ ds_slp$res()
 ncols <- ds_slp$getRasterXSize()
 nrows <- ds_slp$getRasterYSize()
 for (row in 0:(nrows-1)) {
-    rowdata <- ds_lcp$read(band=2, 
+    rowdata <- ds_lcp$read(band=2,
                            xoff=0, yoff=row,
                            xsize=ncols, ysize=1,
                            out_xsize=ncols, out_ysize=1)
@@ -92,6 +92,7 @@ ds_slp$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 
 ds_slp$close()
 ds_lcp$close()
+deleteDataset(slpp_file)
 }
 \seealso{
 \code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=create]{create()}}, \code{\link[=createCopy]{createCopy()}},

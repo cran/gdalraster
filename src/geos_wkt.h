@@ -6,11 +6,12 @@
 #ifndef geos_wkt_H
 #define geos_wkt_H
 
-#include <Rcpp.h> 
+#include <Rcpp.h>
 
 #include <string>
 
-bool has_geos();
+std::vector<int> _getGEOSVersion();
+bool has_geos(); // GDAL built against GEOS is required at gdalraster 1.10
 
 std::string _g_create(Rcpp::NumericMatrix xy, std::string geom_type);
 bool _g_is_valid(std::string geom);
@@ -35,6 +36,9 @@ double _g_distance(std::string this_geom, std::string other_geom);
 double _g_length(std::string geom);
 double _g_area(std::string geom);
 Rcpp::NumericVector _g_centroid(std::string geom);
+
+std::string _g_transform(std::string geom, std::string srs_from,
+        std::string srs_to);
 
 #endif
 

@@ -13,7 +13,8 @@ sieveFilter(
   connectedness,
   mask_filename = "",
   mask_band = 0L,
-  options = NULL
+  options = NULL,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -42,6 +43,9 @@ suitable for inclusion in polygons.}
 
 \item{options}{Algorithm options as a character vector of name=value pairs.
 None currently supported.}
+
+\item{quiet}{Logical scalar. If \code{TRUE}, a progress bar will not be
+displayed. Defaults to \code{FALSE}.}
 }
 \value{
 Logical indicating success (invisible \code{TRUE}).
@@ -99,4 +103,7 @@ sieveFilter(src_filename = evt_file,
             connectedness = 8,
             mask_filename = mask_file,
             mask_band = 1)
+
+deleteDataset(mask_file)
+deleteDataset(evt_mmu_file)
 }

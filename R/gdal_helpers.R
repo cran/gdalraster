@@ -1,5 +1,4 @@
 # Miscellaneous helper functions for working with the GDAL API
-# currently: addFilesInZip(), getCreationOptions()
 # Chris Toney <chris.toney at usda.gov>
 
 #' Create/append to a potentially Seek-Optimized ZIP file (SOZip)
@@ -78,127 +77,124 @@
 #'   ds <- new(GDALRaster, lcp_in_zip)
 #'   ds$info()
 #'   ds$close()
+#'
+#'   vsi_unlink(zip_file)
 #' }
 #' @export
 addFilesInZip <- function(
-		zip_file,
-		add_files,
-		overwrite = FALSE,
-		full_paths = TRUE,
-		sozip_enabled = NULL,
-		sozip_chunk_size = NULL,
-		sozip_min_file_size = NULL,
-		num_threads = NULL,
-		content_type = NULL,
-		quiet = FALSE) {
+        zip_file,
+        add_files,
+        overwrite = FALSE,
+        full_paths = TRUE,
+        sozip_enabled = NULL,
+        sozip_chunk_size = NULL,
+        sozip_min_file_size = NULL,
+        num_threads = NULL,
+        content_type = NULL,
+        quiet = FALSE) {
 
-	if (as.integer(gdal_version()[2]) < 3070000)
-		stop("`addFilesInZip()` requires GDAL >= 3.7.", call. = FALSE)
+    if (as.integer(gdal_version()[2]) < 3070000)
+        stop("addFilesInZip() requires GDAL >= 3.7", call. = FALSE)
 
-	if (!is.character(zip_file) || length(zip_file) > 1)
-		stop("`zip_file` must be a string.", call. = FALSE)
-	else
-		zip_file <- .check_gdal_filename(zip_file)
-	
-	if (!is.character(add_files))
-		stop("`add_files` must be a character vector of filenames.",
-			call. = FALSE)
+    if (!is.character(zip_file) || length(zip_file) > 1)
+        stop("'zip_file' must be a character string", call. = FALSE)
+    else
+        zip_file <- .check_gdal_filename(zip_file)
 
-	if (!is.null(overwrite)) {
-		if (!is.logical(overwrite) || length(overwrite) > 1)
-			stop("`overwrite` must be a logical scalar.", call. = FALSE)
-	}
-	else {
-		overwrite <- FALSE
-	}
+    if (!is.character(add_files))
+        stop("'add_files' must be a character vector of filenames",
+             call. = FALSE)
 
-	if (!is.null(full_paths)) {
-		if (!is.logical(full_paths) || length(full_paths) > 1)
-			stop("`full_paths` must be a logical scalar.", call. = FALSE)
-	}
-	else {
-		full_paths <- FALSE
-	}
+    if (!is.null(overwrite)) {
+        if (!is.logical(overwrite) || length(overwrite) > 1)
+            stop("'overwrite' must be a logical scalar", call. = FALSE)
+    } else {
+        overwrite <- FALSE
+    }
 
-	if (!is.null(quiet)) {
-		if (!is.logical(quiet) || length(quiet) > 1)
-			stop("`quiet` must be a logical scalar.", call. = FALSE)
-	}
-	else {
-		quiet <- FALSE
-	}
+    if (!is.null(full_paths)) {
+        if (!is.logical(full_paths) || length(full_paths) > 1)
+            stop("'full_paths' must be a logical scalar", call. = FALSE)
+    } else {
+        full_paths <- FALSE
+    }
 
-	opt <- NULL
-	if (!is.null(sozip_enabled)) {
-		if (!is.character(sozip_enabled) || length(sozip_enabled) > 1)
-			stop("`sozip_enabled` must be a string.", call. = FALSE)
-		sozip_enabled <- toupper(sozip_enabled)
-		if ( !(sozip_enabled %in% c("AUTO", "YES", "NO")) )
-			stop("`sozip_enabled` must be one of AUTO, YES or NO.", call. = FALSE)
-		else
-			opt <- c(opt, paste0("SOZIP_ENABLED=", sozip_enabled))
-	}
-	if (!is.null(sozip_chunk_size)) {
-		if (length(sozip_chunk_size) > 1)
-			stop("`sozip_chunk_size` must be length-1.", call. = FALSE)
-		opt <- c(opt, paste0("SOZIP_CHUNK_SIZE=", sozip_chunk_size))
-	}
-	if (!is.null(sozip_min_file_size)) {
-		if (length(sozip_min_file_size) > 1)
-			stop("`sozip_min_file_size` must be length-1.", call. = FALSE)
-		opt <- c(opt, paste0("SOZIP_MIN_FILE_SIZE=", sozip_min_file_size))
-	}
-	if (!is.null(num_threads)) {
-		if (length(num_threads) > 1)
-			stop("`num_threads` must be length-1.", call. = FALSE)
-		opt <- c(opt, paste0("NUM_THREADS=", num_threads))
-	}
-	if (!is.null(content_type)) {
-		if (!is.character(content_type) || length(content_type) > 1)
-			stop("`content_type` must be a string.", call. = FALSE)
-		opt <- c(opt, paste0("CONTENT_TYPE=", content_type))
-	}
-	
-	if (overwrite)
-		unlink(zip_file)
-	
-	ret <- FALSE
-	for (f in add_files) {
-		if (!(utils::file_test("-f", f)))
-			stop(paste0("File not found: ", f), call. = FALSE)
-		
-		archive_fname <- f
-		if (!full_paths) {
-			archive_fname <- basename(f)
-		}
-		else if (substr(f, 1, 1) == "/") {
-			archive_fname <- substring(f, 2)
-		}
-		else if (nchar(f) > 3 && substr(f, 2, 2) == ":" &&
-					(substr(f, 3, 3) == "/" || substr(f, 3, 3) == '\\')) {
-			archive_fname <- substring(f, 4)
-		}
-		archive_fname <- .check_gdal_filename(archive_fname)
+    if (!is.null(quiet)) {
+        if (!is.logical(quiet) || length(quiet) > 1)
+            stop("'quiet' must be a logical scalar", call. = FALSE)
+    } else {
+        quiet <- FALSE
+    }
 
-		if (!.addFileInZip(zip_file,
-							overwrite = FALSE,
-							archive_fname,
-							f,
-							opt,
-							quiet)) {
-			ret <- FALSE
-			break
-		}
-		else {
-			ret <- TRUE
-		}
-	}
-	
-	if (!ret)
-		stop("Failed to add file, error from CPLAddFileInZip().",
-				call. = FALSE)
-	
-	return(invisible(ret))
+    opt <- NULL
+    if (!is.null(sozip_enabled)) {
+        if (!is.character(sozip_enabled) || length(sozip_enabled) > 1)
+            stop("'sozip_enabled' must be a character string", call. = FALSE)
+        sozip_enabled <- toupper(sozip_enabled)
+        if (!(sozip_enabled %in% c("AUTO", "YES", "NO")))
+            stop("'sozip_enabled' must be one of \"AUTO\", \"YES\" or \"NO\"",
+                 call. = FALSE)
+        else
+            opt <- c(opt, paste0("SOZIP_ENABLED=", sozip_enabled))
+    }
+    if (!is.null(sozip_chunk_size)) {
+        if (length(sozip_chunk_size) > 1)
+            stop("'sozip_chunk_size' must be length-1", call. = FALSE)
+        opt <- c(opt, paste0("SOZIP_CHUNK_SIZE=", sozip_chunk_size))
+    }
+    if (!is.null(sozip_min_file_size)) {
+        if (length(sozip_min_file_size) > 1)
+            stop("'sozip_min_file_size' must be length-1", call. = FALSE)
+        opt <- c(opt, paste0("SOZIP_MIN_FILE_SIZE=", sozip_min_file_size))
+    }
+    if (!is.null(num_threads)) {
+        if (length(num_threads) > 1)
+            stop("'num_threads' must be length-1", call. = FALSE)
+        opt <- c(opt, paste0("NUM_THREADS=", num_threads))
+    }
+    if (!is.null(content_type)) {
+        if (!is.character(content_type) || length(content_type) > 1)
+            stop("'content_type' must be a character string", call. = FALSE)
+        opt <- c(opt, paste0("CONTENT_TYPE=", content_type))
+    }
+
+    if (overwrite)
+        unlink(zip_file)
+
+    ret <- FALSE
+    for (f in add_files) {
+        if (!(utils::file_test("-f", f)))
+            stop("file not found: ", f, call. = FALSE)
+
+        archive_fname <- f
+        if (!full_paths) {
+            archive_fname <- basename(f)
+        } else if (substr(f, 1, 1) == "/") {
+            archive_fname <- substring(f, 2)
+        } else if (nchar(f) > 3 && substr(f, 2, 2) == ":" &&
+                       (substr(f, 3, 3) == "/" || substr(f, 3, 3) == "\\")) {
+            archive_fname <- substring(f, 4)
+        }
+        archive_fname <- .check_gdal_filename(archive_fname)
+
+        if (!.addFileInZip(zip_file,
+                           overwrite = FALSE,
+                           archive_fname,
+                           f,
+                           opt,
+                           quiet)) {
+            ret <- FALSE
+            break
+        } else {
+            ret <- TRUE
+        }
+    }
+
+    if (!ret)
+        stop("failed to add file, error from CPLAddFileInZip()",
+             call. = FALSE)
+
+    return(invisible(ret))
 }
 
 
@@ -216,7 +212,7 @@ addFilesInZip <- function(
 #' By default, information for all creation options is printed. Can be set to
 #' empty string `""` to disable printing information to the console.
 #' @returns Invisibly, an XML string that describes the full list of creation
-#' options or empty string `""` (full output of 
+#' options or empty string `""` (full output of
 #' `GDALGetDriverCreationOptionList()` in the GDAL API).
 #'
 #' @seealso
@@ -227,28 +223,70 @@ addFilesInZip <- function(
 #' @export
 getCreationOptions <- function(format, filter=NULL) {
 
-	if (!is.character(format) || length(format) > 1)
-		stop("`format` must be a string.", call.=FALSE)
-		
-	if (is.null(filter))
-		filter = "_all_"
-		
-	if (filter[1] == "")
-		return(invisible(.getCreationOptions(format)))
-		
-	if (.getCreationOptions(format) == "") {
-		message(paste0("No creation options found for ", format, "."))
-		return(invisible(.getCreationOptions(format)))
-	}
-	
-	x = xml2::read_xml(.getCreationOptions(format))
-	opt_list <- xml2::xml_find_all(x, xpath = "//Option")
-	for (n in 1:length(opt_list)) {
-		if (filter[1] == "_all_"
-			|| xml2::xml_attr(opt_list[[n]], "name") %in% filter)
-				
-			print(opt_list[[n]])
-	}
-	return(invisible(.getCreationOptions(format)))
+    if (!is.character(format) || length(format) > 1)
+        stop("'format' must be a character string", call. = FALSE)
+
+    if (is.null(filter))
+        filter <- "_all_"
+
+    if (filter[1] == "")
+        return(invisible(.getCreationOptions(format)))
+
+    if (.getCreationOptions(format) == "") {
+        message("no creation options found for ", format)
+        return(invisible(.getCreationOptions(format)))
+    }
+
+    x <- xml2::read_xml(.getCreationOptions(format))
+    opt_list <- xml2::xml_find_all(x, xpath = "//Option")
+    for (n in seq_along(opt_list)) {
+        if (filter[1] == "_all_" ||
+                xml2::xml_attr(opt_list[[n]], "name") %in% filter) {
+            print(opt_list[[n]])
+        }
+    }
+    return(invisible(.getCreationOptions(format)))
 }
 
+
+#' Return the list of options associated with a virtual file system handler
+#'
+#' `vsi_get_fs_options()` returns the list of options associated with a virtual
+#' file system handler. Those options may be set as configuration options with
+#' `set_config_option()`.
+#' Wrapper for `VSIGetFileSystemOptions()` in the GDAL API.
+#'
+#' @param filename Filename, or prefix of a virtual file system handler.
+#' @param as_list Logical scalar. If `TRUE` (the default), the XML string
+#' returned by GDAL will be coerced to list. `FALSE` to return the configuration
+#' options as a serialized XML string.
+#' @returns An XML string, or empty string (`""`) if no options are declared.
+#' If `as_list = TRUE` (the default), the XML string will be coerced to list
+#' with `xml2::as_list()`.
+#'
+#' @seealso
+#' [set_config_option()], [vsi_get_fs_prefixes()]
+#'
+#' \url{https://gdal.org/user/virtual_file_systems.html}
+#'
+#' @examples
+#' vsi_get_fs_options("/vsimem/")
+#'
+#' vsi_get_fs_options("/vsizip/")
+#'
+#' vsi_get_fs_options("/vsizip/", as_list = FALSE)
+#' @export
+vsi_get_fs_options <- function(filename, as_list = TRUE) {
+
+    if (!is.character(filename) || length(filename) > 1)
+        stop("'filename' must be a length-1 character vector.", call.=FALSE)
+
+    opts <- .vsi_get_fs_options(filename)
+
+    if (opts == "")
+        return(opts)
+    else if (as_list)
+        return(xml2::read_xml(opts) |> xml2::as_list())
+    else
+        return(opts)
+}

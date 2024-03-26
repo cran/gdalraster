@@ -23,7 +23,7 @@ No return value, called for side effects.
 Portability Library. See Details for the GDAL documentation.
 }
 \details{
-/vsicurl (and related file systems like /vsis3/, /vsigs/, /vsiaz/,
+/vsicurl/ (and related file systems like /vsis3/, /vsigs/, /vsiaz/,
 /vsioss/, /vsiswift/) cache a number of metadata and data for faster
 execution in read-only scenarios. But when the content on the server-side
 may change during the same process, those mechanisms can prevent opening

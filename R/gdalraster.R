@@ -23,9 +23,8 @@
 #' specifying dataset open options.
 #' @returns An object of class `GDALRaster` which contains a pointer to the
 #' opened dataset, and methods that operate on the dataset as described in
-#' Details.
-#' `GDALRaster` is a C++ class exposed directly to R (via
-#' `RCPP_EXPOSED_CLASS`). Methods of the class are accessed in R using the
+#' Details. `GDALRaster` is a C++ class exposed directly to R (via
+#' `RCPP_EXPOSED_CLASS`). Methods of the class are accessed using the
 #' `$` operator.
 #'
 #' @section Usage:
@@ -214,8 +213,8 @@
 #' `c(ds$getRasterXSize(), ds$getRasterYSize(), ds$getRasterCount())`
 #'
 #' \code{$getRasterCount()}
-#' Returns the number of raster bands on this dataset. For the methods 
-#' described below that operate on individual bands, the \code{band} 
+#' Returns the number of raster bands on this dataset. For the methods
+#' described below that operate on individual bands, the \code{band}
 #' argument is the integer band number (1-based).
 #'
 #' \code{$getDescription(band)}
@@ -298,14 +297,14 @@
 #' \code{$getNoDataValue(band)}
 #' Returns the nodata value for \code{band} if one exists.
 #' This is generally a special value defined to mark pixels that are not
-#' valid data. \code{NA} is returned if a nodata value is not defined for 
+#' valid data. \code{NA} is returned if a nodata value is not defined for
 #' \code{band}. Not all raster formats support a designated nodata value.
 #'
 #' \code{$setNoDataValue(band, nodata_value)}
 #' Sets the nodata value for \code{band}.
 #' \code{nodata_value} is a numeric value to be defined as the nodata marker.
 #' Depending on the format, changing the nodata value may or may not have an
-#' effect on the pixel values of a raster that has just been created (often 
+#' effect on the pixel values of a raster that has just been created (often
 #' not). It is thus advised to call \code{$fillRaster()} explicitly if the
 #' intent is to initialize the raster to the nodata value. In any case,
 #' changing an existing nodata value, when one already exists on an initialized
@@ -423,7 +422,7 @@
 #' Clear statistics. Only implemented for now in PAM supported datasets
 #' (Persistable Auxiliary Metadata via .aux.xml file). GDAL >= 3.2.
 #'
-#' \code{$getHistogram(band, min, max, num_buckets, incl_out_of_range, 
+#' \code{$getHistogram(band, min, max, num_buckets, incl_out_of_range,
 #'   approx_ok)}\cr
 #' Computes raster histogram for \code{band}. \code{min} is the lower bound of
 #' the histogram. \code{max} is the upper bound of the histogram.
@@ -447,7 +446,7 @@
 #' Returns a list of length four containing named elements `$min` (lower
 #' bound), `$max` (upper bound), `$num_buckets` (number of buckets), and
 #'`$histogram` (a numeric vector of length `num_buckets`).
-#' 
+#'
 #' \code{$getMetadata(band, domain)}
 #' Returns a character vector of all metadata `name=value` pairs that exist in
 #' the specified \code{domain}, or \code{""} (empty string) if there are no
@@ -462,7 +461,7 @@
 #' Returns the value of a specific metadata item named \code{mdi_name} in the
 #' specified \code{domain}, or \code{""} (empty string) if no matching item
 #' is found.
-#' Set \code{band = 0} to retrieve dataset-level metadata, or to an integer 
+#' Set \code{band = 0} to retrieve dataset-level metadata, or to an integer
 #' band number to retrieve band-level metadata.
 #' Set \code{domain = ""} (empty string) to retrieve an item in the
 #' default domain.
@@ -516,7 +515,7 @@
 #' \code{xsize} is the width in pixels of the region to write.
 #' \code{ysize} is the height in pixels of the region to write.
 #' \code{rasterData} is a numeric or complex vector containing values to write.
-#' It is organized in left to right, top to bottom pixel order. \code{NA} in 
+#' It is organized in left to right, top to bottom pixel order. \code{NA} in
 #' \code{rasterData} should be replaced with a suitable nodata value prior to
 #' writing (see \code{$getNoDataValue()} and \code{$setNoDataValue()} above).
 #' An error is raised if the operation fails (no return value).
@@ -527,7 +526,7 @@
 #' integer matrix with five columns. To associate a color with a raster pixel,
 #' the pixel value is used as a subscript into the color table. This means that
 #' the colors are always applied starting at zero and ascending
-#' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL 
+#' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
 #' Color Table}).
 #' Column 1 contains the pixel values. Interpretation of columns 2:5 depends
 #' on the value of `$getPaletteInterp()` (see below). For "RGB", columns 2:5
@@ -548,7 +547,7 @@
 #'
 #' \code{$setColorTable(band, col_tbl, palette_interp)}
 #' Sets the raster color table for \code{band}
-#' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL 
+#' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
 #' Color Table}).
 #' \code{col_tbl} is an integer matrix or data frame with either four or five
 #' columns (see \code{$getColorTable()} above). Column 1 contains the pixel
@@ -594,10 +593,10 @@
 #' (see also `$open()` above). No return value, called for side effect.
 #'
 #' \code{$getChecksum(band, xoff, yoff, xsize, ysize)}
-#' Returns a 16-bit integer (0-65535) checksum from a region of raster data 
+#' Returns a 16-bit integer (0-65535) checksum from a region of raster data
 #' on `band`.
 #' Floating point data are converted to 32-bit integer so decimal portions of
-#' such raster data will not affect the checksum. Real and imaginary 
+#' such raster data will not affect the checksum. Real and imaginary
 #' components of complex bands influence the result.
 #' \code{xoff} is the pixel (column) offset of the window to read.
 #' \code{yoff} is the line (row) offset of the window to read.
@@ -611,14 +610,17 @@
 #' pending writes. Forgetting to close a dataset opened in update mode on some
 #' formats such as GTiff could result in being unable to open it afterwards.
 #' The `GDALRaster` object is still available after calling \code{$close()}.
-#' The dataset can be re-opened on the existing \code{filename} with 
+#' The dataset can be re-opened on the existing \code{filename} with
 #' \code{$open(read_only=TRUE)} or \code{$open(read_only=FALSE)}.
 #'
 #' @note
+#' If a dataset object is opened with update access (`read_only = FALSE`), it
+#' is not recommended to open a new dataset on the same underlying `filename`.
+#'
 #' The `$read()` method will perform automatic resampling if the
 #' specified output size (`out_xsize * out_ysize`) is different than
 #' the size of the region being read (`xsize * ysize`). In that case, the
-#' `GDAL_RASTERIO_RESAMPLING` configuration option could also be defined to
+#' `GDAL_RASTERIO_RESAMPLING` configuration option could also be set to
 #' override the default resampling to one of `BILINEAR`, `CUBIC`,
 #' `CUBICSPLINE`, `LANCZOS`, `AVERAGE` or `MODE` (see [set_config_option()]).
 #'
@@ -678,8 +680,8 @@
 #' ## the upper left corner is the origin
 #' ## read the tenth row:
 #' ncols <- ds$getRasterXSize()
-#' rowdata <- ds$read(band=1, xoff=0, yoff=9, 
-#'                     xsize=ncols, ysize=1, 
+#' rowdata <- ds$read(band=1, xoff=0, yoff=9,
+#'                     xsize=ncols, ysize=1,
 #'                     out_xsize=ncols, out_ysize=1)
 #' head(rowdata)
 #'
@@ -724,6 +726,8 @@
 #' ds <- new(GDALRaster, url)
 #' plot_raster(ds, legend=TRUE, main="Mount Hood elevation (m)")
 #' ds$close()
+#'
+#' deleteDataset(new_file)
 #' }
 NULL
 

@@ -4,7 +4,7 @@
 \alias{translate}
 \title{Convert raster data between different formats}
 \usage{
-translate(src_filename, dst_filename, cl_arg = NULL)
+translate(src_filename, dst_filename, cl_arg = NULL, quiet = FALSE)
 }
 \arguments{
 \item{src_filename}{Character string. Filename of the source raster.}
@@ -12,7 +12,10 @@ translate(src_filename, dst_filename, cl_arg = NULL)
 \item{dst_filename}{Character string. Filename of the output raster.}
 
 \item{cl_arg}{Optional character vector of command-line arguments for
-\code{gdal_translate}.}
+\code{gdal_translate} (see URL above).}
+
+\item{quiet}{Logical scalar. If \code{TRUE}, a progress bar will not be
+displayed. Defaults to \code{FALSE}.}
 }
 \value{
 Logical indicating success (invisible \code{TRUE}).
@@ -44,7 +47,11 @@ ds$bbox()
 ds$res()
 ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 ds$close()
+
+deleteDataset(img_file)
 }
 \seealso{
 \code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=rasterFromRaster]{rasterFromRaster()}}, \code{\link[=warp]{warp()}}
+
+\code{\link[=ogr2ogr]{ogr2ogr()}} for vector data
 }

@@ -16,8 +16,9 @@ calc(
   options = NULL,
   nodata_value = NULL,
   setRasterNodataValue = FALSE,
-  usePixelLonLat = FALSE,
-  write_mode = "safe"
+  usePixelLonLat = NULL,
+  write_mode = "safe",
+  quiet = FALSE
 )
 }
 \arguments{
@@ -51,9 +52,10 @@ during creation of a GTiff file).}
 format nodata value to \code{nodata_value}, or \code{FALSE} not to set a raster
 nodata value.}
 
-\item{usePixelLonLat}{Logical. If \code{TRUE}, \code{pixelX} and \code{pixelY} will be
-inverse projected to geographic coordinates and available as \code{pixelLon} and
-\code{pixelLat} in \code{expr} (adds computation time).}
+\item{usePixelLonLat}{This argument is deprecated and will be removed in a
+future version. Variable names \code{pixelLon} and \code{pixelLat} can be used in
+\code{expr}, and the pixel x/y coordinates will be inverse projected to
+longitude/latitude (adds computation time).}
 
 \item{write_mode}{Character. Name of the file write mode for output.
 One of:
@@ -63,6 +65,9 @@ One of:
 \item \code{update} - if \code{dstfile} exists, will attempt to open in update mode
 and write output to \code{out_band}
 }}
+
+\item{quiet}{Logical scalar. If \code{TRUE}, a progress bar will not be
+displayed. Defaults to \code{FALSE}.}
 }
 \value{
 Returns the output filename invisibly.
@@ -86,13 +91,13 @@ The variables in \code{expr} are vectors of length raster xsize
 (row vectors of the input raster layer(s)).
 The expression should return a vector also of length raster xsize
 (an output row).
-Two special variable names are available in \code{expr} by default:
-\code{pixelX} and \code{pixelY} provide the pixel center coordinate in
-projection units. If \code{usePixelLonLat = TRUE}, the pixel x/y coordinates
-will also be inverse projected to longitude/latitude and available
-in \code{expr} as \code{pixelLon} and \code{pixelLat} (in the same geographic
-coordinate system used by the input projection, which is read from the
-first input raster).
+Four special variable names are available in \code{expr}:
+\code{pixelX} and \code{pixelY} provide pixel center coordinates in projection units.
+\code{pixelLon} and \code{pixelLat} can also be used, in which case the pixel x/y
+coordinates will be inverse projected to longitude/latitude
+(in the same geographic coordinate system used by the input projection,
+which is read from the first input raster). Note that inverse projection
+adds computation time.
 
 To refer to specific bands in a multi-band file, repeat the filename in
 \code{rasterfiles} and specify corresponding band numbers in \code{bands}, along with
@@ -112,34 +117,34 @@ band number in \code{dstfile} (new bands cannot be created in \code{dstfile}).
 
 # Hopkins bioclimatic index (HI) as described in:
 # Bechtold, 2004, West. J. Appl. For. 19(4):245-251.
-# Integrates elevation, latitude and longitude into an index of the 
-# phenological occurrence of springtime. Here it is relativized to 
+# Integrates elevation, latitude and longitude into an index of the
+# phenological occurrence of springtime. Here it is relativized to
 # mean values for an eight-state region in the western US.
-# Positive HI means spring is delayed by that number of days relative 
+# Positive HI means spring is delayed by that number of days relative
 # to the reference position, while negative values indicate spring is
-# advanced. The original equation had elevation units as feet, so 
+# advanced. The original equation had elevation units as feet, so
 # converting m to ft in `expr`.
 
 elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 
 # expression to calculate HI
-expr <- "round( ((ELEV_M * 3.281 - 5449) / 100) + 
-                ((pixelLat - 42.16) * 4) + 
+expr <- "round( ((ELEV_M * 3.281 - 5449) / 100) +
+                ((pixelLat - 42.16) * 4) +
                 ((-116.39 - pixelLon) * 1.25) )"
 
 # calc() writes to a tempfile by default
-hi_file <- calc(expr = expr, 
-                rasterfiles = elev_file, 
-                var.names = "ELEV_M", 
+hi_file <- calc(expr = expr,
+                rasterfiles = elev_file,
+                var.names = "ELEV_M",
                 dtName = "Int16",
-                nodata_value = -32767, 
-                setRasterNodataValue = TRUE,
-                usePixelLonLat = TRUE)
+                nodata_value = -32767,
+                setRasterNodataValue = TRUE)
 
 ds <- new(GDALRaster, hi_file)
 # min, max, mean, sd
 ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 ds$close()
+deleteDataset(hi_file)
 
 
 ## Calculate normalized difference vegetation index (NDVI)
@@ -160,22 +165,23 @@ ndvi_file <- calc(expr = expr,
 ds <- new(GDALRaster, ndvi_file)
 ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 ds$close()
+deleteDataset(ndvi_file)
 
 
 ## Reclassify a variable by rule set
 
-# Combine two raster layers and look for specific combinations. Then 
+# Combine two raster layers and look for specific combinations. Then
 # recode to a new value by rule set.
 #
 # Based on example in:
-#   Stratton, R.D. 2009. Guidebook on LANDFIRE fuels data acquisition, 
+#   Stratton, R.D. 2009. Guidebook on LANDFIRE fuels data acquisition,
 #   critique, modification, maintenance, and model calibration.
-#   Gen. Tech. Rep. RMRS-GTR-220. U.S. Department of Agriculture, 
+#   Gen. Tech. Rep. RMRS-GTR-220. U.S. Department of Agriculture,
 #   Forest Service, Rocky Mountain Research Station. 54 p.
 # Context: Refine national-scale fuels data to improve fire simulation
 #   results in localized applications.
 # Issue: Areas with steep slopes (40+ degrees) were mapped as
-#   GR1 (101; short, sparse dry climate grass) and 
+#   GR1 (101; short, sparse dry climate grass) and
 #   GR2 (102; low load, dry climate grass) but were not carrying fire.
 # Resolution: After viewing these areas in Google Earth,
 #   NB9 (99; bare ground) was selected as the replacement fuel model.
@@ -214,6 +220,8 @@ sum(tbl_subset$count)
 
 # if LCP file format is needed:
 # createCopy("LCP", "storml_edited.lcp", tif_file)
+
+deleteDataset(tif_file)
 }
 \seealso{
 \code{\link[=GDALRaster]{GDALRaster-class}}, \code{\link[=combine]{combine()}}, \code{\link[=rasterToVRT]{rasterToVRT()}}
