@@ -6,7 +6,8 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml)
-[![codecov](https://codecov.io/gh/ctoney/gdalraster/branch/main/graph/badge.svg?token=MXIOPZQ2IU)](https://app.codecov.io/gh/ctoney/gdalraster)
+[![codecov](https://codecov.io/gh/ctoney/gdalraster/graph/badge.svg?token=MXIOPZQ2IU)](https://app.codecov.io/gh/ctoney/gdalraster)
+[![R-hub](https://github.com/USDAForestService/gdalraster/actions/workflows/rhub.yaml/badge.svg)](https://github.com/USDAForestService/gdalraster/actions/workflows/rhub.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/gdalraster)](https://CRAN.R-project.org/package=gdalraster)
 [![r-universe
@@ -15,13 +16,17 @@ status](https://usdaforestservice.r-universe.dev/badges/gdalraster)](https://usd
 
 ## Overview
 
-**gdalraster** is an R interface to the Raster API of the Geospatial
-Data Abstraction Library ([GDAL](https://gdal.org/)). Bindings to a
-subset of the GDAL Virtual Systems Interface
-([VSI](https://gdal.org/api/cpl.html#cpl-vsi-h)) are also provided to
-support filesystem operations on URLs, cloud storage services,
-Zip/GZip/7z/RAR, and in-memory files. Calling signatures resemble the
-native C, C++ and Python APIs provided by the GDAL project.
+**gdalraster** is an R interface to the [Raster
+API](https://gdal.org/api/raster_c_api.html) of the Geospatial Data
+Abstraction Library ([GDAL](https://gdal.org/)). Bindings to a subset of
+the GDAL [Vector API](https://gdal.org/api/vector_c_api.html) are
+included to provide utilities for managing vector data sources. Bindings
+to the GDAL Virtual Systems Interface
+([VSI](https://gdal.org/api/cpl.html#cpl-vsi-h)) support file system
+operations and binary I/O on URLs, cloud storage services,
+Zip/GZip/7z/RAR, and in-memory files, as well as regular file systems.
+Calling signatures resemble the native C, C++ and Python APIs provided
+by the GDAL project.
 
 Bindings to GDAL are implemented in the exposed C++ class
 [`GDALRaster`](https://usdaforestservice.github.io/gdalraster/reference/GDALRaster-class.html)
@@ -31,7 +36,7 @@ supporting:
 
   - manual creation of uninitialized raster datasets
   - creation from existing raster as template
-  - read/set raster dataset parameters
+  - read/set raster dataset parameters and metadata
   - low-level I/O
   - build/read/set color tables and raster attribute tables
   - virtual raster (VRT) for virtual cropping, resampling, kernel
@@ -41,11 +46,15 @@ supporting:
   - spatial reference systems
   - GDAL algorithms (`dem_proc()`, `polygonize()`, `rasterize()`,
     [`...`](https://usdaforestservice.github.io/gdalraster/reference/index.html#algorithms))
-  - OGR vector utilities (`ogrinfo()`, `ogr2ogr()`)
-  - copy files/move/rename/delete datasets
-  - abstraction of filesystem operations on URLs and cloud storage
+  - OGR vector utilities (`ogrinfo()`, `ogr2ogr()`,
+    [`ogr_manage`](https://usdaforestservice.github.io/gdalraster/reference/ogr_manage.html)
+    interface)
+  - copy files/move/rename/delete raster and vector datasets
   - create/append to Seek-Optimized ZIP
     ([SOZip](https://github.com/sozip/sozip-spec))
+  - abstraction of file system operations on URLs and cloud storage
+  - Standard C binary file I/O through VSI (class
+    [`VSIFile`](https://usdaforestservice.github.io/gdalraster/reference/VSIFile-class.html))
 
 Additional functionality includes:
 
@@ -91,11 +100,11 @@ do not require any separate installation of external libraries for GDAL.
 
 #### Linux
 
-GDAL \>= 2.4.0 is required, but a more recent version is recommended
-(e.g., \>= 3.6.4). GDAL built with GEOS is a system requirement as of
-**gdalraster** 1.10. GDAL as of 3.9 requires PROJ \>= 6.3.1, but a more
-recent version of PROJ is recommended. PROJ requires sqlite3, and
-libxml2 is required for the imported R package **xml2**.
+GDAL \>= 3.1.0 built with GEOS is required, but a more recent GDAL
+version is recommended, e.g., \>= 3.6.4. GDAL as of version 3.9 requires
+PROJ \>= 6.3.1, but a more recent version of PROJ is also recommended.
+PROJ requires sqlite3, and libxml2 is required for the imported R
+package **xml2**.
 
 On Ubuntu, recent versions of geospatial libraries can be installed from
 the [ubuntugis-unstable
@@ -136,8 +145,8 @@ PROJ and all other dependent libraries that are needed to compile
 **gdalraster**. Note that CRAN releases periodic revisions to RTools
 that often include updates to the libraries as new versions become
 available. For example,
-[revision 5958](https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html)
-of RTools 4.3 contains GDAL 3.8.2 and PROJ 9.3.1.
+[release 6104](https://cran.r-project.org/bin/windows/Rtools/rtools44/rtools.html)
+of RTools 4.4 contains GDAL 3.8.4 and PROJ 9.3.1.
 
 With RTools installed:
 
@@ -152,11 +161,26 @@ GDAL and PROJ can be installed with Homebrew:
 
     brew install pkg-config gdal proj
 
-Then `configure.args` is needed:
+Then `configure.args` may be needed:
 
 ``` r
 # Install the development version from GitHub
 remotes::install_github("USDAForestService/gdalraster", configure.args = "--with-proj-lib=$(brew --prefix)/lib/")
+```
+
+Caution seems warranted on macOS with regard to mixing a source
+installation with installation of binaries from CRAN.
+
+### From R-universe
+
+[R-universe](https://usdaforestservice.r-universe.dev/gdalraster)
+provides pre-compiled binary packages for Windows and macOS that track
+the development version of **gdalraster**. New packages are built
+usually within \~1 hour of the most recent commit.
+
+``` r
+# Install the development version from r-universe
+install.packages("gdalraster", repos = c("https://usdaforestservice.r-universe.dev", "https://cran.r-project.org"))
 ```
 
 ## Documentation

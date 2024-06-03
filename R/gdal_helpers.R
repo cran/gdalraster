@@ -60,20 +60,34 @@
 #' integer value to specify the number of threads to use for SOZip-compressed
 #' files (see [set_config_option()]).
 #'
+#' SOZip can be validated with:
+#' ```
+#' vsi_get_file_metadata(zip_file, domain="ZIP")
+#' ```
+#'
+#' where `zip_file` uses the /vsizip/ prefix.
+#'
+#' @seealso
+#' [vsi_get_file_metadata()]
+#'
 #' @examples
 #' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 #' zip_file <- paste0(tempdir(), "/", "storml_lcp.zip")
 #'
 #' # Requires GDAL >= 3.7
 #' if (as.integer(gdal_version()[2]) >= 3070000) {
-#'   # Note that the example file is too small to be seek-optimized by default
-#'   # So this creates a regular zip file
-#'   addFilesInZip(zip_file, lcp_file, full_paths=FALSE, num_threads=1)
-#'   unzip(zip_file, list=TRUE)
+#'   addFilesInZip(zip_file, lcp_file, full_paths=FALSE, sozip_enabled="YES",
+#'                 num_threads=1)
+#'
+#'   print("Files in zip archive:")
+#'   print(unzip(zip_file, list=TRUE))
 #'
 #'   # Open with GDAL using Virtual File System handler '/vsizip/'
 #'   # see: https://gdal.org/user/virtual_file_systems.html#vsizip-zip-archives
-#'   lcp_in_zip <- paste0("/vsizip/", file.path(zip_file, "storm_lake.lcp"))
+#'   lcp_in_zip <- file.path("/vsizip", zip_file, "storm_lake.lcp")
+#'   print("SOZip metadata:")
+#'   print(vsi_get_file_metadata(lcp_in_zip, domain="ZIP"))
+#'
 #'   ds <- new(GDALRaster, lcp_in_zip)
 #'   ds$info()
 #'   ds$close()
@@ -289,4 +303,110 @@ vsi_get_fs_options <- function(filename, as_list = TRUE) {
         return(xml2::read_xml(opts) |> xml2::as_list())
     else
         return(opts)
+}
+
+#' Raster pixel/line from geospatial x,y coordinates
+#'
+#' `get_pixel_line()` converts geospatial coordinates to pixel/line (raster
+#' column, row numbers).
+#' The upper left corner pixel is the raster origin (0,0) with column, row
+#' increasing left to right, top to bottom.
+#'
+#' @param xy Numeric matrix of geospatial x,y coordinates in the same spatial
+#' reference system as \code{gt} (or two-column data frame that will be coerced
+#' to numeric matrix).
+#' @param gt Either a numeric vector of length six containing the affine
+#' geotransform for the raster, or an object of class `GDALRaster` from
+#' which the geotransform will be obtained (see Note).
+#' @returns Integer matrix of raster pixel/line.
+#'
+#' @note
+#' This function applies the inverse geotransform to the input points. If `gt`
+#' is given as the numeric vector, no bounds checking is done (i.e., min
+#' pixel/line could be less than zero and max pixel/line could be greater than
+#' the raster x/y size). If `gt` is obtained from an object of class
+#' `GDALRaster`, then `NA` is returned for points that fall outside the
+#' raster extent and a warning emitted giving the number points that were
+#' outside. This latter case is equivalent to calling the `$get_pixel_line()`
+#' class method on the `GDALRaster` object (see Examples).
+#'
+#' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [inv_geotransform()]
+#'
+#' @examples
+#' pt_file <- system.file("extdata/storml_pts.csv", package="gdalraster")
+#' # id, x, y in NAD83 / UTM zone 12N
+#' pts <- read.csv(pt_file)
+#' print(pts)
+#'
+#' raster_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
+#' ds <- new(GDALRaster, raster_file)
+#' gt <- ds$getGeoTransform()
+#' get_pixel_line(pts[, -1], gt)
+#'
+#' # or, using the class method
+#' ds$get_pixel_line(pts[, -1])
+#'
+#' # add a point outside the raster extent
+#' pts[11, ] <- c(11, 323318, 5105104)
+#' get_pixel_line(pts[, -1], gt)
+#'
+#' # with bounds checking on the raster extent
+#' ds$get_pixel_line(pts[, -1])
+#'
+#' ds$close()
+get_pixel_line <- function(xy, gt) {
+    if (!(is.matrix(xy) || is.data.frame(xy)))
+        stop("'xy' must be a data frame or numeric matrix", call. = FALSE)
+
+    if (ncol(xy) != 2)
+        stop("'xy' must have 2 columns",
+             call. = FALSE)
+
+    if (is(gt, "Rcpp_GDALRaster")) {
+        return(.get_pixel_line_ds(xy, gt))
+    } else if (is.numeric(gt) && length(gt) == 6) {
+        return(.get_pixel_line_gt(xy, gt))
+    } else {
+        stop("'gt' must be a numeric vector of length 6, or GDALRaster object",
+             call. = FALSE)
+    }
+}
+
+#' Report open datasets
+#'
+#' `dump_open_datasets()` dumps a list of all open datasets (shared or not) to
+#' the console. This function is primarily intended to assist in debugging
+#' "dataset leaks" and reference counting issues. The information reported
+#' includes the dataset name, referenced count, shared status, driver name,
+#' size, and band count. This a wrapper for `GDALDumpOpenDatasets()` with
+#' output to the console.
+#'
+#' @returns Number of open datasets.
+#'
+#' @examples
+#' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#' ds <- new(GDALRaster, elev_file)
+#' dump_open_datasets()
+#' ds2 <- new(GDALRaster, elev_file)
+#' dump_open_datasets()
+#' # open without using shared mode
+#' ds3 <- new(GDALRaster, elev_file, read_only = TRUE,
+#'            open_options = NULL, shared = FALSE)
+#' dump_open_datasets()
+#' ds$close()
+#' dump_open_datasets()
+#' ds2$close()
+#' dump_open_datasets()
+#' ds3$close()
+#' dump_open_datasets()
+dump_open_datasets <- function() {
+    f <- tempfile(fileext = ".txt")
+    nopen <- .dump_open_datasets(f)
+    if (nopen < 0)
+        stop("failed to obtain the list of open datasets", call. = FALSE)
+
+    out <- readLines(f)
+    unlink(f)
+    writeLines(out)
+    return(nopen)
 }

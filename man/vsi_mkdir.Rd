@@ -4,33 +4,35 @@
 \alias{vsi_mkdir}
 \title{Create a directory}
 \usage{
-vsi_mkdir(path, mode = 755L)
+vsi_mkdir(path, mode = "0755", recursive = FALSE)
 }
 \arguments{
 \item{path}{Character string. The path to the directory to create.}
 
-\item{mode}{Integer scalar. The permissions mode.}
+\item{mode}{Character string. The permissions mode in octal with prefix
+\code{0}, e.g., \code{"0755"} (the default).}
+
+\item{recursive}{Logical scalar. \code{TRUE} to create the directory and its
+ancestors. Defaults to \code{FALSE}.}
 }
 \value{
-Invisibly, \code{0} on success or \code{-1} on an error.
+\code{0} on success or \code{-1} on an error.
 }
 \description{
 \code{vsi_mkdir()} creates a new directory with the indicated mode.
 For POSIX-style systems, the mode is modified by the file creation mask
 (umask). However, some file systems and platforms may not use umask, or
 they may ignore the mode completely. So a reasonable cross-platform
-default mode value is 0755.
-This function is a wrapper for \code{VSIMkdir()} in the GDAL
-Common Portability Library. Analog of the POSIX \code{mkdir()} function.
+default mode value is \code{0755}.
+With \code{recursive = TRUE}, creates a directory and all its ancestors.
+This function is a wrapper for \code{VSIMkdir()} and \code{VSIMkdirRecursive()} in
+the GDAL Common Portability Library.
 }
 \examples{
-# for illustration only
-# this would normally be used with GDAL virtual file systems
 new_dir <- file.path(tempdir(), "newdir")
-result <- vsi_mkdir(new_dir)
-print(result)
-result <- vsi_rmdir(new_dir)
-print(result)
+vsi_mkdir(new_dir)
+vsi_stat(new_dir, "type")
+vsi_rmdir(new_dir)
 }
 \seealso{
 \code{\link[=vsi_read_dir]{vsi_read_dir()}}, \code{\link[=vsi_rmdir]{vsi_rmdir()}}

@@ -1,3 +1,83 @@
+# gdalraster 1.11.0
+
+## System requirements
+
+* GDAL >= 3.1.0 is now required (previously >= 2.4.0)
+* package `bit64` has been added to Imports
+* package `RcppInt64` has been added in LinkingTo
+
+## New utility functions for managing vector data sources
+
+* initial bindings to the GDAL/OGR Vector API supporting data source management: `ogr_ds_exists()`, `ogr_ds_format()`, `ogr_ds_test_cap()`, `ogr_ds_create()`, `ogr_ds_layer_count()`, `ogr_ds_layer_names()`, `ogr_layer_exists()`, `ogr_layer_test_cap()`, `ogr_layer_create()`, `ogr_layer_field_names()`, `ogr_layer_delete()`, `ogr_field_index()`, `ogr_field_create()`, `ogr_geom_field_create()`, `ogr_field_rename()`, `ogr_field_delete()`, `ogr_execute_sql()`
+* documentation and helper functions for feature class definition: `ogr_def_field()`, `ogr_def_geom_field()`, `ogr_def_layer()`
+
+## New bindings to the GDAL VSIVirtualHandle API
+
+* class `VSIFile` wraps `VSIVirtualHandle` for Standard C binary file I/O on regular file systems, URLs, cloud storage services, Zip/GZip/7z/RAR, and in-memory files
+
+## GDAL VSI for operations on virtual file systems (bug fix / enhancements)
+
+* bug fix in `vsi_mkdir()`: the file mode was set incorrectly because `mode` was not passed correctly as octal literal. `mode` is now passed as a character string containing the file mode as octal.
+* add `vsi_get_file_metadata()`: returns metadata for network filesystem objects (/vsicurl/, /vsis3/, /vsiaz/, etc.), and with GDAL >= 3.7, /vsizip/ SOZip metadata
+* add `vsi_set_path_option()`: set a path specific option for a given path prefix, e.g., credential setting for a virtual file system (GDAL >= 3.6)
+* add `vsi_clear_path_options()`: clear path specific configuration options previously set with `vsi_set_path_option()` (GDAL >= 3.6)
+* `vsi_rmdir()`: add argument `recursive`, `TRUE` to delete the directory and its content
+* `vsi_mkdir()`: add argument `recursive`, `TRUE` to create the directory and its ancestors
+* several VSI functions returned `0` or `-1` invisibly indicating success/failure, consistent with GDAL return values. Those return values are now visible to be consistent with return values from `VSIFile` class methods.
+* `vsi_stat()` with `info = "size"`, and `vsi_get_disk_free_space()` now return `bit64::integer64` type
+
+## GDALRaster-class
+
+* behavior change: the class methods `info()` and `infoAsJSON()` now use the default command-line arguments for the underlying `gdalinfo` utility. Arguments are configurable in the new read/write `infoOptions` field, which is an empty vector by default (`character(0)`).
+* add support for I/O of Byte raster as R `raw` type, and add the setting `readByteAsRaw` as a class field (#314, thanks to @mdsumner)
+* add read/write fields `infoOptions` and `quiet` for applying per-object settings
+* add an optional constructor to allow specifying whether the dataset is opened in shared mode, `TRUE` by default
+* add method `getActualBlockSize()`: retrieve the actual block size for a given block offset
+* add method `get_pixel_line()`: class method alternative to calling the stand-alone function `get_pixel_line()` on an object of class `GDALRaster`
+* add `GDALRaster::getProjection()`: equivalent to `GDALRaster::getProjectionRef()` (consistent with `osgeo.gdal.Dataset.getProjection()` / `osgeo.gdal.Dataset.getProjectionRef()` in the GDAL Python API)
+* method `getDefaultRAT()`: add progress bar since retrieving large raster attribute tables could take >30 sec
+
+## Stand-alone processing functions
+
+* `calc()`: add support for multiband output (#319)
+* `calc()`: add input validation for `var.names`, must be in `expr`
+* `get_pixel_line()`: an object of class `GDALRaster` can now be passed for the `gt` parameter, in which case the geotransform will be obtained from the object and bounds checking on the raster extent will be done (original behavior for `gt` as numeric vector is unchanged)
+* `ogr2ogr()`: add parameter `open_options` to support options on the source dataset
+* `read_ds()`: add parameter `as_raw` to read a Byte raster as R `raw` type (#314, thanks to @mdsumner)
+
+## GDAL configuration
+
+* add `dump_open_datasets()`: dump a list of all open datasets (shared or not) to the console
+* add `get_num_cpus()`: get the number of processors detected by GDAL
+* add `get_usable_physical_ram()`: get usable physical RAM reported by GDAL
+* add `has_spatialite()`: returns `TRUE` if GDAL was built with SpatiaLite support
+* add `http_enabled()`: returns `TRUE` if GDAL was built with libcurl support
+* add `.cpl_http_cleanup()`: wrapper of `CPLHTTPCleanup()` for internal use (2024-05-29)
+
+## Geometry functions
+
+* new additional geometry functions operating on WKT (GEOS via GDAL headers): `g_is_empty()`, `g_is_valid()`, `g_name()`, `g_intersects()`, `g_equals()`, `g_disjoint()`, `g_touches()`, `g_contains()`, `g_within()`, `g_crosses()`,`g_overlaps()`, `g_intersection()`, `g_union()`, `g_difference()`, `g_sym_difference()`, `g_distance()`, `g_length()`, `g_area()`, `g_centroid()`
+* add `bbox_transform()`: transform a bounding box to a different projection
+* `g_transform()`: now uses `OGR_GeomTransformer_Create()` and `OGR_GeomTransformer_Transform()` in the GDAL API, enhanced version of `OGR_G_Transform()`; add arguments `wrap_date_line` and `date_line_offset`
+
+## Documentation
+
+* add [Discussions](https://github.com/USDAForestService/gdalraster/discussions) on the GitHub repository
+* add a section for HTTP/HTTPS (/vsicurl/) in the vignette [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html)
+* DESCRIPTION file: add Michael D. Sumner in `Authors@R`
+
+## Other internal changes and fixes
+
+* fix memory leaks detected by Valgrind in `GDALRaster` class methods `info()`, `infoAsJSON()` and `getDefaultRAT()`
+* register a finalizer to call `CPLHTTPCleanup()` upon R session exit
+* add `GDALRaster` class method `setFilename()`: set the filename of an uninitialized `GDALRaster` object, currently undocumented / for internal use
+* add `GDALRaster` class method `_getGDALDatasetH()`: get the GDAL dataset handle for internal use
+* `buildRAT()`: if the input raster is an object of class `GDALRaster`, use it by reference rather than instantiating another `GDALRaster` object internally
+* `calc()`: close input raster dataset before exit when a differing extent is detected
+* add some missing null checks, and object destruction on error conditions, in src/geos_wkt.cpp
+* improve the check for `"-json"` as a `cl_arg` to `ogrinfo()`
+* code linting
+
 # gdalraster 1.10.0
 
 ## System requirements

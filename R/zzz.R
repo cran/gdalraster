@@ -1,16 +1,20 @@
-.gdalraster_env <- new.env(parent=.GlobalEnv)
+.gdalraster_env <- new.env()
+
+.gdalraster_finalizer <- function(env) {
+    # clean-up for /vsicurl/ and related file systems
+    push_error_handler("quiet")
+    .cpl_http_cleanup()
+    pop_error_handler()
+}
 
 .onLoad <- function(libname, pkgname) {
     # set environment variables on Windows
     if (dir.exists(system.file("proj", package="gdalraster"))) {
         gdalraster_proj <- system.file("proj", package="gdalraster")
         proj_path_set <- FALSE
-        if (as.integer(gdal_version()[2] >= 3000100)) {
-            # set with API
-            path_api <- proj_search_paths(gdalraster_proj)
-            if (normalizePath(path_api) == normalizePath(gdalraster_proj))
-                proj_path_set <- TRUE
-        }
+        path_api <- proj_search_paths(gdalraster_proj)
+        if (normalizePath(path_api) == normalizePath(gdalraster_proj))
+            proj_path_set <- TRUE
         if (!proj_path_set) {
             assign(".orig_proj_lib", Sys.getenv("PROJ_LIB"),
                    envir=.gdalraster_env)
@@ -22,6 +26,9 @@
                envir=.gdalraster_env)
         Sys.setenv("GDAL_DATA" = system.file("gdal", package="gdalraster"))
     }
+
+    # register a finalizer for cleanup at the end of an R session
+    reg.finalizer(.gdalraster_env, .gdalraster_finalizer, onexit = TRUE)
 }
 
 .onAttach <- function(libname, pkgname) {
@@ -48,10 +55,5 @@
     if (dir.exists(system.file("gdal", package="gdalraster"))) {
         Sys.setenv("GDAL_DATA"=get(".orig_gdal_data", envir=.gdalraster_env))
     }
-    # Clean the cache associated with /vsicurl/ and related file systems.
-    # Potentially avoids q() sometimes failing with error "ignoring SIGPIPE
-    # signal" after GDAL has had a /vsicurl/ file system in use.
-    push_error_handler("quiet")
-    vsi_curl_clear_cache()
-    pop_error_handler()
+    .gdalraster_finalizer(.gdalraster_env)
 }

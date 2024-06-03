@@ -10,7 +10,8 @@ vsi_get_disk_free_space(path)
 \item{path}{Character string. A directory of the filesystem to query.}
 }
 \value{
-Numeric scalar. The free space in bytes, or \code{-1} in case of error.
+Numeric scalar. The free space in bytes (as \code{bit64::integer64}
+type), or \code{-1} in case of error.
 }
 \description{
 \code{vsi_get_disk_free_space()} returns the free disk space available on the
@@ -18,7 +19,7 @@ filesystem. Wrapper for \code{VSIGetDiskFreeSpace()} in the GDAL Common
 Portability Library.
 }
 \examples{
-tmp_dir <- file.path(tempdir(), "tmpdir")
+tmp_dir <- file.path("/vsimem", "tmpdir")
 vsi_mkdir(tmp_dir)
 vsi_get_disk_free_space(tmp_dir)
 vsi_rmdir(tmp_dir)

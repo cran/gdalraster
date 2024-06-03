@@ -22,7 +22,7 @@
   \item raster creation: \code{\link[=create]{create()}},
   \code{\link[=createCopy]{createCopy()}},
   \code{\link[=rasterFromRaster]{rasterFromRaster()}},
-  \code{\link[=translate]{translate()}},\cr
+  \code{\link[=translate]{translate()}},
   \code{\link[=getCreationOptions]{getCreationOptions()}}
 
   \item virtual raster: \code{\link[=buildVRT]{buildVRT()}},
@@ -34,13 +34,13 @@
   \code{\link[=fillNodata]{fillNodata()}},
   \code{\link[=footprint]{footprint()}},
   \code{\link[=polygonize]{polygonize()}},
-  \code{\link[=rasterize]{rasterize()}},\cr
+  \code{\link[=rasterize]{rasterize()}},
   \code{\link[=sieveFilter]{sieveFilter()}},
   \code{\link[=GDALRaster]{GDALRaster$getChecksum()}}
 
   \item raster attribute tables: \code{\link[=buildRAT]{buildRAT()}},
   \code{\link[=displayRAT]{displayRAT()}},
-  \code{\link[=GDALRaster]{GDALRaster$getDefaultRAT()}},\cr
+  \code{\link[=GDALRaster]{GDALRaster$getDefaultRAT()}},
   \code{\link[=GDALRaster]{GDALRaster$setDefaultRAT()}}
 
   \item geotransform conversion:
@@ -63,8 +63,28 @@
   \code{\link[=bbox_to_wkt]{bbox_to_wkt()}},
   \code{\link[=bbox_intersect]{bbox_intersect()}},
   \code{\link[=bbox_union]{bbox_union()}},
+  \code{\link[=bbox_transform]{bbox_transform()}},
+  \code{\link[=g_area]{g_area()}},
   \code{\link[=g_buffer]{g_buffer()}},
+  \code{\link[=g_centroid]{g_centroid()}},
+  \code{\link[=g_contains]{g_contains()}},
+  \code{\link[=g_crosses]{g_crosses()}},
+  \code{\link[=g_difference]{g_difference()}},
+  \code{\link[=g_disjoint]{g_disjoint()}},
+  \code{\link[=g_distance]{g_distance()}},
+  \code{\link[=g_equals]{g_equals()}},
+  \code{\link[=g_intersection]{g_intersection()}},
+  \code{\link[=g_intersects]{g_intersects()}},
+  \code{\link[=g_is_empty]{g_is_empty()}},
+  \code{\link[=g_is_valid]{g_is_valid()}},
+  \code{\link[=g_length]{g_length()}},
+  \code{\link[=g_name]{g_name()}},
+  \code{\link[=g_overlaps]{g_overlaps()}},
+  \code{\link[=g_sym_difference]{g_sym_difference()}},
+  \code{\link[=g_touches]{g_touches()}},
   \code{\link[=g_transform]{g_transform()}},
+  \code{\link[=g_union]{g_union()}},
+  \code{\link[=g_within]{g_within()}},
   \code{\link[=geos_version]{geos_version()}}
 
   \item data management: \code{\link[=addFilesInZip]{addFilesInZip()}},
@@ -75,17 +95,24 @@
 
   \item OGR vector utilities:
   \code{\link[=ogr2ogr]{ogr2ogr()}},
-  \code{\link[=ogrinfo]{ogrinfo()}}
+  \code{\link[=ogrinfo]{ogrinfo()}},
+  \code{\link[=ogr_manage]{ogr_manage}},
+  \code{\link[=ogr_define]{ogr_define}}
 
-  \item virtual file systems: \code{\link[=vsi_copy_file]{vsi_copy_file()}},
+  \item virtual file systems:
+  \code{\link[=VSIFile-class]{VSIFile}},
+  \code{\link[=vsi_clear_path_options]{vsi_clear_path_options()}},
+  \code{\link[=vsi_copy_file]{vsi_copy_file()}},
   \code{\link[=vsi_curl_clear_cache]{vsi_curl_clear_cache()}},
   \code{\link[=vsi_get_disk_free_space]{vsi_get_disk_free_space()}},
+  \code{\link[=vsi_get_file_metadata]{vsi_get_file_metadata()}},
   \code{\link[=vsi_get_fs_options]{vsi_get_fs_options()}},
   \code{\link[=vsi_get_fs_prefixes]{vsi_get_fs_prefixes()}},
   \code{\link[=vsi_mkdir]{vsi_mkdir()}},
   \code{\link[=vsi_read_dir]{vsi_read_dir()}},
   \code{\link[=vsi_rename]{vsi_rename()}},
   \code{\link[=vsi_rmdir]{vsi_rmdir()}},
+  \code{\link[=vsi_set_path_option]{vsi_set_path_option()}},
   \code{\link[=vsi_stat]{vsi_stat()}},
   \code{\link[=vsi_supports_rnd_write]{vsi_supports_rnd_write()}},
   \code{\link[=vsi_supports_seq_write]{vsi_supports_seq_write()}},
@@ -96,11 +123,16 @@
   \item GDAL configuration:
   \code{\link[=gdal_version]{gdal_version()}},
   \code{\link[=gdal_formats]{gdal_formats()}},
-  \code{\link[=get_cache_used]{get_cache_used()}},\cr
+  \code{\link[=get_cache_used]{get_cache_used()}},
   \code{\link[=get_config_option]{get_config_option()}},
   \code{\link[=set_config_option]{set_config_option()}},
+  \code{\link[=get_num_cpus]{get_num_cpus()}},
+  \code{\link[=get_usable_physical_ram]{get_usable_physical_ram()}},
+  \code{\link[=has_spatialite]{has_spatialite()}},
+  \code{\link[=http_enabled]{http_enabled()}},
   \code{\link[=push_error_handler]{push_error_handler()}},
-  \code{\link[=pop_error_handler]{pop_error_handler()}}
+  \code{\link[=pop_error_handler]{pop_error_handler()}},
+  \code{\link[=dump_open_datasets]{dump_open_datasets()}}
 
   \item PROJ configuration:
   \code{\link[=proj_version]{proj_version()}},
@@ -111,7 +143,7 @@
   \itemize{
   \item \code{\link{RunningStats-class}} calculates mean and variance in one
   pass. The min, max, sum, and count are also tracked (efficient summary
-  statistics on large data streams).
+  statistics on data streams).
 
   \item \code{\link{CmbTable-class}} implements a hash table for counting
   unique combinations of integer values.

@@ -3,7 +3,7 @@
 #' @aliases
 #' Rcpp_GDALRaster Rcpp_GDALRaster-class GDALRaster
 #'
-#' @title Class encapsulating a raster dataset and its associated raster bands
+#' @title Class encapsulating a raster dataset and associated band objects
 #'
 #' @description
 #' `GDALRaster` provides an interface for accessing a raster dataset via GDAL
@@ -13,25 +13,39 @@
 #'
 #' @param filename Character string containing the file name of a raster
 #' dataset to open, as full path or relative to the current working directory.
-#' In some cases, `filename` may not refer to a physical file, but instead
-#' contain format-specific information on how to access a dataset (see GDAL
+#' In some cases, `filename` may not refer to a local file system, but instead
+#' contain format-specific information on how to access a dataset such
+#' as database connection string, URL, /vsiPREFIX/, etc. (see GDAL
 #' raster format descriptions:
 #' \url{https://gdal.org/drivers/raster/index.html}).
 #' @param read_only Logical. `TRUE` to open the dataset read-only (the default),
 #' or `FALSE` to open with write access.
 #' @param open_options Optional character vector of `NAME=VALUE` pairs
 #' specifying dataset open options.
+#' @param shared Logical. `FALSE` to open the dataset without using shared
+#' mode. Default is `TRUE` (see Note).
 #' @returns An object of class `GDALRaster` which contains a pointer to the
 #' opened dataset, and methods that operate on the dataset as described in
 #' Details. `GDALRaster` is a C++ class exposed directly to R (via
-#' `RCPP_EXPOSED_CLASS`). Methods of the class are accessed using the
-#' `$` operator.
+#' `RCPP_EXPOSED_CLASS`). Fields and methods of the class are accessed using
+#' the `$` operator. The read/write fields can be used for per-object settings.
 #'
 #' @section Usage:
 #' \preformatted{
-#' ds <- new(GDALRaster, filename, read_only=TRUE)
-#' # or, using dataset open options:
-#' ds <- new(GDALRaster, filename, read_only, open_options)
+#' ## Constructors
+#' # read-only by default:
+#' ds <- new(GDALRaster, filename)
+#' # for update access:
+#' ds <- new(GDALRaster, filename, read_only = FALSE)
+#' # to use dataset open options:
+#' ds <- new(GDALRaster, filename, read_only = TRUE|FALSE, open_options)
+#' # to open without shared mode:
+#' new(GDALRaster, filename, read_only, open_options, shared = FALSE)
+#'
+#' ## Read/write fields (see Details)
+#' ds$infoOptions
+#' ds$quiet
+#' ds$readByteAsRaw
 #'
 #' ## Methods (see Details)
 #' ds$getFilename()
@@ -49,16 +63,19 @@
 #' ds$getRasterYSize()
 #' ds$getGeoTransform()
 #' ds$setGeoTransform(transform)
+#' ds$getProjection()
 #' ds$getProjectionRef()
 #' ds$setProjection(projection)
 #' ds$bbox()
 #' ds$res()
 #' ds$dim()
+#' ds$get_pixel_line(xy)
 #'
 #' ds$getRasterCount()
 #' ds$getDescription(band)
-#' ds$setDescription(band)
+#' ds$setDescription(band, desc)
 #' ds$getBlockSize(band)
+#' ds$getActualBlockSize(band, xblockoff, yblockoff)
 #' ds$getOverviewCount(band)
 #' ds$buildOverviews(resampling, levels, bands)
 #' ds$getDataTypeName(band)
@@ -102,7 +119,6 @@
 #'
 #' ds$close()
 #' }
-#'
 #' @section Details:
 #'
 #' \code{new(GDALRaster, filename, read_only)}
@@ -113,8 +129,41 @@
 #' Alternate constructor for passing dataset `open_options`, a character
 #' vector of `NAME=VALUE` pairs.
 #' `read_only` is required for this form of the constructor, `TRUE` for
-#'  read-only, or `FALSE` to open with write access.
+#' read-only, or `FALSE` to open with write access.
 #' Returns an object of class `GDALRaster`.
+#'
+#' \code{new(GDALRaster, filename, read_only, open_options, shared)}
+#' Alternate constructor for specifying the `shared` mode for dataset opening.
+#' `shared` defaults to `TRUE` but can be set to `FALSE` with this constructor
+#' (see Note).
+#' All parameters are required with this form of the constructor, but
+#' `open_options` can be `NULL`.
+#' Returns an object of class `GDALRaster`.
+#'
+#' \code{$infoOptions}
+#' Read/write field.
+#' A character vector of command-line arguments to control the output of
+#' `$info()` and `$infoAsJSON()` (see below).
+#' Defaults to `character(0)`. Can be set to a vector of strings specifying
+#' arguments to the \command{gdalinfo} command-line utility, e.g.,
+#' `c("-nomd", "-norat", "-noct")`.
+#' Restore the default by setting to empty string (`""`) or `character(0)`.
+#'
+#' \code{$quiet}
+#' Read/write field.
+#' A logical value, `FALSE` by default. This field can be set to `TRUE` which
+#' will suppress various messages as well as progress reporting for potentially
+#' long-running processes such as building overviews and computation of
+#' statistics and histograms.
+#'
+#' \code{$readByteAsRaw}
+#' Read/write field.
+#' A logical value, `FALSE` by default. This field can be set to `TRUE` which
+#' will affect the data type returned by `$read()` and [read_ds()]. When the
+#' underlying band data type is 'Byte' and `readByteAsRaw` is `TRUE` the output
+#' type will be raw rather than integer. See also the `as_raw` argument to
+#' [read_ds()] to control this in a non-persistent setting. If the underlying
+#' band data type is not Byte this setting has no effect.
 #'
 #' \code{$getFilename()}
 #' Returns a character string containing the `filename` associated with this
@@ -142,21 +191,20 @@
 #' Prints various information about the raster dataset to the console (no
 #' return value, called for that side effect only).
 #' Equivalent to the output of the \command{gdalinfo} command-line utility
-#' (\command{gdalinfo -norat -noct filename}). Intended here as an
-#' informational convenience function.
+#' (\command{gdalinfo filename}, if using the default `infoOptions`).
+#' See the field `$infoOptions` above for setting the arguments to `gdalinfo`.
 #'
 #' \code{$infoAsJSON()}
 #' Returns information about the raster dataset as a JSON-formatted string.
-#' Contains full output of the \command{gdalinfo} command-line utility
-#' (\command{gdalinfo -json -stats -hist filename}).
+#' Equivalent to the output of the \command{gdalinfo} command-line utility
+#' (\command{gdalinfo -json filename}, if using the default `infoOptions`).
+#' See the field `$infoOptions` above for setting the arguments to `gdalinfo`.
 #'
 #' \code{$getDriverShortName()}
-#' Returns the short name of the raster format driver
-#' (e.g., "HFA").
+#' Returns the short name of the raster format driver.
 #'
 #' \code{$getDriverLongName()}
-#' Returns the long name of the raster format driver
-#' (e.g., "Erdas Imagine Images (.img)").
+#' Returns the long name of the raster format driver.
 #'
 #' \code{$getRasterXSize()}
 #' Returns the number of pixels along the x dimension.
@@ -187,6 +235,10 @@
 #' Returns logical \code{TRUE} on success or \code{FALSE} if the geotransform
 #' could not be set.
 #'
+#' \code{$getProjection()}
+#' Returns the coordinate reference system of the raster as an OGC WKT
+#' format string. Equivalent to \code{ds$getProjectionRef()}.
+#'
 #' \code{$getProjectionRef()}
 #' Returns the coordinate reference system of the raster as an OGC WKT
 #' format string.
@@ -211,6 +263,14 @@
 #' Returns an integer vector of length three containing the raster dimensions.
 #' Equivalent to:
 #' `c(ds$getRasterXSize(), ds$getRasterYSize(), ds$getRasterCount())`
+#'
+#' \code{$get_pixel_line()}
+#' Converts geospatial coordinates to pixel/line (raster column/row numbers).
+#' `xy` is a numeric matrix of geospatial x,y coordinates in the same spatial
+#' reference system as the raster (or two-column data frame that will be
+#' coerced to numeric matrix). Returns an integer matrix of raster pixel/line.
+#' See the stand-alone function of the same name ([get_pixel_line()]) for more
+#' info and examples.
 #'
 #' \code{$getRasterCount()}
 #' Returns the number of raster bands on this dataset. For the methods
@@ -237,6 +297,15 @@
 #' be the tile size. Note that the X and Y block sizes don't have to divide
 #' the image size evenly, meaning that right and bottom edge blocks may be
 #' incomplete.
+#'
+#' \code{$getActualBlockSize(band, xblockoff, yblockoff)}
+#' Returns an integer vector of length two (xvalid, yvalid) containing the
+#' actual block size for a given block offset in \code{band}. Handles partial
+#' blocks at the edges of the raster and returns the true number of pixels.
+#' `xblockoff` is an integer scalar, the horizontal block offset for which to
+#' calculate the number of valid pixels, with zero indicating the left most
+#' block, 1 the next block, etc. `yblockoff` is likewise the vertical block
+#' offset, with zero indicating the top most block, 1 the next block, etc.
 #'
 #' \code{$getOverviewCount(band)}
 #' Returns the number of overview layers (a.k.a. pyramids) available for
@@ -503,7 +572,8 @@
 #' (`UInt32`, `Float32`, `Float64`).
 #' No rescaling of the data is performed (see \code{$getScale()} and
 #' \code{$getOffset()} above).
-#' An error is raised if the read operation fails.
+#' An error is raised if the read operation fails. See also the setting
+#' `$readByteAsRaw` above.
 #'
 #' \code{$write(band, xoff, yoff, xsize, ysize, rasterData)}
 #' Writes a region of raster data to \code{band}.
@@ -617,6 +687,17 @@
 #' If a dataset object is opened with update access (`read_only = FALSE`), it
 #' is not recommended to open a new dataset on the same underlying `filename`.
 #'
+#' Datasets are opened in shared mode by default. This allows the sharing of
+#' `GDALDataset` handles for a dataset with other callers that open shared on
+#' the same `filename`, if the dataset is opened from the same thread.
+#' Functions in `gdalraster` that do processing will open input datasets in
+#' shared mode. This provides potential efficiency for cases when an object of
+#' class `GDALRaster` is already open in read-only mode on the same `filename`
+#' (avoids overhead associated with initial dataset opening by using the
+#' existing handle, and potentially makes use of existing data in the GDAL
+#' block cache). Opening in shared mode can be disabled by specifying the
+#' optional `shared` parameter in the class constructor.
+#'
 #' The `$read()` method will perform automatic resampling if the
 #' specified output size (`out_xsize * out_ysize`) is different than
 #' the size of the region being read (`xsize * ysize`). In that case, the
@@ -649,40 +730,40 @@
 #' ds$getRasterXSize()
 #' ds$getRasterYSize()
 #' ds$getGeoTransform()
-#' ds$getProjectionRef()
+#' ds$getProjection()
 #' ds$getRasterCount()
 #' ds$bbox()
 #' ds$res()
 #' ds$dim()
 #'
 #' ## retrieve some band-level parameters
-#' ds$getDescription(band=1)
-#' ds$getBlockSize(band=1)
-#' ds$getOverviewCount(band=1)
-#' ds$getDataTypeName(band=1)
+#' ds$getDescription(band = 1)
+#' ds$getBlockSize(band = 1)
+#' ds$getOverviewCount(band = 1)
+#' ds$getDataTypeName(band = 1)
 #' # LCP format does not support an intrinsic nodata value so this returns NA:
-#' ds$getNoDataValue(band=1)
+#' ds$getNoDataValue(band = 1)
 #'
 #' ## LCP driver reports several dataset- and band-level metadata
 #' ## see the format description at https://gdal.org/drivers/raster/lcp.html
-#' ## set band=0 to retrieve dataset-level metadata
-#' ## set domain="" (empty string) for the default metadata domain
-#' ds$getMetadata(band=0, domain="")
+#' ## set band = 0 to retrieve dataset-level metadata
+#' ## set domain = "" (empty string) for the default metadata domain
+#' ds$getMetadata(band = 0, domain = "")
 #'
 #' ## retrieve metadata for a band as a vector of name=value pairs
-#' ds$getMetadata(band=4, domain="")
+#' ds$getMetadata(band = 4, domain = "")
 #'
 #' ## retrieve the value of a specific metadata item
-#' ds$getMetadataItem(band=2, mdi_name="SLOPE_UNIT_NAME", domain="")
+#' ds$getMetadataItem(band = 2, mdi_name = "SLOPE_UNIT_NAME", domain = "")
 #'
 #' ## read one row of pixel values from band 1 (elevation)
 #' ## raster row/column index are 0-based
 #' ## the upper left corner is the origin
 #' ## read the tenth row:
 #' ncols <- ds$getRasterXSize()
-#' rowdata <- ds$read(band=1, xoff=0, yoff=9,
-#'                     xsize=ncols, ysize=1,
-#'                     out_xsize=ncols, out_ysize=1)
+#' rowdata <- ds$read(band = 1, xoff = 0, yoff = 9,
+#'                    xsize = ncols, ysize = 1,
+#'                    out_xsize = ncols, out_ysize = 1)
 #' head(rowdata)
 #'
 #' ds$close()
@@ -694,27 +775,34 @@
 #'                  nbands = 1,
 #'                  dtName = "Byte",
 #'                  init = -9999)
-#' ds_new <- new(GDALRaster, new_file, read_only=FALSE)
+#'
+#' ds_new <- new(GDALRaster, new_file, read_only = FALSE)
 #'
 #' ## write random values to all pixels
 #' set.seed(42)
 #' ncols <- ds_new$getRasterXSize()
 #' nrows <- ds_new$getRasterYSize()
-#' for (row in 0:(nrows-1)) {
+#' for (row in 0:(nrows - 1)) {
 #'     rowdata <- round(runif(ncols, 0, 100))
-#'     ds_new$write(band=1, xoff=0, yoff=row, xsize=ncols, ysize=1, rowdata)
+#'     ds_new$write(band = 1,
+#'                  xoff = 0,
+#'                  yoff = row,
+#'                  xsize = ncols,
+#'                  ysize = 1,
+#'                  rowdata)
 #' }
 #'
 #' ## re-open in read-only mode when done writing
 #' ## this will ensure flushing of any pending writes (implicit $close)
-#' ds_new$open(read_only=TRUE)
+#' ds_new$open(read_only = TRUE)
 #'
 #' ## getStatistics returns min, max, mean, sd, and sets stats in the metadata
-#' ds_new$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
-#' ds_new$getMetadataItem(band=1, "STATISTICS_MEAN", "")
+#' ds_new$getStatistics(band = 1, approx_ok = FALSE, force = TRUE)
+#' ds_new$getMetadataItem(band = 1, "STATISTICS_MEAN", "")
 #'
 #' ## close the dataset for proper cleanup
 #' ds_new$close()
+#' deleteDataset(new_file)
 #'
 #' \donttest{
 #' ## using a GDAL Virtual File System handler '/vsicurl/'
@@ -723,11 +811,15 @@
 #' url <- paste0(url, "usdaforestservice/gdalraster/main/sample-data/")
 #' url <- paste0(url, "lf_elev_220_mt_hood_utm.tif")
 #'
-#' ds <- new(GDALRaster, url)
-#' plot_raster(ds, legend=TRUE, main="Mount Hood elevation (m)")
-#' ds$close()
-#'
-#' deleteDataset(new_file)
+#' set_config_option("GDAL_HTTP_CONNECTTIMEOUT", "20")
+#' set_config_option("GDAL_HTTP_TIMEOUT", "20")
+#' if (http_enabled() && vsi_stat(url)) {
+#'   ds <- new(GDALRaster, url)
+#'   plot_raster(ds, legend = TRUE, main = "Mount Hood elevation (m)")
+#'   ds$close()
+#' }
+#' set_config_option("GDAL_HTTP_CONNECTTIMEOUT", "")
+#' set_config_option("GDAL_HTTP_TIMEOUT", "")
 #' }
 NULL
 

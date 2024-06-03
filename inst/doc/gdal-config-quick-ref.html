@@ -364,6 +364,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <li><a href="#proj">PROJ</a></li>
 <li><a href="#warp">Warp</a></li>
 <li><a href="#geotiff">GeoTIFF</a></li>
+<li><a href="#httphttps">HTTP/HTTPS</a></li>
 <li><a href="#aws-s3-buckets">AWS S3 buckets</a></li>
 <li><a href="#google-cloud-storage">Google Cloud Storage</a></li>
 <li><a href="#microsoft-azure-blob">Microsoft Azure Blob</a></li>
@@ -377,11 +378,10 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>Configuration options are essentially global variables the user can set. They are used to alter the default behavior of certain raster format drivers, and in some cases the GDAL core. A large number of configuration options are available. An overall discussion along with full list of available options and where they apply is in the GDAL documentation at <a href="https://gdal.org/user/configoptions.html" class="uri">https://gdal.org/user/configoptions.html</a>.</p>
 <p>This quick reference covers a small subset of configuration options that may be useful in common scenarios, with links to topic-specific documentation provided by the GDAL project. Options can be set from R with <code>gdalraster::set_config_option()</code>. Note that specific usage is context dependent. Passing <code>value = &quot;&quot;</code> (empty string) will unset a value previously set by <code>set_config_option()</code>:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">library</span>(gdalraster)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="co">#&gt; GDAL 3.8.4, released 2024/02/08, GEOS 3.12.1, PROJ 9.3.1</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;GDAL_NUM_THREADS&quot;</span>, <span class="st">&quot;ALL_CPUS&quot;</span>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a><span class="co"># unset:</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;GDAL_NUM_THREADS&quot;</span>, <span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;GDAL_NUM_THREADS&quot;</span>, <span class="st">&quot;ALL_CPUS&quot;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="co"># unset:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;GDAL_NUM_THREADS&quot;</span>, <span class="st">&quot;&quot;</span>)</span></code></pre></div>
 </div>
 <div id="general-options" class="section level2">
 <h2>General options</h2>
@@ -480,28 +480,46 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="co"># horizontal differencing</span></span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;PREDICTOR_OVERVIEW&quot;</span>, <span class="st">&quot;2&quot;</span>)</span></code></pre></div>
 </div>
+<div id="httphttps" class="section level2">
+<h2>HTTP/HTTPS</h2>
+<p>GDAL doc: <a href="https://gdal.org/user/configoptions.html#networking-options">/vsicurl/</a> (HTTP/HTTPS random access)</p>
+<p><strong><code>GDAL_HTTP_CONNECTTIMEOUT</code></strong></p>
+<p>Maximum delay for connection to be established before being aborted.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="co"># max delay for connection establishment in seconds</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;GDAL_HTTP_CONNECTTIMEOUT&quot;</span>, <span class="st">&quot;&lt;seconds&gt;&quot;</span>)</span></code></pre></div>
+<p><strong><code>GDAL_HTTP_TIMEOUT</code></strong></p>
+<p>Maximum delay for the whole request to complete before being aborted.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="co"># max delay for whole request completion in seconds</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;GDAL_HTTP_TIMEOUT&quot;</span>, <span class="st">&quot;&lt;seconds&gt;&quot;</span>)</span></code></pre></div>
+<p><strong><code>CPL_VSIL_CURL_CHUNK_SIZE</code></strong></p>
+<p>Partial downloads (requires the HTTP server to support random reading) are done with a 16 KB granularity by default. The chunk size can be configured with this option.</p>
+<p>If the driver detects sequential reading, it will progressively increase the chunk size up to 128 times <code>CPL_VSIL_CURL_CHUNK_SIZE</code> (so 2 MB by default) to improve download performance. When increasing the value of <code>CPL_VSIL_CURL_CHUNK_SIZE</code> to optimize sequential reading, it is recommended to increase <code>CPL_VSIL_CURL_CACHE_SIZE</code> as well to 128 times the value of <code>CPL_VSIL_CURL_CHUNK_SIZE</code>.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="co"># chunk size in bytes</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;CPL_VSIL_CURL_CHUNK_SIZE&quot;</span>, <span class="st">&quot;&lt;bytes&gt;&quot;</span>)</span></code></pre></div>
+<p><strong><code>CPL_VSIL_CURL_CACHE_SIZE</code></strong></p>
+<p>A global least-recently-used cache of 16 MB shared among all downloaded content is used, and content in it may be reused after a file handle has been closed and reopen, during the life-time of the process or until <code>vsi_curl_clear_cache()</code> is called. The size of this global LRU cache can be modified with:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="co"># size in bytes defaults to 16 MB</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;CPL_VSIL_CURL_CACHE_SIZE&quot;</span>, <span class="st">&quot;&lt;bytes&gt;&quot;</span>)</span></code></pre></div>
+</div>
 <div id="aws-s3-buckets" class="section level2">
 <h2>AWS S3 buckets</h2>
 <p>GDAL doc: <a href="https://gdal.org/user/virtual_file_systems.html#vsis3-aws-s3-files">/vsis3/</a> (AWS S3 file system handler)</p>
 <p><strong><code>AWS_NO_SIGN_REQUEST</code></strong></p>
 <p>Request signing can be disabled for public buckets that do not require an AWS account:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="co"># public bucket no AWS account required</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_NO_SIGN_REQUEST&quot;</span>, <span class="st">&quot;YES&quot;</span>)</span></code></pre></div>
-<p><strong><code>AWS_ACCESS_KEY_ID</code></strong><br />
-<strong><code>AWS_SECRET_ACCESS_KEY</code></strong><br />
-<strong><code>AWS_SESSION_TOKEN</code></strong><br />
-<strong><code>AWS_REQUEST_PAYER</code></strong></p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="co"># public bucket no AWS account required</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_NO_SIGN_REQUEST&quot;</span>, <span class="st">&quot;YES&quot;</span>)</span></code></pre></div>
+<p><strong><code>AWS_ACCESS_KEY_ID</code></strong> <strong><code>AWS_SECRET_ACCESS_KEY</code></strong> <strong><code>AWS_SESSION_TOKEN</code></strong> <strong><code>AWS_REQUEST_PAYER</code></strong></p>
 <p>If authentication is required, configure credentials with:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_ACCESS_KEY_ID&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># key ID</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_SECRET_ACCESS_KEY&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># secret access key</span></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true"></a><span class="co"># used for validation if using temporary credentials:</span></span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_SESSION_TOKEN&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># session token</span></span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true"></a><span class="co"># if requester pays:</span></span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_REQUEST_PAYER&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># requester</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_ACCESS_KEY_ID&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># key ID</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_SECRET_ACCESS_KEY&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># secret access key</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true"></a><span class="co"># used for validation if using temporary credentials:</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_SESSION_TOKEN&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># session token</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true"></a><span class="co"># if requester pays:</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_REQUEST_PAYER&quot;</span>, <span class="st">&quot;&lt;value&gt;&quot;</span>) <span class="co"># requester</span></span></code></pre></div>
 <p><strong><code>AWS_REGION</code></strong></p>
 <p>Sets the AWS region to which requests should be sent. Defaults to <code>us-east-1</code>.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="co"># specify region</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_REGION&quot;</span>, <span class="st">&quot;us-west-2&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a><span class="co"># specify region</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AWS_REGION&quot;</span>, <span class="st">&quot;us-west-2&quot;</span>)</span></code></pre></div>
 </div>
 <div id="google-cloud-storage" class="section level2">
 <h2>Google Cloud Storage</h2>
@@ -513,11 +531,11 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>Recognized filenames are of the form <code>/vsiaz/container/key</code>, where <code>container</code> is the name of the container and <code>key</code> is the object “key”, i.e. a filename potentially containing subdirectories.</p>
 <p><strong><code>AZURE_NO_SIGN_REQUEST</code></strong></p>
 <p>Controls whether requests are signed.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="co"># public access</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AZURE_NO_SIGN_REQUEST&quot;</span>, <span class="st">&quot;YES&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a><span class="co"># public access</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AZURE_NO_SIGN_REQUEST&quot;</span>, <span class="st">&quot;YES&quot;</span>)</span></code></pre></div>
 <p><strong><code>AZURE_STORAGE_CONNECTION_STRING</code></strong></p>
 <p>Credential string provided in the Access Keys section of the administrative interface, containing both the account name and a secret key.</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AZURE_STORAGE_CONNECTION_STRING&quot;</span>, <span class="st">&quot;&lt;my_connection_string&gt;&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;AZURE_STORAGE_CONNECTION_STRING&quot;</span>, <span class="st">&quot;&lt;my_connection_string&gt;&quot;</span>)</span></code></pre></div>
 <p>Several other authentication methods are possible for Azure. See the GDAL documentation for details.</p>
 </div>
 <div id="microsoft-azure-data-lake" class="section level2">
@@ -532,12 +550,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>The <code>GDAL_NUM_THREADS</code> configuration option can be set to <code>ALL_CPUS</code> or an integer value to specify the number of threads to use for SOZip-compressed files. This option is similarly described above for compression in <a href="#geotiff">GeoTiff</a>. Note that this option also affects several other parts of GDAL.</p>
 <p><strong><code>CPL_SOZIP_ENABLED</code></strong></p>
 <p>Defaults to <code>AUTO</code>. Determines whether the SOZip optimization should be enabled. If <code>AUTO</code>, SOZip will be enabled for uncompressed files larger than <code>CPL_SOZIP_MIN_FILE_SIZE</code>.</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a><span class="co"># SOZip optimization defaults to AUTO</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;CPL_SOZIP_ENABLED&quot;</span>, <span class="st">&quot;YES&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a><span class="co"># SOZip optimization defaults to AUTO</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;CPL_SOZIP_ENABLED&quot;</span>, <span class="st">&quot;YES&quot;</span>)</span></code></pre></div>
 <p><strong><code>CPL_SOZIP_MIN_FILE_SIZE</code></strong></p>
 <p>Defaults to <code>1M</code>. Determines the minimum file size for SOZip to be automatically enabled. Specified in bytes, or <code>K</code>, <code>M</code> or <code>G</code> suffix can be used respectively to specify a value in kilobytes, megabytes or gigabytes.</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a><span class="co"># SOZip minimum file size</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;CPL_SOZIP_MIN_FILE_SIZE&quot;</span>, <span class="st">&quot;100K&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="co"># SOZip minimum file size</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a><span class="kw">set_config_option</span>(<span class="st">&quot;CPL_SOZIP_MIN_FILE_SIZE&quot;</span>, <span class="st">&quot;100K&quot;</span>)</span></code></pre></div>
 </div>
 
 
