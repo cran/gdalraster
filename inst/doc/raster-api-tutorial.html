@@ -368,25 +368,25 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>An error is returned if the dataset cannot be opened (and creation of the <code>GDALRaster</code> object fails). Also, note that <code>filename</code> may not actually be the name of a physical file (though it usually is). Its interpretation is driver dependent, and it might be a URL, a database connection string, a file name with additional parameters, etc.</p>
 <p><code>GDALRaster</code> is a C++ class exposed directly to R (via <code>RCPP_EXPOSED_CLASS</code>) that encapsulates a GDAL dataset object and its associated raster band objects. Methods of the class are accessed in R using the <code>$</code> operator:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>ds</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="co">#&gt; C++ object &lt;0x5ac44dad3020&gt; of class &#39;GDALRaster&#39; &lt;0x5ac44dad30a0&gt;</span></span></code></pre></div>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="co">#&gt; C++ object &lt;0x6524075653e0&gt; of class &#39;GDALRaster&#39; &lt;0x65240d2060d0&gt;</span></span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">str</span>(ds)</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="co">#&gt; Reference class &#39;Rcpp_GDALRaster&#39; [package &quot;gdalraster&quot;] with 3 fields</span></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="co">#&gt;  $ infoOptions  : chr(0) </span></span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a><span class="co">#&gt;  $ quiet        : logi FALSE</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a><span class="co">#&gt;  $ readByteAsRaw: logi FALSE</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a><span class="co">#&gt;  and 75 methods, of which 61 are  possibly relevant:</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a><span class="co">#&gt;    bbox, buildOverviews, clearStatistics, close, deleteNoDataValue, dim,</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a><span class="co">#&gt;    fillRaster, finalize, flushCache, getActualBlockSize, getBlockSize,</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a><span class="co">#&gt;    getChecksum, getColorTable, getDataTypeName, getDefaultHistogram,</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a><span class="co">#&gt;    getDefaultRAT, getDescription, getDriverLongName, getDriverShortName,</span></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a><span class="co">#&gt;    getFileList, getFilename, getGeoTransform, getHistogram, getMetadata,</span></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a><span class="co">#&gt;    getMetadataDomainList, getMetadataItem, getMinMax, getNoDataValue,</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a><span class="co">#&gt;    getOffset, getOverviewCount, getPaletteInterp, getProjection,</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a><span class="co">#&gt;    getProjectionRef, getRasterColorInterp, getRasterCount, getRasterXSize,</span></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="co">#&gt;    getRasterYSize, getScale, getStatistics, getUnitType, get_pixel_line, info,</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a><span class="co">#&gt;    infoAsJSON, initialize, isOpen, open, read, res, setColorTable,</span></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a><span class="co">#&gt;    setDefaultRAT, setDescription, setFilename, setGeoTransform,</span></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a><span class="co">#&gt;    setMetadataItem, setNoDataValue, setOffset, setProjection,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a><span class="co">#&gt;  and 76 methods, of which 62 are  possibly relevant:</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a><span class="co">#&gt;    apply_geotransform, bbox, buildOverviews, clearStatistics, close,</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a><span class="co">#&gt;    deleteNoDataValue, dim, fillRaster, finalize, flushCache,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a><span class="co">#&gt;    getActualBlockSize, getBlockSize, getChecksum, getColorTable,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a><span class="co">#&gt;    getDataTypeName, getDefaultHistogram, getDefaultRAT, getDescription,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a><span class="co">#&gt;    getDriverLongName, getDriverShortName, getFileList, getFilename,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a><span class="co">#&gt;    getGeoTransform, getHistogram, getMetadata, getMetadataDomainList,</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a><span class="co">#&gt;    getMetadataItem, getMinMax, getNoDataValue, getOffset, getOverviewCount,</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a><span class="co">#&gt;    getPaletteInterp, getProjection, getProjectionRef, getRasterColorInterp,</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="co">#&gt;    getRasterCount, getRasterXSize, getRasterYSize, getScale, getStatistics,</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a><span class="co">#&gt;    getUnitType, get_pixel_line, info, infoAsJSON, initialize, isOpen, open,</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a><span class="co">#&gt;    read, res, setColorTable, setDefaultRAT, setDescription, setFilename,</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a><span class="co">#&gt;    setGeoTransform, setMetadataItem, setNoDataValue, setOffset, setProjection,</span></span>
 <span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a><span class="co">#&gt;    setRasterColorInterp, setScale, setUnitType, write</span></span></code></pre></div>
 </div>
 <div id="getting-dataset-information" class="section level2">
