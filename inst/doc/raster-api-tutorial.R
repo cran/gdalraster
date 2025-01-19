@@ -69,7 +69,7 @@ if (!is.null(col_tbl))
 ## -----------------------------------------------------------------------------
 # read the first row of pixel values
 ncols <- ds$getRasterXSize()
-rowdata <- ds$read(band = 1, 
+rowdata <- ds$read(band = 1,
                    xoff = 0,
                    yoff = 0,
                    xsize = ncols,
@@ -94,7 +94,7 @@ tif_file <- paste0(tempdir(), "/", "storml_lndscp.tif")
 opt <- c("COMPRESS=LZW")
 createCopy(format = "GTiff",
            dst_filename = tif_file,
-           src_filename = lcp_file, 
+           src_filename = lcp_file,
            options = opt)
 
 file.size(lcp_file)
@@ -124,7 +124,7 @@ create(format = "GTiff",
        dst_filename = new_file,
        xsize = 143,
        ysize = 107,
-       nbands = 1, 
+       nbands = 1,
        dataType = "Int16")
 
 ## -----------------------------------------------------------------------------

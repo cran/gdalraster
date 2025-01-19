@@ -38,7 +38,7 @@ gdal_version <- function() {
 #'
 #' @note
 #' Virtual I/O refers to operations on GDAL Virtual File Systems. See
-#' \url{https://gdal.org/user/virtual_file_systems.html#virtual-file-systems}.
+#' \url{https://gdal.org/en/stable/user/virtual_file_systems.html#virtual-file-systems}.
 #'
 #' @examples
 #' nrow(gdal_formats())
@@ -56,7 +56,7 @@ gdal_formats <- function(format = "") {
 #' They are used to alter the default behavior of certain raster format
 #' drivers, and in some cases the GDAL core. For a full description and
 #' listing of available options see
-#' \url{https://gdal.org/user/configoptions.html}.
+#' \url{https://gdal.org/en/stable/user/configoptions.html}.
 #'
 #' @param key Character name of a configuration option.
 #' @returns Character. The value of a (key, value) option previously set with
@@ -82,7 +82,7 @@ get_config_option <- function(key) {
 #' They are used to alter the default behavior of certain raster format
 #' drivers, and in some cases the GDAL core. For a full description and
 #' listing of available options see
-#' \url{https://gdal.org/user/configoptions.html}.
+#' \url{https://gdal.org/en/stable/user/configoptions.html}.
 #'
 #' @param key Character name of a configuration option.
 #' @param value Character value to set for the option.
@@ -258,7 +258,7 @@ get_usable_physical_ram <- function() {
 #' [ogrinfo()], [ogr_execute_sql()]
 #'
 #' OGR SQL dialect and SQLITE SQL dialect:\cr
-#' \url{https://gdal.org/user/ogr_sql_sqlite_dialect.html}
+#' \url{https://gdal.org/en/stable/user/ogr_sql_sqlite_dialect.html}
 #'
 #' @examples
 #' has_spatialite()
@@ -463,7 +463,7 @@ inv_geotransform <- function(gt) {
 #' `buildVRT()` is a wrapper of the \command{gdalbuildvrt} command-line
 #' utility for building a VRT (Virtual Dataset) that is a mosaic of the list
 #' of input GDAL datasets
-#' (see \url{https://gdal.org/programs/gdalbuildvrt.html}).
+#' (see \url{https://gdal.org/en/stable/programs/gdalbuildvrt.html}).
 #'
 #' @details
 #' Several command-line options are described in the GDAL documentation at the
@@ -601,7 +601,7 @@ fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_it
 #' Compute footprint of a raster
 #'
 #' `footprint()` is a wrapper of the \command{gdal_footprint} command-line
-#' utility (see \url{https://gdal.org/programs/gdal_footprint.html}).
+#' utility (see \url{https://gdal.org/en/stable/programs/gdal_footprint.html}).
 #' The function can be used to compute the footprint of a raster file, taking
 #' into account nodata values (or more generally the mask band attached to
 #' the raster bands), and generating polygons/multipolygons corresponding to
@@ -650,7 +650,7 @@ footprint <- function(src_filename, dst_filename, cl_arg = NULL) {
 #' Convert vector data between different formats
 #'
 #' `ogr2ogr()` is a wrapper of the \command{ogr2ogr} command-line
-#' utility (see \url{https://gdal.org/programs/ogr2ogr.html}).
+#' utility (see \url{https://gdal.org/en/stable/programs/ogr2ogr.html}).
 #' This function can be used to convert simple features data between file
 #' formats. It can also perform various operations during the process, such
 #' as spatial or attribute selection, reducing the set of attributes, setting
@@ -720,7 +720,7 @@ ogr2ogr <- function(src_dsn, dst_dsn, src_layers = NULL, cl_arg = NULL, open_opt
 #' Retrieve information about a vector data source
 #'
 #' `ogrinfo()` is a wrapper of the \command{ogrinfo} command-line
-#' utility (see \url{https://gdal.org/programs/ogrinfo.html}).
+#' utility (see \url{https://gdal.org/en/stable/programs/ogrinfo.html}).
 #' This function lists information about an OGR-supported data source.
 #' It is also possible to edit data with SQL statements.
 #' Refer to the GDAL documentation at the URL above for a description of
@@ -892,7 +892,7 @@ sieveFilter <- function(src_filename, src_band, dst_filename, dst_band, size_thr
 #' Convert raster data between different formats
 #'
 #' `translate()` is a wrapper of the \command{gdal_translate} command-line
-#' utility (see \url{https://gdal.org/programs/gdal_translate.html}).
+#' utility (see \url{https://gdal.org/en/stable/programs/gdal_translate.html}).
 #' The function can be used to convert raster data between different
 #' formats, potentially performing some operations like subsetting,
 #' resampling, and rescaling pixels in the process. Refer to the GDAL
@@ -940,7 +940,7 @@ translate <- function(src_filename, dst_filename, cl_arg = NULL, quiet = FALSE) 
 #'
 #' `warp()` is a wrapper of the \command{gdalwarp} command-line utility for
 #' raster mosaicing, reprojection and warping
-#' (see \url{https://gdal.org/programs/gdalwarp.html}).
+#' (see \url{https://gdal.org/en/stable/programs/gdalwarp.html}).
 #' The function can reproject to any supported spatial reference system (SRS).
 #' It can also be used to crop, resample, and optionally write output to a
 #' different raster format. See Details for a list of commonly used
@@ -979,7 +979,7 @@ translate <- function(src_filename, dst_filename, cl_arg = NULL, quiet = FALSE) 
 #'   higher quality resampling method).
 #'   * `-wo <NAME>=<VALUE>`\cr
 #'   Set a warp option as described in the GDAL documentation for
-#'   [`GDALWarpOptions`](https://gdal.org/api/gdalwarp_cpp.html#_CPPv415GDALWarpOptions)
+#'   [`GDALWarpOptions`](https://gdal.org/en/stable/api/gdalwarp_cpp.html#_CPPv415GDALWarpOptions)
 #'   Multiple `-wo` may be given. See also `-multi` below.
 #'   * `-ot <type>`\cr
 #'   Force the output raster bands to have a specific data type supported by
@@ -1031,7 +1031,7 @@ translate <- function(src_filename, dst_filename, cl_arg = NULL, quiet = FALSE) 
 #'   For example, the GeoTIFF driver supports creation options to control
 #'   compression, and whether the file should be tiled.
 #'   [getCreationOptions()] can be used to look up available creation options,
-#'   but the GDAL [Raster drivers](https://gdal.org/drivers/raster/index.html)
+#'   but the GDAL [Raster drivers](https://gdal.org/en/stable/drivers/raster/index.html)
 #'   documentation is the definitive reference for format specific options.
 #'   Multiple `-co` may be given, e.g.,
 #'   \preformatted{ c("-co", "COMPRESS=LZW", "-co", "BIGTIFF=YES") }
@@ -1041,7 +1041,7 @@ translate <- function(src_filename, dst_filename, cl_arg = NULL, quiet = FALSE) 
 #'   is not specified and the output file already exists, it will be updated
 #'   in place.
 #'
-#' The documentation for [`gdalwarp`](https://gdal.org/programs/gdalwarp.html)
+#' The documentation for [`gdalwarp`](https://gdal.org/en/stable/programs/gdalwarp.html)
 #' describes additional command-line options related to spatial reference
 #' systems, source nodata values, alpha bands, polygon cutlines as mask
 #' including blending, and more.
@@ -1136,7 +1136,7 @@ warp <- function(src_files, dst_filename, t_srs, cl_arg = NULL, quiet = FALSE) {
 #' A color entry value to end the ramp (e.g., RGB values).
 #' @param palette_interp One of "Gray", "RGB" (the default), "CMYK" or "HLS"
 #' describing interpretation of `start_color` and `end_color` values
-#' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
+#' (see \href{https://gdal.org/en/stable/user/raster_data_model.html#color-table}{GDAL
 #' Color Table}).
 #' @returns Integer matrix with five columns containing the color ramp from
 #' `start_index` to `end_index`, with raster index values in column 1 and
@@ -1376,6 +1376,54 @@ copyDatasetFiles <- function(new_filename, old_filename, format = "") {
     .Call(`_gdalraster_copyDatasetFiles`, new_filename, old_filename, format)
 }
 
+#' Identify the GDAL driver that can open a dataset
+#'
+#' `identifyDriver()` will try to identify the driver that can open the passed
+#' file name by invoking the Identify method of each registered GDALDriver in
+#' turn. The short name of the first driver that successfully identifies the
+#' file name will be returned as a character string. If all drivers fail then
+#' `NULL` is returned.
+#' Wrapper of `GDALIdentifyDriverEx()` in the GDAL C API.
+#'
+#' @note
+#' In order to reduce the need for such searches to touch the file system
+#' machinery of the operating system, it is possible to give an optional list
+#' of files. This is the list of all files at the same level in the file
+#' system as the target file, including the target file. The filenames should
+#' not include any path components. If the target object does not have
+#' filesystem semantics then the file list should be `NULL`.
+#'
+#' At least one of the `raster` or `vector` arguments must be `TRUE`.
+#'
+#' @param filename Character string containing the name of the file to access.
+#' This may not refer to a physical file, but instead contain information for
+#' the driver on how to access a dataset (e.g., connection string, URL, etc.)
+#' @param raster Logical value indicating whether to include raster format
+#' drivers in the search, `TRUE` by default. May be set to `FALSE` to include
+#' only vector drivers.
+#' @param vector Logical value indicating whether to include vector format
+#' drivers in the search, `TRUE` by default. May be set to `FALSE` to include
+#' only raster drivers.
+#' @param allowed_drivers Optional character vector of driver short names
+#' that must be considered. Set to `NULL` to consider all candidate drivers
+#' (the default).
+#' @param file_list Optional character vector of filenames, including those
+#' that are auxiliary to the main filename (see Note). May contain the input
+#' `filename` but this is not required. Defaults to `NULL`.
+#' @returns A character string with the short name of the first driver that
+#' successfully identifies the input file name, or `NULL` on failure.
+#'
+#' @seealso
+#' [gdal_formats()]
+#'
+#' @examples
+#' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+#'
+#' identifyDriver(src) |> gdal_formats()
+identifyDriver <- function(filename, raster = TRUE, vector = TRUE, allowed_drivers = NULL, file_list = NULL) {
+    .Call(`_gdalraster_identifyDriver`, filename, raster, vector, allowed_drivers, file_list)
+}
+
 #' Return the list of creation options of a GDAL driver as XML string
 #'
 #' Called from and documented in R/gdal_helpers.R
@@ -1397,7 +1445,7 @@ copyDatasetFiles <- function(new_filename, old_filename, format = "") {
 #' `vsi_copy_file()` is a wrapper for `VSICopyFile()` in the GDAL Common
 #' Portability Library. The GDAL VSI functions allow virtualization of disk
 #' I/O so that non file data sources can be made to appear as files.
-#' See \url{https://gdal.org/user/virtual_file_systems.html}.
+#' See \url{https://gdal.org/en/stable/user/virtual_file_systems.html}.
 #' Requires GDAL >= 3.7.
 #'
 #' @details
@@ -1474,23 +1522,34 @@ vsi_curl_clear_cache <- function(partial = FALSE, file_prefix = "", quiet = TRUE
 #'
 #' `vsi_read_dir()` abstracts access to directory contents. It returns a
 #' character vector containing the names of files and directories in this
-#' directory. This function is a wrapper for `VSIReadDirEx()` in the GDAL
-#' Common Portability Library.
+#' directory. With `recursive = TRUE`, reads the list of entries in the
+#' directory and subdirectories.
+#' This function is a wrapper for `VSIReadDirEx()` and `VSIReadDirRecursive()`
+#' in the GDAL Common Portability Library.
 #'
 #' @param path Character string. The relative or absolute path of a
 #' directory to read.
 #' @param max_files Integer scalar. The maximum number of files after which to
-#' stop, or 0 for no limit (see Note).
+#' stop, or 0 for no limit (see Note). Ignored if `recursive = TRUE`.
+#' @param recursive Logical scalar. `TRUE` to read the directory and its
+#' subdirectories. Defaults to `FALSE`.
+#' @param all_files Logical scalar. If `FALSE` (the default), only the names
+#' of visible files are returned (following Unix-style visibility, that is
+#' files whose name does not start with a dot). If `TRUE`, all file names
+#' will be returned.
 #' @returns A character vector containing the names of files and directories
-#' in the directory given by `path`. An empty string (`""`) is returned if
-#' `path` does not exist.
+#' in the directory given by `path`. The listing is in alphabetical order, and
+#' does not include the special entries '.' and '..' even if they are present
+#' in the directory. An empty string (`""`) is returned if `path` does not
+#' exist.
 #'
 #' @note
 #' If `max_files` is set to a positive number, directory listing will stop
 #' after that limit has been reached. Note that to indicate truncation, at
 #' least one element more than the `max_files` limit will be returned. If the
 #' length of the returned character vector is lesser or equal to `max_files`,
-#' then no truncation occurred.
+#' then no truncation occurred. The `max_files` parameter is ignored when
+#' `recursive = TRUE`.
 #'
 #' @seealso
 #' [vsi_mkdir()], [vsi_rmdir()], [vsi_stat()], [vsi_sync()]
@@ -1499,8 +1558,8 @@ vsi_curl_clear_cache <- function(partial = FALSE, file_prefix = "", quiet = TRUE
 #' # regular file system for illustration
 #' data_dir <- system.file("extdata", package="gdalraster")
 #' vsi_read_dir(data_dir)
-vsi_read_dir <- function(path, max_files = 0L) {
-    .Call(`_gdalraster_vsi_read_dir`, path, max_files)
+vsi_read_dir <- function(path, max_files = 0L, recursive = FALSE, all_files = FALSE) {
+    .Call(`_gdalraster_vsi_read_dir`, path, max_files, recursive, all_files)
 }
 
 #' Synchronize a source file/directory with a target file/directory
@@ -1774,7 +1833,7 @@ vsi_unlink_batch <- function(filenames) {
 #'
 #' @seealso
 #' GDAL Virtual File Systems:\cr
-#' \url{https://gdal.org/user/virtual_file_systems.html}
+#' \url{https://gdal.org/en/stable/user/virtual_file_systems.html}
 #'
 #' @examples
 #' data_dir <- system.file("extdata", package="gdalraster")
@@ -1849,7 +1908,7 @@ vsi_rename <- function(oldpath, newpath) {
 #' @seealso
 #' [vsi_get_fs_options()]
 #'
-#' \url{https://gdal.org/user/virtual_file_systems.html}
+#' \url{https://gdal.org/en/stable/user/virtual_file_systems.html}
 #'
 #' @examples
 #' vsi_get_fs_prefixes()
@@ -2380,8 +2439,9 @@ has_geos <- function() {
 #'
 #' @param pts A two-column data frame or numeric matrix containing geospatial
 #' x/y coordinates.
-#' @param srs Character string in OGC WKT format specifying the projected
-#' spatial reference system for `pts`.
+#' @param srs Character string specifying the projected spatial reference
+#' system for `pts`. May be in WKT format or any of the formats supported by
+#' [srs_to_wkt()].
 #' @param well_known_gcs Optional character string containing a supported
 #' well known name of a geographic coordinate system (see Details for
 #' supported values).
@@ -2394,8 +2454,7 @@ has_geos <- function() {
 #' ## id, x, y in NAD83 / UTM zone 12N
 #' pts <- read.csv(pt_file)
 #' print(pts)
-#' inv_project(pts[,-1], epsg_to_wkt(26912))
-#' inv_project(pts[,-1], epsg_to_wkt(26912), "NAD27")
+#' inv_project(pts[,-1], "EPSG:26912")
 inv_project <- function(pts, srs, well_known_gcs = "") {
     .Call(`_gdalraster_inv_project`, pts, srs, well_known_gcs)
 }
@@ -2406,10 +2465,12 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #'
 #' @param pts A two-column data frame or numeric matrix containing geospatial
 #' x/y coordinates.
-#' @param srs_from Character string in OGC WKT format specifying the
-#' spatial reference system for `pts`.
-#' @param srs_to Character string in OGC WKT format specifying the output
-#' spatial reference system.
+#' @param srs_from Character string specifying the spatial reference system
+#' for `pts`. May be in WKT format or any of the formats supported by
+#' [srs_to_wkt()].
+#' @param srs_to Character string specifying the output spatial reference
+#' system. May be in WKT format or any of the formats supported by
+#' [srs_to_wkt()].
 #' @returns Numeric array of geospatial x/y coordinates in the projection
 #' specified by `srs_to`.
 #'
@@ -2421,9 +2482,7 @@ inv_project <- function(pts, srs, well_known_gcs = "") {
 #' print(pts)
 #' ## id, x, y in NAD83 / UTM zone 12N
 #' ## transform to NAD83 / CONUS Albers
-#' transform_xy(pts = pts[,-1],
-#'              srs_from = epsg_to_wkt(26912),
-#'              srs_to = epsg_to_wkt(5070))
+#' transform_xy(pts = pts[, -1], srs_from = "EPSG:26912", srs_to = "EPSG:5070")
 transform_xy <- function(pts, srs_from, srs_to) {
     .Call(`_gdalraster_transform_xy`, pts, srs_from, srs_to)
 }

@@ -71,7 +71,7 @@ int gdal_version_num() {
 //'
 //' @note
 //' Virtual I/O refers to operations on GDAL Virtual File Systems. See
-//' \url{https://gdal.org/user/virtual_file_systems.html#virtual-file-systems}.
+//' \url{https://gdal.org/en/stable/user/virtual_file_systems.html#virtual-file-systems}.
 //'
 //' @examples
 //' nrow(gdal_formats())
@@ -151,7 +151,7 @@ Rcpp::DataFrame gdal_formats(std::string format = "") {
 //' They are used to alter the default behavior of certain raster format
 //' drivers, and in some cases the GDAL core. For a full description and
 //' listing of available options see
-//' \url{https://gdal.org/user/configoptions.html}.
+//' \url{https://gdal.org/en/stable/user/configoptions.html}.
 //'
 //' @param key Character name of a configuration option.
 //' @returns Character. The value of a (key, value) option previously set with
@@ -181,7 +181,7 @@ std::string get_config_option(std::string key) {
 //' They are used to alter the default behavior of certain raster format
 //' drivers, and in some cases the GDAL core. For a full description and
 //' listing of available options see
-//' \url{https://gdal.org/user/configoptions.html}.
+//' \url{https://gdal.org/en/stable/user/configoptions.html}.
 //'
 //' @param key Character name of a configuration option.
 //' @param value Character value to set for the option.
@@ -408,7 +408,7 @@ Rcpp::NumericVector get_usable_physical_ram() {
 //' [ogrinfo()], [ogr_execute_sql()]
 //'
 //' OGR SQL dialect and SQLITE SQL dialect:\cr
-//' \url{https://gdal.org/user/ogr_sql_sqlite_dialect.html}
+//' \url{https://gdal.org/en/stable/user/ogr_sql_sqlite_dialect.html}
 //'
 //' @examples
 //' has_spatialite()
@@ -583,8 +583,10 @@ bool createCopy(std::string format, Rcpp::CharacterVector dst_filename,
         Rcpp::stop("failed to get driver from format name");
 
     char **papszMetadata = GDALGetMetadata(hDriver, nullptr);
-    if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE))
+    if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) &&
+        !CPLFetchBool(papszMetadata, GDAL_DCAP_CREATE, FALSE)) {
         Rcpp::stop("driver does not support createCopy");
+    }
 
     std::string src_filename_in;
     src_filename_in = Rcpp::as<std::string>(check_gdal_filename(src_filename));
@@ -877,7 +879,7 @@ Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject& xy,
 //' `buildVRT()` is a wrapper of the \command{gdalbuildvrt} command-line
 //' utility for building a VRT (Virtual Dataset) that is a mosaic of the list
 //' of input GDAL datasets
-//' (see \url{https://gdal.org/programs/gdalbuildvrt.html}).
+//' (see \url{https://gdal.org/en/stable/programs/gdalbuildvrt.html}).
 //'
 //' @details
 //' Several command-line options are described in the GDAL documentation at the
@@ -1322,7 +1324,7 @@ bool fillNodata(Rcpp::CharacterVector filename, int band,
 //' Compute footprint of a raster
 //'
 //' `footprint()` is a wrapper of the \command{gdal_footprint} command-line
-//' utility (see \url{https://gdal.org/programs/gdal_footprint.html}).
+//' utility (see \url{https://gdal.org/en/stable/programs/gdal_footprint.html}).
 //' The function can be used to compute the footprint of a raster file, taking
 //' into account nodata values (or more generally the mask band attached to
 //' the raster bands), and generating polygons/multipolygons corresponding to
@@ -1422,7 +1424,7 @@ bool footprint(Rcpp::CharacterVector src_filename,
 //' Convert vector data between different formats
 //'
 //' `ogr2ogr()` is a wrapper of the \command{ogr2ogr} command-line
-//' utility (see \url{https://gdal.org/programs/ogr2ogr.html}).
+//' utility (see \url{https://gdal.org/en/stable/programs/ogr2ogr.html}).
 //' This function can be used to convert simple features data between file
 //' formats. It can also perform various operations during the process, such
 //' as spatial or attribute selection, reducing the set of attributes, setting
@@ -1561,7 +1563,7 @@ bool ogr2ogr(Rcpp::CharacterVector src_dsn,
 //' Retrieve information about a vector data source
 //'
 //' `ogrinfo()` is a wrapper of the \command{ogrinfo} command-line
-//' utility (see \url{https://gdal.org/programs/ogrinfo.html}).
+//' utility (see \url{https://gdal.org/en/stable/programs/ogrinfo.html}).
 //' This function lists information about an OGR-supported data source.
 //' It is also possible to edit data with SQL statements.
 //' Refer to the GDAL documentation at the URL above for a description of
@@ -2042,7 +2044,7 @@ bool sieveFilter(Rcpp::CharacterVector src_filename, int src_band,
 //' Convert raster data between different formats
 //'
 //' `translate()` is a wrapper of the \command{gdal_translate} command-line
-//' utility (see \url{https://gdal.org/programs/gdal_translate.html}).
+//' utility (see \url{https://gdal.org/en/stable/programs/gdal_translate.html}).
 //' The function can be used to convert raster data between different
 //' formats, potentially performing some operations like subsetting,
 //' resampling, and rescaling pixels in the process. Refer to the GDAL
@@ -2137,7 +2139,7 @@ bool translate(Rcpp::CharacterVector src_filename,
 //'
 //' `warp()` is a wrapper of the \command{gdalwarp} command-line utility for
 //' raster mosaicing, reprojection and warping
-//' (see \url{https://gdal.org/programs/gdalwarp.html}).
+//' (see \url{https://gdal.org/en/stable/programs/gdalwarp.html}).
 //' The function can reproject to any supported spatial reference system (SRS).
 //' It can also be used to crop, resample, and optionally write output to a
 //' different raster format. See Details for a list of commonly used
@@ -2176,7 +2178,7 @@ bool translate(Rcpp::CharacterVector src_filename,
 //'   higher quality resampling method).
 //'   * `-wo <NAME>=<VALUE>`\cr
 //'   Set a warp option as described in the GDAL documentation for
-//'   [`GDALWarpOptions`](https://gdal.org/api/gdalwarp_cpp.html#_CPPv415GDALWarpOptions)
+//'   [`GDALWarpOptions`](https://gdal.org/en/stable/api/gdalwarp_cpp.html#_CPPv415GDALWarpOptions)
 //'   Multiple `-wo` may be given. See also `-multi` below.
 //'   * `-ot <type>`\cr
 //'   Force the output raster bands to have a specific data type supported by
@@ -2228,7 +2230,7 @@ bool translate(Rcpp::CharacterVector src_filename,
 //'   For example, the GeoTIFF driver supports creation options to control
 //'   compression, and whether the file should be tiled.
 //'   [getCreationOptions()] can be used to look up available creation options,
-//'   but the GDAL [Raster drivers](https://gdal.org/drivers/raster/index.html)
+//'   but the GDAL [Raster drivers](https://gdal.org/en/stable/drivers/raster/index.html)
 //'   documentation is the definitive reference for format specific options.
 //'   Multiple `-co` may be given, e.g.,
 //'   \preformatted{ c("-co", "COMPRESS=LZW", "-co", "BIGTIFF=YES") }
@@ -2238,7 +2240,7 @@ bool translate(Rcpp::CharacterVector src_filename,
 //'   is not specified and the output file already exists, it will be updated
 //'   in place.
 //'
-//' The documentation for [`gdalwarp`](https://gdal.org/programs/gdalwarp.html)
+//' The documentation for [`gdalwarp`](https://gdal.org/en/stable/programs/gdalwarp.html)
 //' describes additional command-line options related to spatial reference
 //' systems, source nodata values, alpha bands, polygon cutlines as mask
 //' including blending, and more.
@@ -2401,7 +2403,7 @@ bool warp(Rcpp::CharacterVector src_files,
 //' A color entry value to end the ramp (e.g., RGB values).
 //' @param palette_interp One of "Gray", "RGB" (the default), "CMYK" or "HLS"
 //' describing interpretation of `start_color` and `end_color` values
-//' (see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
+//' (see \href{https://gdal.org/en/stable/user/raster_data_model.html#color-table}{GDAL
 //' Color Table}).
 //' @returns Integer matrix with five columns containing the color ramp from
 //' `start_index` to `end_index`, with raster index values in column 1 and
@@ -2848,6 +2850,98 @@ bool copyDatasetFiles(Rcpp::CharacterVector new_filename,
         return false;
     else
         return true;
+}
+
+
+//' Identify the GDAL driver that can open a dataset
+//'
+//' `identifyDriver()` will try to identify the driver that can open the passed
+//' file name by invoking the Identify method of each registered GDALDriver in
+//' turn. The short name of the first driver that successfully identifies the
+//' file name will be returned as a character string. If all drivers fail then
+//' `NULL` is returned.
+//' Wrapper of `GDALIdentifyDriverEx()` in the GDAL C API.
+//'
+//' @note
+//' In order to reduce the need for such searches to touch the file system
+//' machinery of the operating system, it is possible to give an optional list
+//' of files. This is the list of all files at the same level in the file
+//' system as the target file, including the target file. The filenames should
+//' not include any path components. If the target object does not have
+//' filesystem semantics then the file list should be `NULL`.
+//'
+//' At least one of the `raster` or `vector` arguments must be `TRUE`.
+//'
+//' @param filename Character string containing the name of the file to access.
+//' This may not refer to a physical file, but instead contain information for
+//' the driver on how to access a dataset (e.g., connection string, URL, etc.)
+//' @param raster Logical value indicating whether to include raster format
+//' drivers in the search, `TRUE` by default. May be set to `FALSE` to include
+//' only vector drivers.
+//' @param vector Logical value indicating whether to include vector format
+//' drivers in the search, `TRUE` by default. May be set to `FALSE` to include
+//' only raster drivers.
+//' @param allowed_drivers Optional character vector of driver short names
+//' that must be considered. Set to `NULL` to consider all candidate drivers
+//' (the default).
+//' @param file_list Optional character vector of filenames, including those
+//' that are auxiliary to the main filename (see Note). May contain the input
+//' `filename` but this is not required. Defaults to `NULL`.
+//' @returns A character string with the short name of the first driver that
+//' successfully identifies the input file name, or `NULL` on failure.
+//'
+//' @seealso
+//' [gdal_formats()]
+//'
+//' @examples
+//' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+//'
+//' identifyDriver(src) |> gdal_formats()
+// [[Rcpp::export(name = "identifyDriver")]]
+SEXP identifyDriver(Rcpp::CharacterVector filename,
+        bool raster = true, bool vector = true,
+        Rcpp::Nullable<Rcpp::CharacterVector> allowed_drivers = R_NilValue,
+        Rcpp::Nullable<Rcpp::CharacterVector> file_list = R_NilValue) {
+
+    std::string filename_in;
+    filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
+
+    unsigned int nIdentifyFlags = GDAL_OF_ALL;
+    if (!raster && !vector)
+        return R_NilValue;
+    else if (!raster)
+        nIdentifyFlags = GDAL_OF_VECTOR;
+    else if (!vector)
+        nIdentifyFlags = GDAL_OF_RASTER;
+
+    std::vector<const char *> papszAllowedDrivers;
+    if (allowed_drivers.isNotNull()) {
+        Rcpp::CharacterVector allowed_drivers_in(allowed_drivers);
+        for (R_xlen_t i = 0; i < allowed_drivers_in.size(); ++i) {
+            papszAllowedDrivers.push_back((const char *) allowed_drivers_in[i]);
+        }
+    }
+    papszAllowedDrivers.push_back(nullptr);
+
+    std::vector<const char *> papszFileList;
+    if (file_list.isNotNull()) {
+        Rcpp::CharacterVector file_list_in(file_list);
+        for (R_xlen_t i = 0; i < file_list_in.size(); ++i) {
+            papszFileList.push_back((const char *) file_list_in[i]);
+        }
+    }
+    papszFileList.push_back(nullptr);
+
+    GDALDriverH hDriver = GDALIdentifyDriverEx(
+            filename_in.c_str(),
+            nIdentifyFlags,
+            allowed_drivers.isNull() ? nullptr : papszAllowedDrivers.data(),
+            file_list.isNull() ? nullptr : papszFileList.data());
+
+    if (hDriver == nullptr)
+        return R_NilValue;
+    else
+        return Rcpp::wrap(GDALGetDriverShortName(hDriver));
 }
 
 
