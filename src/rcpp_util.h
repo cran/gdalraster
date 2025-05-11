@@ -6,22 +6,40 @@
 #ifndef SRC_RCPP_UTIL_H_
 #define SRC_RCPP_UTIL_H_
 
+#include <limits.h>
+
 #include <Rcpp.h>
 #include <RcppInt64>
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <string>
 
-Rcpp::NumericMatrix df_to_matrix_(const Rcpp::DataFrame& df);
-Rcpp::IntegerMatrix df_to_int_matrix_(const Rcpp::DataFrame& df);
-Rcpp::CharacterVector path_expand_(Rcpp::CharacterVector path);
-Rcpp::CharacterVector normalize_path_(Rcpp::CharacterVector path,
+const int64_t MAX_INT_AS_R_NUMERIC = 9007199254740991;
+
+// as defined in the bit64 package src/integer64.h
+#define NA_INTEGER64 LLONG_MIN
+#define ISNA_INTEGER64(X)((X) == NA_INTEGER64)
+#define MIN_INTEGER64 LLONG_MIN+1
+#define MAX_INTEGER64 LLONG_MAX
+
+Rcpp::NumericMatrix df_to_matrix_(const Rcpp::DataFrame &df);
+Rcpp::IntegerMatrix df_to_int_matrix_(const Rcpp::DataFrame &df);
+
+Rcpp::NumericMatrix xy_robject_to_matrix_(const Rcpp::RObject &xy);
+
+Rcpp::CharacterVector path_expand_(const Rcpp::CharacterVector &path);
+
+Rcpp::CharacterVector normalize_path_(const Rcpp::CharacterVector &path,
                                       int must_work);
-Rcpp::CharacterVector normalize_path_(Rcpp::CharacterVector path,
+
+Rcpp::CharacterVector normalize_path_(const Rcpp::CharacterVector &path,
                                       int must_work = NA_LOGICAL);
-Rcpp::CharacterVector enc_to_utf8_(Rcpp::CharacterVector x);
-std::string str_toupper_(std::string s);
+
+Rcpp::CharacterVector enc_to_utf8_(const Rcpp::CharacterVector &x);
+
+std::string str_toupper_(const std::string &s);
 
 // case-insensitive comparator for std::map
 // https://stackoverflow.com/questions/1801892/how-can-i-make-the-mapfind-operation-case-insensitive

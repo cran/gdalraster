@@ -1,6 +1,68 @@
 # Miscellaneous helper functions for working with the GDAL API
 # Chris Toney <chris.toney at usda.gov>
 
+#' @noRd
+.get_crs_name <- function(wkt) {
+    # name of form "<srs name> [(EPSG:####[, confidence ##])]"
+    # include EPSG code if confidence > 50
+    # include the confidence value if < 100
+
+    crs_name <- srs_get_name(wkt)
+    epsg <- srs_find_epsg(wkt, all_matches = TRUE)
+    if (!is.null(epsg)) {
+        if (nrow(epsg) >= 1 && epsg$confidence[1] > 50) {
+            crs_name <- paste0(crs_name, " (", epsg$authority_name[1], ":",
+                               epsg$authority_code[1])
+            if (epsg$confidence[1] < 100) {
+                crs_name <- paste0(crs_name, ", confidence ",
+                                   epsg$confidence[1])
+            }
+            crs_name <- paste0(crs_name, ")")
+        }
+    }
+    return(crs_name)
+}
+
+
+#' Compute a GDAL integer version number from major, minor, revision
+#'
+#' `gdal_compute_version()` computes a full integer version number
+#' (GDAL_VERSION_NUM) from individual components (major, minor, revision).
+#' Convenience function for checking a GDAL version requirement using
+#' `gdal_version_num()`.
+#'
+#' @param maj Numeric value, major version component (coerced to integer by
+#' truncation).
+#' @param min Numeric value, min version component (coerced to integer by
+#' truncation).
+#' @param rev Numeric value, revision version component (coerced to integer by
+#' truncation).
+#' @returns Integer version number compatible with `gdal_version_num()`.
+#'
+#' @seealso
+#' [gdal_version_num()]
+#'
+#' @examples
+#' (gdal_version_num() >= gdal_compute_version(3, 7, 0))
+#' @export
+gdal_compute_version <- function(maj, min, rev) {
+    if (!is.numeric(maj) || length(maj) != 1)
+        stop("'maj' must be a single numeric value", call. = FALSE)
+    else
+        maj <- as.integer(maj)
+    if (!is.numeric(min) || length(min) != 1)
+        stop("'min' must be a single numeric value", call. = FALSE)
+    else
+        min <- as.integer(min)
+    if (!is.numeric(rev) || length(rev) != 1)
+        stop("'rev' must be a single numeric value", call. = FALSE)
+    else
+        rev <- as.integer(rev)
+
+    return(as.integer(maj * 1000000 + min * 10000 + rev * 100))
+}
+
+
 #' Create/append to a potentially Seek-Optimized ZIP file (SOZip)
 #'
 #' `addFilesInZip()` will create new or open existing ZIP file, and
@@ -75,7 +137,7 @@
 #' zip_file <- file.path(tempdir(), "storml_lcp.zip")
 #'
 #' # Requires GDAL >= 3.7
-#' if (as.integer(gdal_version()[2]) >= 3070000) {
+#' if (gdal_version_num() >= gdal_compute_version(3, 7, 0)) {
 #'   addFilesInZip(zip_file, lcp_file, full_paths=FALSE, sozip_enabled="YES",
 #'                 num_threads=1)
 #'
@@ -91,8 +153,7 @@
 #'   ds <- new(GDALRaster, lcp_in_zip)
 #'   ds$info()
 #'   ds$close()
-#'
-#'   vsi_unlink(zip_file)
+#'   \dontshow{vsi_unlink(zip_file)}
 #' }
 #' @export
 addFilesInZip <- function(
@@ -107,7 +168,7 @@ addFilesInZip <- function(
         content_type = NULL,
         quiet = FALSE) {
 
-    if (as.integer(gdal_version()[2]) < 3070000)
+    if (gdal_version_num() < gdal_compute_version(3, 7, 0))
         stop("addFilesInZip() requires GDAL >= 3.7", call. = FALSE)
 
     if (!is.character(zip_file) || length(zip_file) > 1)
@@ -212,54 +273,119 @@ addFilesInZip <- function(
 }
 
 
-#' Return the list of creation options of a GDAL driver
+#' Return the list of creation options for a GDAL driver
 #'
 #' `getCreationOptions()` returns the list of creation options supported by a
-#' GDAL format driver as an XML string (invisibly).
-#' Wrapper for `GDALGetDriverCreationOptionList()` in the GDAL API.
-#' Information about the available creation options is also printed to the
-#' console by default.
+#' GDAL format driver.
+#' This function is a wrapper of `GDALGetDriverCreationOptionList()` in the
+#' GDAL API, parsing its XML output into a named list.
 #'
-#' @param format Raster format short name (e.g., "GTiff").
-#' @param filter Optional character vector of creation option names. Controls
-#' only the amount of information printed to the console.
-#' By default, information for all creation options is printed. Can be set to
-#' empty string `""` to disable printing information to the console.
-#' @returns Invisibly, an XML string that describes the full list of creation
-#' options or empty string `""` (full output of
-#' `GDALGetDriverCreationOptionList()` in the GDAL API).
+#' @details
+#' The output is a nested list with names matching the creation option names.
+#' The information for each creation option is a named list with the following
+#' elements:
+#' * `$type`: a character string describing the data type, e.g., `"int"`,
+#' `"float"`, `"string"`. The type `"string-select"` denotes a list of allowed
+#' string values which are returned as a character vector in the `$values`
+#' element (see below).
+#' * `$description`: a character string describing the option, or `NA` if no
+#' description is provided by the GDAL driver.
+#' * `$default`: the default value of the option as either a character string
+#' or numeric value, or `NA` if no description is provided by the GDAL driver.
+#' * `$values`: a character vector of allowed string values for the creation
+#' option if `$type` is `"string-select"`, otherwise `NULL` if the option is
+#' not a `"string-select"` type.
+#' * `$min`: (GDAL >= 3.11) the minimum value of the valid range for the
+#' option, or `NA` if not provided by the GDAL driver or the option is not a
+#' numeric type.
+#' * `$max`: (GDAL >= 3.11) the maximum value of the valid range for the
+#' option, or `NA` if not provided by the GDAL driver or the option is not a
+#' numeric type.
+#'
+#' @param format Format short name (e.g., `"GTiff"`).
+#' @param filter Optional character vector of creation option names.
+#' @returns A named list with names matching the creation option names, and
+#' each element a named list with elements `$type`, `$description`, `$default`
+#' and `$values` (see Details).
 #'
 #' @seealso
-#' [`GDALRaster-class`][GDALRaster], [create()], [createCopy()]
+#' [create()], [createCopy()], [translate()], [validateCreationOptions()],
+#' [warp()]
 #'
 #' @examples
-#' getCreationOptions("GTiff", filter="COMPRESS")
+#' opt <- getCreationOptions("GTiff", "COMPRESS")
+#' names(opt)
+#'
+#' (opt$COMPRESS$type == "string-select")  # TRUE
+#' opt$COMPRESS$values
+#'
+#' all_opt <- getCreationOptions("GTiff")
+#' names(all_opt)
+#'
+#' # $description and $default will be NA if no value is provided by the driver
+#' # $values will be NULL if the option is not a 'string-select' type
+#'
+#' all_opt$PREDICTOR
+#'
+#' all_opt$BIGTIFF
 #' @export
-getCreationOptions <- function(format, filter=NULL) {
+getCreationOptions <- function(format, filter = NULL) {
 
     if (!is.character(format) || length(format) > 1)
         stop("'format' must be a character string", call. = FALSE)
 
-    if (is.null(filter))
+    if (is.null(filter) || filter == "") {
         filter <- "_all_"
-
-    if (filter[1] == "")
-        return(invisible(.getCreationOptions(format)))
+    } else {
+        filter <- toupper(filter)
+    }
 
     if (.getCreationOptions(format) == "") {
         message("no creation options found for ", format)
-        return(invisible(.getCreationOptions(format)))
+        return(NULL)
     }
 
-    x <- xml2::read_xml(.getCreationOptions(format))
-    opt_list <- xml2::xml_find_all(x, xpath = "//Option")
-    for (n in seq_along(opt_list)) {
-        if (filter[1] == "_all_" ||
-                xml2::xml_attr(opt_list[[n]], "name") %in% filter) {
-            print(opt_list[[n]])
+    xml <- xml2::read_xml(.getCreationOptions(format))
+    el <- xml2::xml_children(xml)
+    out <- list()
+    if (length(el) == 0) {
+        return(NULL)
+    } else {
+        for (i in seq_along(el)) {
+            a <- xml_attrs(el[[i]])
+            if (filter[1] == "_all_" || toupper(a["name"]) %in% filter) {
+                type_name <- unname(a["type"])
+                str_values <- xml_children(el[[i]]) |> as_list() |> unlist()
+                default_val <- unname(a["default"])
+                if (toupper(type_name) %in% c("INT", "INTEGER", "UNSIGNED INT",
+                                              "FLOAT")) {
+                    default_val <- as.numeric(default_val)
+                }
+
+                # The XML returned by GDAL < 3.11 does not include the
+                # min/max attributes even though they are populated in the
+                # driver code that builds the XML string.
+                # (https://github.com/OSGeo/gdal/issues/11967)
+                if (gdal_version_num() < 3110000) {
+                    out[[unname(a["name"])]] <- list(
+                        type = type_name,
+                        description = unname(a["description"]),
+                        default = default_val,
+                        values = str_values)
+                } else {
+                    out[[unname(a["name"])]] <- list(
+                        type = type_name,
+                        description = unname(a["description"]),
+                        default = default_val,
+                        values = str_values,
+                        min = as.numeric(unname(a["min"])),
+                        max = as.numeric(unname(a["max"])))
+                }
+            }
         }
     }
-    return(invisible(.getCreationOptions(format)))
+
+    return(out)
 }
 
 
@@ -312,8 +438,9 @@ vsi_get_fs_options <- function(filename, as_list = TRUE) {
 #' georeferenced (x/y) coordinates. Wrapper of `GDALApplyGeoTransform()` in
 #' the GDAL API, operating on matrix input.
 #'
-#' @param col_row Numeric matrix of raster column/row (pixel/line) coordinates
-#' (or two-column data frame that will be coerced to numeric matrix).
+#' @param col_row Numeric matrix of raster column, row (pixel/line) coordinates
+#' (or two-column data frame that will be coerced to numeric matrix, or a
+#' vector of column, row for one coordinate).
 #' @param gt Either a numeric vector of length six containing the affine
 #' geotransform for the raster, or an object of class `GDALRaster` from
 #' which the geotransform will be obtained.
@@ -348,11 +475,17 @@ vsi_get_fs_options <- function(filename, as_list = TRUE) {
 #'
 #' ds$close()
 apply_geotransform <- function(col_row, gt) {
-    if (!(is.matrix(col_row) || is.data.frame(col_row)))
+    if (!(is.vector(col_row) || is.matrix(col_row) || is.data.frame(col_row)))
         stop("'col_row' must be a data frame or numeric matrix", call. = FALSE)
 
-    if (ncol(col_row) != 2)
+    if ((is.matrix(col_row) || is.data.frame(col_row)) && ncol(col_row) != 2)
         stop("'col_row' must have 2 columns", call. = FALSE)
+    else if (is.vector(col_row) && length(col_row) != 2)
+        stop("'col_row' as vector must have length 2", call. = FALSE)
+
+    # allow for c(NA, NA) which is logical type, NA input should return NA out
+    if ((is.vector(xy) || is.matrix(xy)) && !is.numeric(xy) && !is.logical(xy))
+        stop("'col_row' must be numeric", call. = FALSE)
 
     if (is(gt, "Rcpp_GDALRaster")) {
         return(.apply_geotransform_ds(col_row, gt))
@@ -371,9 +504,9 @@ apply_geotransform <- function(col_row, gt) {
 #' The upper left corner pixel is the raster origin (0,0) with column, row
 #' increasing left to right, top to bottom.
 #'
-#' @param xy Numeric matrix of geospatial x,y coordinates in the same spatial
+#' @param xy Numeric matrix of geospatial x, y coordinates in the same spatial
 #' reference system as \code{gt} (or two-column data frame that will be coerced
-#' to numeric matrix).
+#' to numeric matrix, or a vector x, y for one coordinate).
 #' @param gt Either a numeric vector of length six containing the affine
 #' geotransform for the raster, or an object of class `GDALRaster` from
 #' which the geotransform will be obtained (see Note).
@@ -414,11 +547,17 @@ apply_geotransform <- function(col_row, gt) {
 #'
 #' ds$close()
 get_pixel_line <- function(xy, gt) {
-    if (!(is.matrix(xy) || is.data.frame(xy)))
+    if (!(is.vector(xy) || is.matrix(xy) || is.data.frame(xy)))
         stop("'xy' must be a data frame or numeric matrix", call. = FALSE)
 
-    if (ncol(xy) != 2)
+    if ((is.matrix(xy) || is.data.frame(xy)) && ncol(xy) != 2)
         stop("'xy' must have 2 columns", call. = FALSE)
+    else if (is.vector(xy) && length(xy) != 2)
+        stop("'xy' as vector must have length 2", call. = FALSE)
+
+    # allow for c(NA, NA) which is logical type, NA input should return NA out
+    if ((is.vector(xy) || is.matrix(xy)) && !is.numeric(xy) && !is.logical(xy))
+        stop("'xy' must be numeric", call. = FALSE)
 
     if (is(gt, "Rcpp_GDALRaster")) {
         return(.get_pixel_line_ds(xy, gt))
@@ -504,30 +643,61 @@ dump_open_datasets <- function() {
 #' instantiate `GDALRaster` objects.
 #' See https://gdal.org/en/stable/en/latest/user/raster_data_model.html#subdatasets-domain.
 #'
+#' PostgreSQL / PostGISRaster are handled as a special case. If additional
+#' arguments `raster` or `vector` are not given for `identifyDriver()`, then
+#' `raster = FALSE` is assumed.
+#'
 #' @seealso
 #' [gdal_formats()], [identifyDriver()]
 #'
 #' @examples
-#' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+#' f <- system.file("extdata/ynp_features.zip", package = "gdalraster")
+#' ynp_dsn <- file.path("/vsizip", f, "ynp_features.gpkg")
 #'
-#' inspectDataset(src)
+#' inspectDataset(ynp_dsn)
 inspectDataset <- function(filename, ...) {
     if (!is.character(filename))
         stop("'filename' must be a character string", call. = FALSE)
 
     filename_in <- .check_gdal_filename(filename)
     fmt <- identifyDriver(filename = filename_in, ...)
-    if (is.null(fmt))
+    if (is.null(fmt)) {
+        warning("failed to identify a format driver", call. = FALSE)
         return(NULL)
+    }
+
+    if (!hasArg("raster") && !hasArg("vector")) {
+        # check for possibly two different drivers
+        fmt_rast <- identifyDriver(filename = filename_in, vector = FALSE, ...)
+        fmt_vect <- identifyDriver(filename = filename_in, raster = FALSE, ...)
+        if (!is.null(fmt_rast) && !is.null(fmt_vect)) {
+            if (fmt_rast != fmt_vect) {
+                if (fmt_vect == "PostgreSQL") {
+                    # for PostGISRaster / PostgreSQL, assume vector is intended
+                    fmt <- fmt_vect
+                } else {
+                    message("identified separate raster and vector drivers: ",
+                            fmt_rast, ", ", fmt_vect)
+                    stop("need additional arguments for `identifyDriver()`",
+                         call. = FALSE)
+                }
+            }
+        }
+    }
 
     out <- list()
     out$format <- fmt
     fmt_info <- gdal_formats(fmt)
+    if (nrow(fmt_info) == 0) {
+        stop("failed to obtain format information", call. = FALSE)
+    }
 
     out$supports_raster <- fmt_info$raster
     out$contains_raster <- FALSE
     if (out$supports_raster) {
+        push_error_handler("quiet")
         ds <- try(new(GDALRaster, filename_in), silent = TRUE)
+        pop_error_handler()
         if (is(ds, "Rcpp_GDALRaster"))
             out$contains_raster <- TRUE
     }

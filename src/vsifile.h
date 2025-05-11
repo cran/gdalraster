@@ -32,14 +32,9 @@
 
 #include "cpl_vsi.h"
 
-class VSIFile {
- private:
-    std::string filename_in;
-    std::string access_in;
-    Rcpp::CharacterVector options_in;
-    VSILFILE *fp;
-    const uint64_t VSI_L_OFFSET_MAX_R = 9223372036854775807;
+const uint64_t VSI_L_OFFSET_MAX_R = 9223372036854775807;
 
+class VSIFile {
  public:
     VSIFile();
     explicit VSIFile(Rcpp::CharacterVector filename);
@@ -52,7 +47,7 @@ class VSIFile {
     int seek(Rcpp::NumericVector offset, std::string origin);
     Rcpp::NumericVector tell() const;
     void rewind();
-    SEXP read(std::size_t nbytes);
+    SEXP read(Rcpp::NumericVector nbytes);
     Rcpp::NumericVector write(const Rcpp::RawVector& object);
     bool eof() const;
     int truncate(Rcpp::NumericVector offset);
@@ -62,8 +57,17 @@ class VSIFile {
     std::string get_filename() const;
     std::string get_access() const;
     int set_access(std::string access);
+
+    void show() const;
+
+ private:
+    std::string m_filename;
+    std::string m_access;
+    Rcpp::CharacterVector m_options;
+    VSILFILE *m_fp;
 };
 
+// cppcheck-suppress unknownMacro
 RCPP_EXPOSED_CLASS(VSIFile)
 
 #endif  // SRC_VSIFILE_H_

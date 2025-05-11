@@ -56,6 +56,11 @@ nrow(tbl)
 
 ## ----fig.width=6, fig.height=4, dev="png"-------------------------------------
 bb <- ds$bbox()
+#| fig.alt: >
+#|   A plot of LANDFIRE Existing Vegetation Type (EVT) for an area of interest
+#|   named Storm Lake which is used for several example datasets in package
+#|   gdalraster. A color map has been to the pixels using color values provided
+#|   by LANDFIRE in the CSV attribute table for the EVT layer.
 plot_raster(data = ds,
             col_tbl = tbl[,c(1,6:8)],
             maxColorValue = 255,

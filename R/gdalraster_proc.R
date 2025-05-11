@@ -100,6 +100,11 @@ DEFAULT_DEM_PROC <- list(
     if (endsWith(tolower(file), ".fgb")) {
         return("FlatGeobuf")
     }
+    if (endsWith(tolower(file), ".geojson") ||
+        endsWith(tolower(file), ".json")) {
+
+        return("GeoJSON")
+    }
     return(NULL)
 }
 
@@ -122,7 +127,7 @@ DEFAULT_DEM_PROC <- list(
 #' `GDALRaster` object. By default, it attempts to read the full raster
 #' extent from all bands at full resolution. `read_ds()` is sometimes more
 #' convenient than `GDALRaster$read()`, e.g., to read specific multiple bands
-#' for display with [plot_raster()], or simply for the argument defaults to
+#' for display with [plot_raster()], or simply for the default arguments that
 #' read an entire raster into memory (see Note).
 #'
 #' @details
@@ -163,16 +168,15 @@ DEFAULT_DEM_PROC <- list(
 #' band.
 #' @param as_raw Logical. If `TRUE` and the underlying data type is Byte,
 #' return output as R's raw vector type. This maps to the setting
-#' `$readByteAsRaw` on the `GDALRaster` object, which is used to temporarily
-#' update that field in this function. To control this behaviour in a
-#' persistent way on a data set see \code{$readByteAsRaw} in
-#' [`GDALRaster-class`][GDALRaster].
-#' @returns If `as_list = FALSE` (the default), a `numeric` or `complex` vector
-#' containing the values that were read. It is organized in left to right, top
-#' to bottom pixel order, interleaved by band.
+#' `$readByteAsRaw` on the `GDALRaster` object, which will be temporarily
+#' updated in this function. To control this behavior in a persistent way on
+#' a dataset see \code{$readByteAsRaw} in [`GDALRaster-class`][GDALRaster].
+#' @returns If `as_list = FALSE` (the default), a vector of `raw`, `integer`,
+#' `double` or `complex` containing the values that were read. It is organized
+#' in left to right, top to bottom pixel order, interleaved by band.
 #' If `as_list = TRUE`, a list with number of elements equal to the number of
-#' bands read. Each element contains a `numeric` or `complex` vector
-#' containing the pixel data read for the band.
+#' bands read. Each element contains a vector of `raw`, `integer`, `double` or
+#' `complex` containing the pixel values that were read for the band.
 #'
 #' @note
 #' There is small overhead in calling `read_ds()` compared with
@@ -183,9 +187,9 @@ DEFAULT_DEM_PROC <- list(
 #'
 #' By default, this function will attempt to read the full raster into memory.
 #' It generally should not be called on large raster datasets using the default
-#' argument values. The memory size in bytes of the returned vector will be
-#' approximately (xsize * ysize * number of bands * 4) for data read as
-#' `integer`, and (xsize * ysize * number of bands * 8) for data read as
+#' argument values. The memory size in bytes of the returned vector will be,
+#' e.g., (xsize * ysize * number of bands * 4) for data read as
+#' `integer`, or (xsize * ysize * number of bands * 8) for data read as
 #' `double` (plus small object overhead for the vector).
 #'
 #' @seealso
@@ -208,53 +212,118 @@ DEFAULT_DEM_PROC <- list(
 #' length(r)
 #' object.size(r)
 #'
-#' # gis attribute list
+#' # gis attributes
 #' attr(r, "gis")
 #'
 #' ds$close()
 #' @export
-read_ds <- function(ds, bands=NULL, xoff=0, yoff=0,
-                    xsize=ds$getRasterXSize(), ysize=ds$getRasterYSize(),
-                    out_xsize=xsize, out_ysize=ysize,
-                    as_list=FALSE, as_raw = FALSE) {
+read_ds <- function(ds, bands = NULL, xoff = 0, yoff = 0,
+                    xsize = ds$getRasterXSize(), ysize = ds$getRasterYSize(),
+                    out_xsize = xsize, out_ysize = ysize,
+                    as_list = FALSE, as_raw = FALSE) {
 
-    if (is.null(bands))
+    if (!is(ds, "Rcpp_GDALRaster")) {
+        stop("'ds' must be an object of class GDALRaster", call. = FALSE)
+    }
+    if (is.null(bands)) {
         bands <- seq_len(ds$getRasterCount())
+    } else if (!is.numeric(bands)) {
+        stop("'bands' must be a numeric vector", call. = FALSE)
+    }
+    if (is.null(xoff) || !(is.numeric(xoff) && length(xoff) == 1)) {
+        stop("'xoff' must be a numeric value", call. = FALSE)
+    }
+    if (is.null(yoff) || !(is.numeric(yoff) && length(yoff) == 1)) {
+        stop("'yoff' must be a numeric value", call. = FALSE)
+    }
+    if (is.null(xsize) || !(is.numeric(xsize) && length(xsize) == 1)) {
+        stop("'xsize' must be a numeric value", call. = FALSE)
+    }
+    if (is.null(ysize) || !(is.numeric(ysize) && length(ysize) == 1)) {
+        stop("'ysize' must be a numeric value", call. = FALSE)
+    }
+    if (is.null(out_xsize) ||
+        !(is.numeric(out_xsize) && length(out_xsize) == 1)) {
 
-    if (as_list)
+        stop("'out_xsize' must be a numeric value", call. = FALSE)
+    }
+    if (is.null(out_ysize) ||
+        !(is.numeric(out_ysize) && length(out_ysize) == 1)) {
+
+        stop("'out_ysize' must be a numeric value", call. = FALSE)
+    }
+    if (is.null(as_list)) {
+        as_list <- FALSE
+    } else if (!(is.logical(as_list) && length(as_list) == 1)) {
+        stop("'as_list' must be a logical value", call. = FALSE)
+    }
+    if (is.null(as_raw)) {
+        as_raw <- FALSE
+    } else if (!(is.logical(as_raw) && length(as_raw) == 1)) {
+        stop("'as_raw' must be a logical value", call. = FALSE)
+    }
+
+    # get the unioned data type across all bands
+    dtype <- "Byte"
+    for (b in bands) {
+        dtype <- dt_union(dtype, ds$getDataTypeName(b))
+    }
+
+    if (as_list) {
         r <- list()
-    else
-        r <- NULL
+    } else {
+        # pre-allocate the output vector
+        dtype_size <- dt_size(dtype)
+        if (as_raw && dtype == "Byte") {
+            r <- raw(out_xsize * out_ysize * length(bands))
+        } else if (dt_is_complex(dtype)) {
+            r <- complex(out_xsize * out_ysize * length(bands))
+        } else if (dt_is_floating(dtype) || dtype_size > 4) {
+            r <- numeric(out_xsize * out_ysize * length(bands))
+        } else if (dtype_size == 4 && !dt_is_signed(dtype)) {
+            r <- numeric(out_xsize * out_ysize * length(bands))
+        } else {
+            r <- integer(out_xsize * out_ysize * length(bands))
+        }
+    }
 
-    i <- 1
     readByteAsRaw <- ds$readByteAsRaw
     if (as_raw) {
         ds$readByteAsRaw <- TRUE
-        dtype <- ds$getDataTypeName(bands[1L])
-        if (!dtype == "Byte") {
-            warning(sprintf("'as_raw' set to 'TRUE' only affects read for band type 'Byte', current data type: '%s'", dtype))
+        if (dtype != "Byte") {
+            warning("'as_raw = TRUE' only affects read for band type 'Byte'",
+                    call. = FALSE)
         }
     }
+
     dtype <- character()
+    i <- 1
     for (b in bands) {
         dtype <- c(dtype, ds$getDataTypeName(b))
         if (as_list) {
             r[[i]] <- ds$read(b, xoff, yoff, xsize, ysize,
                               out_xsize, out_ysize)
-            i <- i + 1
         } else {
-            r <- c(r, ds$read(b, xoff, yoff, xsize, ysize,
-                              out_xsize, out_ysize))
+            i_begin <- 1 + (i - 1) * out_xsize * out_ysize
+            i_end <- i_begin + out_xsize * out_ysize - 1
+            r[i_begin:i_end] <- ds$read(b, xoff, yoff, xsize, ysize,
+                                        out_xsize, out_ysize)
         }
+        i <- i + 1
     }
 
     ## restore the field, note that it may have had no impact
     ds$readByteAsRaw <- readByteAsRaw
 
     gt <- ds$getGeoTransform()
-    ul_xy <- .apply_geotransform(gt, xoff, yoff)
-    lr_xy <- .apply_geotransform(gt, (xoff + xsize), (yoff + ysize))
-    bb <- c(ul_xy[1], lr_xy[2], lr_xy[1], ul_xy[2])
+    ulxy <- .apply_geotransform(gt, xoff, yoff)
+    urxy <- .apply_geotransform(gt, (xoff + xsize), yoff)
+    lrxy <- .apply_geotransform(gt, (xoff + xsize), (yoff + ysize))
+    llxy <- .apply_geotransform(gt, xoff, (yoff + ysize))
+    corners_x <- c(ulxy[1], urxy[1], lrxy[1], llxy[1])
+    corners_y <- c(ulxy[2], urxy[2], lrxy[2], llxy[2])
+    bb <- c(min(corners_x), min(corners_y), max(corners_x), max(corners_y))
+
     # gis: a list with the bbox, dimensions, projection, nbands, datatype
     wkt_fmt_config <- get_config_option("OSR_WKT_FORMAT")
     if (wkt_fmt_config == "")
@@ -343,7 +412,7 @@ read_ds <- function(ds, bands=NULL, xoff=0, yoff=0,
 #'
 #' ds_slp$close()
 #' ds_lcp$close()
-#' deleteDataset(slpp_file)
+#' \dontshow{deleteDataset(slpp_file)}
 #' @export
 rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
                              dtName=NULL, options=NULL, init=NULL,
@@ -530,8 +599,7 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' ds$res()
 #' ds$bbox()
 #' ds$close()
-#' vsi_unlink(vrt_file)
-#'
+#' \dontshow{vsi_unlink(vrt_file)}
 #'
 #' ## clip
 #'
@@ -554,9 +622,8 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' bbox_from_wkt(bnd)
 #' ds_vrt$bbox()
 #' ds_vrt$res()
-#'
 #' ds_vrt$close()
-#' vsi_unlink(vrt_file)
+#' \dontshow{vsi_unlink(vrt_file)}
 #'
 #' # src_align = FALSE
 #' vrt_file <- rasterToVRT(evt_file,
@@ -569,8 +636,8 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' ds_vrt_noalign$res()
 #'
 #' ds_vrt_noalign$close()
-#' vsi_unlink(vrt_file)
 #' ds_evt$close()
+#' \dontshow{vsi_unlink(vrt_file)}
 #'
 #'
 #' ## subset and pixel align two rasters
@@ -629,9 +696,9 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' rs$get_sd()
 #'
 #' ds_b5vrt$close()
-#' vsi_unlink(vrt_file)
 #' ds_lcp$close()
 #' ds_b5$close()
+#' \dontshow{vsi_unlink(vrt_file)}
 #' @export
 rasterToVRT <- function(srcfile,
                         relativeToVRT = FALSE,
@@ -911,7 +978,7 @@ rasterToVRT <- function(srcfile,
 #' # min, max, mean, sd
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-#' deleteDataset(hi_file)
+#' \dontshow{deleteDataset(hi_file)}
 #'
 #'
 #' ## Calculate normalized difference vegetation index (NDVI)
@@ -932,7 +999,7 @@ rasterToVRT <- function(srcfile,
 #' ds <- new(GDALRaster, ndvi_file)
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-#' deleteDataset(ndvi_file)
+#' \dontshow{deleteDataset(ndvi_file)}
 #'
 #'
 #' ## Reclassify a variable by rule set
@@ -987,8 +1054,7 @@ rasterToVRT <- function(srcfile,
 #'
 #' # if LCP file format is needed:
 #' # createCopy("LCP", "storml_edited.lcp", tif_file)
-#'
-#' deleteDataset(tif_file)
+#' \dontshow{deleteDataset(tif_file)}
 #' @export
 calc <- function(expr,
                  rasterfiles,
@@ -1300,7 +1366,7 @@ calc <- function(expr,
 #' ds <- new(GDALRaster, cmb_file)
 #' ds$info()
 #' ds$close()
-#' deleteDataset(cmb_file)
+#' \dontshow{deleteDataset(cmb_file)}
 #' @export
 combine <- function(rasterfiles, var.names=NULL, bands=NULL,
                     dstfile=NULL, fmt=NULL, dtName="UInt32",
@@ -1394,8 +1460,7 @@ combine <- function(rasterfiles, var.names=NULL, bands=NULL,
 #' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 #' slp_file <- file.path(tempdir(), "storml_slp.tif")
 #' dem_proc("slope", elev_file, slp_file)
-#'
-#' deleteDataset(slp_file)
+#' \dontshow{deleteDataset(slp_file)}
 #' @export
 dem_proc <- function(mode,
                      srcfile,
@@ -1413,6 +1478,285 @@ dem_proc <- function(mode,
                                mode_options,
                                color_file,
                                quiet)))
+}
+
+
+#' Extract pixel values at geospatial point locations
+#'
+#' @description
+#' `pixel_extract()` returns raster pixel values for a set of geospatial
+#' point locations. The coordinates are given as a two-column matrix of (x, y)
+#' values in the same spatial reference system as the input raster (unless
+#' `xy_srs` is specified).
+#' Values are extracted from all bands of the raster by default, or specific
+#' band numbers may be given. An optional interpolation method may be specified
+#' for bilinear (2 x 2 kernel), cubic convolution (4 x 4 kernel, GDAL >= 3.10),
+#' or cubic spline (4 x 4 kernel, GDAL >= 3.10). Alternatively, an optional
+#' kernel dimension may be given to extract values of the individual pixels
+#' within an N x N kernel centered on the pixel containing the point location.
+#' If `xy_srs` is given, the function will attempt to transform the input points
+#' to the projection of the raster with a call to `transform_xy()`.
+#'
+#' @param raster Either a character string giving the filename of a raster, or
+#' an object of class `GDALRaster` for the source dataset.
+#' @param xy A two-column numeric matrix or two-column data frame of geospatial
+#' (x, y) coordinates, or vector (x, y) for a single point, in the same spatial
+#' reference system as `raster`.
+#' @param bands Optional numeric vector of band numbers. All bands in `raster`
+#' will be processed by default if not specified.
+#' @param interp Optional character string specifying an interpolation method.
+#' Must be one of `"bilinear"`, `"cubic"`, `"cubicspline"`, or `"nearest"` (the
+#' default if not specified, i.e., no interpolation).
+#' GDAL >= 3.10 is required for `"cubic"` and `"cubicspline"`.
+#' @param krnl_dim Optional integer value specifying the dimension of an N x N
+#' kernel for which all individual pixel values will be returned. Only
+#' supported when extracting from a single raster band. Ignored if `interp` is
+#' specified as other than `"nearest"` (i.e., will always use the kernel implied
+#' by the interpolation method).
+#' @param xy_srs Optional character string specifying the spatial reference
+#' system for `xy`. May be in WKT format or any of the formats supported by
+#' [srs_to_wkt()].
+#' @param max_ram Numeric value giving the maximum amount of RAM (in MB) to
+#' use for potentially copying a remote raster into memory for processing
+#' (see Note). Defaults to 300 MB. Set to zero to disable potential copy of
+#' remote files into memory.
+#' @returns A numeric matrix of pixel values with number of rows equal to the
+#' number of rows in `xy`, and number of columns equal to the number of
+#' `bands`, or if `krnl_dim = N` is used, number of columns equal to `N * N`.
+#' Named columns indicate the band number, e.g., `"b1"`. If `krnl_dim` is used,
+#' named columns indicate band number and pixel, e.g., `"b1_p1"`, `"b1_p2"`,
+#' ..., `"b1_p9"` if `krnl_dim = 3`. Pixels are in left-to-right, top-to-bottom
+#' order in the kernel.
+#'
+#' @note
+#' Depending on the number of input points, extracting from a raster on a
+#' remote filesystem may require a large number of HTTP range requests which
+#' may be slow (i.e., URLs/remote VSI filesystems). In that case, it may be
+#' faster to copy the raster into memory first (either as MEM format or to a
+#' /vsimem filesystem).
+#' `pixel_extract()` will attempt to automate that process if the total size
+#' of file(s) that would be copied does not exceed the threshold given by
+#' `max_ram`, and `length(xy) > 1` (requires GDAL >= 3.6).
+#'
+#' For alternative workflows that involve copying to local storage, the data
+#' management functions (e.g., [copyDatasetFiles()]) and the VSI filesystem
+#' functions (e.g., [vsi_is_local()], [vsi_stat()], [vsi_copy_file()]) may be
+#' of interest.
+#'
+#' @examples
+#' pt_file <- system.file("extdata/storml_pts.csv", package="gdalraster")
+#' # id, x, y in NAD83 / UTM zone 12N, same as the raster
+#' pts <- read.csv(pt_file)
+#' print(pts)
+#'
+#' raster_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#'
+#' pixel_extract(raster_file, pts[-1])
+#'
+#' # or as GDALRaster object
+#' ds <- new(GDALRaster, raster_file)
+#' pixel_extract(ds, pts[-1])
+#'
+#' # interpolated values
+#' pixel_extract(raster_file, pts[-1], interp = "bilinear")
+#'
+#' # individual pixel values within a kernel
+#' pixel_extract(raster_file, pts[-1], krnl_dim = 3)
+#'
+#' # lont/lat xy
+#' pts_wgs84 <- transform_xy(pts[-1], srs_from = ds$getProjection(),
+#'                           srs_to = "WGS84")
+#'
+#' # transform the input xy
+#' pixel_extract(ds, xy = pts_wgs84, xy_srs = "WGS84")
+#'
+#' ds$close()
+pixel_extract <- function(raster, xy, bands = NULL, interp = NULL,
+                          krnl_dim = NULL, xy_srs = NULL, max_ram = 300) {
+
+    ds <- NULL
+    close_ds <- FALSE
+    if (is(raster, "Rcpp_GDALRaster")) {
+        ds <- raster
+        if (!ds$isOpen()) {
+            stop("raster dataset is not open", call. = FALSE)
+        }
+    } else if (is.character(raster) && length(raster) == 1) {
+        ds <- new(GDALRaster, raster)
+        close_ds <- TRUE
+    } else {
+        stop("'raster' must be a character string or GDALRaster object",
+             call. = FALSE)
+    }
+
+    if (missing(xy) || is.null(xy))
+        stop("'xy' is required", call. = FALSE)
+
+    if (is.data.frame(xy)) {
+        if (ncol(xy) !=2 || !is.numeric(xy[, 1]) || !is.numeric(xy[, 2])) {
+            stop("'xy' must be a two-column data frame or matrix",
+                 call. = FALSE)
+        }
+    } else if (!is.numeric(xy)) {
+        stop("'xy' must be a numeric", call. = FALSE)
+    }
+
+    if (is.null(bands))
+        bands <- 0
+    else if (!is.numeric(bands))
+        stop("'bands' must be a numeric vector", call. = FALSE)
+
+    if (is.null(interp))
+        interp <- "nearest"
+    else if (!is.character(interp) || length(interp) > 1)
+        stop("'interp' must be a character string", call. = FALSE)
+
+    if (is.null(krnl_dim))
+        krnl_dim <- 1L
+    else if (!is.numeric(krnl_dim) || length(krnl_dim) > 1)
+        stop("'krnl_dim' must be a numeric scalar", call. = FALSE)
+
+    if (is.null(xy_srs))
+        xy_srs <- ""
+    else if (!is.character(interp) || length(interp) > 1)
+        stop("'xy_srs' must be a character string", call. = FALSE)
+
+    if (is.null(max_ram))
+        max_ram <- 0
+    else if (!is.numeric(max_ram) || length(max_ram) > 1)
+        stop("'max_ram' must be a numeric scalar", call. = FALSE)
+
+    # potentially copy to memory
+    use_mem <- FALSE
+    ds_mem <- NULL
+    mem_dir <- ""
+    f_mem <- ""
+    f_in <- ds$getDescription(band = 0)
+    if (max_ram > 0 && length(xy) > 1 && gdal_version_num() >= 3060000 &&
+        !vsi_is_local(f_in)) {
+
+        # use MEM dataset if possible
+        dm <- ds$dim()
+        num_pixels <- dm[1] * dm[2] * dm[3]
+        bytes_per_pixel <- 1
+        for (b in seq_len(ds$getRasterCount())) {
+            if (dt_size(ds$getDataTypeName(b)) > bytes_per_pixel) {
+                bytes_per_pixel <- dt_size(ds$getDataTypeName(b))
+            }
+        }
+        raw_size <- num_pixels * bytes_per_pixel
+        if ((raw_size / 1000 / 1000) < max_ram) {
+            if (!ds$quiet) {
+                message("copying to MEM dataset...")
+            }
+            ds_mem <- try(createCopy("MEM", "", f_in, return_obj = TRUE),
+                          silent = ds$quiet)
+            if (!is(ds_mem, "Rcpp_GDALRaster")) {
+                if (!ds$quiet) {
+                    message("copy to MEM failed")
+                }
+            } else {
+                use_mem <- TRUE
+            }
+        } else {
+
+            # try copying to /vsimem instead
+            f_size <- 0
+            for (f in ds$getFileList()) {
+                this_f_size <- vsi_stat(f, "size")
+                if (this_f_size == -1) {
+                    f_size <- -1
+                    if (!ds$quiet) {
+                        message("failed to get file size")
+                    }
+                    break
+                }
+                f_size <- f_size + this_f_size
+            }
+            if (f_size > 0 && (f_size / 1000 / 1000) < max_ram) {
+                f_nopath <- .cpl_get_filename(f_in)
+                mem_dir <- file.path("/vsimem", tempdir() |> .cpl_get_basename())
+                f_mem <- file.path(mem_dir, f_nopath)
+                if (!ds$quiet) {
+                    message("copying remote file(s) to /vsimem for processing...")
+                }
+
+                res <- copyDatasetFiles(new_filename = f_mem, old_filename = f_in)
+
+                if (!res) {
+                    if (!ds$quiet) {
+                        message("copy to /vsimem failed")
+                    }
+                    vsi_rmdir(mem_dir, recursive = TRUE)
+                } else {
+                    ds_mem <- try(new(GDALRaster, f_mem), silent = TRUE)
+                    if (!is(ds_mem, "Rcpp_GDALRaster")) {
+                        if (!ds$quiet) {
+                            message("open /vsimem failed")
+                        }
+                        vsi_rmdir(mem_dir, recursive = TRUE)
+                    } else {
+                        message("copy completed")
+                        use_mem <- TRUE
+                    }
+                }
+            }
+        }
+
+        if (!ds$quiet && !use_mem) {
+            message("not using in-memory raster, processing remote file...")
+        }
+    }
+
+    if (krnl_dim > 1 && (tolower(interp) == "nearest" ||
+                         tolower(interp) == "near")) {
+
+        # extend with VRT to handle krnl_dim > 1 along raster edges
+        bb <- ds$bbox()
+        res <- ds$res()
+        xmin <- bb[1] - krnl_dim * res[1]
+        ymin <- bb[2] - krnl_dim * res[2]
+        xmax <- bb[3] + krnl_dim * res[1]
+        ymax <- bb[4] + krnl_dim * res[2]
+
+        args <- c("-of", "VRT", "-ot", "Float64", "-dstnodata", "NaN")
+        args <- c(args, "-te", xmin, ymin, xmax, ymax)
+        args <- c(args, "-tr", res[1], res[2])
+        args <- c(args, "-ovr", "NONE")
+
+        vrt_file <- tempfile(fileext = ".vrt")
+
+        if (use_mem)
+            warp(ds_mem, vrt_file, t_srs = "", cl_arg = args, quiet = TRUE)
+        else
+            warp(ds, vrt_file, t_srs = "", cl_arg = args, quiet = TRUE)
+
+        ds_vrt <- new(GDALRaster, vrt_file)
+        ret <- ds_vrt$pixel_extract(xy, bands, interp, krnl_dim, xy_srs)
+
+        ds_vrt$close()
+        vsi_unlink(vrt_file)
+
+    } else {
+        if (use_mem)
+            ret <- ds_mem$pixel_extract(xy, bands, interp, krnl_dim, xy_srs)
+        else
+            ret <- ds$pixel_extract(xy, bands, interp, krnl_dim, xy_srs)
+    }
+
+    if (use_mem) {
+        if (is(ds_mem, "Rcpp_GDALRaster"))
+            ds_mem$close()
+        if (f_mem != "")
+            res <- deleteDataset(f_mem)
+        if (mem_dir != "")
+            vsi_rmdir(mem_dir, recursive = TRUE)
+    }
+
+    if (close_ds)
+        ds$close()
+
+    return(ret)
 }
 
 
@@ -1529,7 +1873,7 @@ dem_proc <- function(mode,
 #' polygonize(evt_file, dsn, layer, fld)
 #' set_config_option("SQLITE_USE_OGR_VFS", "")
 #' set_config_option("OGR_SQLITE_JOURNAL", "")
-#' deleteDataset(dsn)
+#' \dontshow{deleteDataset(dsn)}
 #' @export
 polygonize <- function(raster_file,
                        out_dsn,
@@ -1559,8 +1903,8 @@ polygonize <- function(raster_file,
         mask_file <- ""
     }
 
-    if (!.ogr_ds_exists(out_dsn, with_update=TRUE)) {
-        if (.ogr_ds_exists(out_dsn) && !overwrite) {
+    if (!ogr_ds_exists(out_dsn, with_update = TRUE)) {
+        if (ogr_ds_exists(out_dsn) && !overwrite) {
             msg <- "'out_dsn' exists but cannot be updated.\n"
             msg <- paste0(msg, "You may need to remove it first, ")
             msg <- paste0(msg, "or use 'overwrite = TRUE'.")
@@ -1568,14 +1912,14 @@ polygonize <- function(raster_file,
         }
     }
 
-    if (.ogr_ds_exists(out_dsn, with_update=TRUE) && overwrite) {
+    if (ogr_ds_exists(out_dsn, with_update = TRUE) && overwrite) {
         deleted <- FALSE
-        if (.ogr_layer_exists(out_dsn, out_layer)) {
-            deleted <- .ogr_layer_delete(out_dsn, out_layer)
+        if (ogr_layer_exists(out_dsn, out_layer)) {
+            deleted <- ogr_layer_delete(out_dsn, out_layer)
         }
         if (!deleted) {
-            if (.ogr_ds_layer_count(out_dsn) == 1) {
-                if (utils::file_test("-f", out_dsn))
+            if (ogr_ds_layer_count(out_dsn) == 1) {
+                if (vsi_stat(out_dsn, "type") == "file")
                     deleted <- deleteDataset(out_dsn)
             }
         }
@@ -1584,33 +1928,35 @@ polygonize <- function(raster_file,
         }
     }
 
-    if (.ogr_layer_exists(out_dsn, out_layer)) {
+    if (ogr_layer_exists(out_dsn, out_layer)) {
         if (!is.null(lco)) {
             warning("'lco' ignored since the layer already exists",
                     call. = FALSE)
         }
     }
 
-    if (!.ogr_ds_exists(out_dsn, with_update=TRUE)) {
+    if (!ogr_ds_exists(out_dsn, with_update = TRUE)) {
         if (is.null(out_fmt))
             out_fmt <- .getOGRformat(out_dsn)
         if (is.null(out_fmt)) {
             message("format driver cannot be determined for: ", out_dsn)
             stop("specify 'out_fmt' to create a new dataset", call. = FALSE)
         }
-        if (!.create_ogr(out_fmt, out_dsn, 0, 0, 0, "Unknown",
-                         out_layer, "POLYGON", srs, fld_name, "OFTInteger",
-                         dsco, lco)) {
+        if (!ogr_ds_create(out_fmt, out_dsn, out_layer, geom_type = "POLYGON",
+                           srs = srs, fld_name = fld_name,
+                           fld_type = "OFTInteger", dsco= dsco, lco = lco)) {
+
             stop("failed to create 'out_dsn'", call. = FALSE)
         }
     }
 
-    if (!.ogr_layer_exists(out_dsn, out_layer)) {
-        res <- .ogr_layer_create(out_dsn, out_layer, NULL, "POLYGON", srs, lco)
+    if (!ogr_layer_exists(out_dsn, out_layer)) {
+        res <- ogr_layer_create(out_dsn, out_layer, NULL, "POLYGON", srs, lco)
         if (!res)
             stop("failed to create 'out_layer'", call. = FALSE)
         if (fld_name != "") {
-            res <- .ogr_field_create(out_dsn, out_layer, fld_name, "OFTInteger")
+            res <- ogr_field_create(out_dsn, out_layer, fld_name = fld_name,
+                                    fld_type = "OFTInteger")
             if (!res)
                 stop("failed to create the output field", call. = FALSE)
         }
@@ -1633,9 +1979,12 @@ polygonize <- function(raster_file,
 #'
 #' @param src_dsn Data source name for the input vector layer (filename or
 #' connection string).
-#' @param dstfile Filename of the output raster. Must support update mode
-#' access. This file will be created (or overwritten if it already exists -
-#' see Note).
+#' @param dstfile Either a character string giving the filename of the
+#' output raster dataset, or an object of class `GDALRaster` for the output.
+#' Must support update mode access. If given as a filename, this file will
+#' be created (or overwritten if it already exists - see Note).
+#' If given as a `GDALRaster` object for an existing dataset, then the affected
+#' pixels are updated in-place (object must be open with write access).
 #' @param band Numeric vector. The band(s) to burn values into (for existing
 #' `dstfile`). The default is to burn into band 1. Not used when creating a
 #' new raster.
@@ -1688,11 +2037,16 @@ polygonize <- function(raster_file,
 #' An error is raised if the operation fails.
 #'
 #' @note
-#' The function creates a new target raster when any of the `fmt`, `dstnodata`,
-#' `init`, `co`, `te`, `tr`, `tap`, `ts`, or `dtName` arguments are used. The
-#' resolution or size must be specified using the `tr` or `ts` argument for all
-#' new rasters. The target raster will be overwritten if it already exists and
-#' any of these creation-related options are used.
+#' `rasterize()` creates a new target raster when `dstfile` is given as a
+#' filename (character string). In that case, some combination of the `fmt`,
+#' `dstnodata`, `init`, `co`, `te`, `tr`, `tap`, `ts`, and `dtName` arguments
+#' will be used. The resolution or size must be specified using either the `tr`
+#' or `ts` argument for all new rasters. The target raster will be overwritten
+#' if it already exists and any of these creation-related options are used.
+#'
+#' To update an existing raster in-place, an object of class `GDALRaster` may
+#' be given for the `dstfile` argument. The `GDALRaster` object should be open
+#' for write access.
 #'
 #' @seealso
 #' [polygonize()]
@@ -1721,7 +2075,7 @@ polygonize <- function(raster_file,
 #'             main="YNP Fires 1984-2022 - Most Recent Burn Year")
 #'
 #' ds$close()
-#' deleteDataset(out_file)
+#' \dontshow{deleteDataset(out_file)}
 #' @export
 rasterize <- function(src_dsn,
                       dstfile,
@@ -1745,7 +2099,19 @@ rasterize <- function(src_dsn,
                       quiet = FALSE) {
 
     src_dsn <- .check_gdal_filename(src_dsn)
-    dstfile <- .check_gdal_filename(dstfile)
+
+    dst_ds <- NULL
+    if (is(dstfile, "Rcpp_GDALRaster")) {
+        dst_ds <- dstfile
+        if (!dst_ds$isOpen()) {
+            stop("destination dataset is not open", call. = FALSE)
+        }
+    } else if (!(is.character(dstfile) && length(dstfile) == 1)) {
+        stop("'dstfile' must be a character string or GDALRaster object",
+             call. = FALSE)
+    } else {
+        dstfile <- .check_gdal_filename(dstfile)
+    }
 
     argv <- character(0)
 
@@ -1882,5 +2248,11 @@ rasterize <- function(src_dsn,
             argv <- c(argv, add_options)
     }
 
-    return(invisible(.rasterize(src_dsn, dstfile, argv, quiet)))
+    if (!is.null(dst_ds)) {
+        ret <- .rasterize(src_dsn, "", list(dst_ds), argv, quiet)
+    } else {
+        ret <- .rasterize(src_dsn, dstfile, list(), argv, quiet)
+    }
+
+    return(invisible(ret))
 }

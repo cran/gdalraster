@@ -1,3 +1,12 @@
+# apply_geotransform() and get_pixel_line() tests are in test-gdal_exp.R
+
+test_that("gdal_compute_version works", {
+    expect_equal(gdal_compute_version(3, 7, 0), 3070000L)
+    expect_error(gdal_compute_version("3", 7, 0))
+    expect_error(gdal_compute_version(3, "7", 0))
+    expect_error(gdal_compute_version(3, 7, NULL))
+})
+
 test_that("addFilesInZip works", {
     # requires GDAL >= 3.7
     skip_if(as.integer(gdal_version()[2]) < 3070000)
@@ -22,10 +31,18 @@ test_that("addFilesInZip works", {
 })
 
 test_that("getCreationOptions works", {
-    expect_no_error(getCreationOptions("GTiff"))
-    expect_output(x <- getCreationOptions("GTiff", filter="COMPRESS"))
-    expect_type(x, "character")
-    expect_message(getCreationOptions("AIG"))
+    opt <- getCreationOptions("GTiff", "COMPRESS")
+    expect_true(is.list(opt))
+    expect_equal(names(opt), "COMPRESS")
+    expect_equal(opt$COMPRESS$type, "string-select")
+    expect_vector(opt$COMPRESS$values, ptype = character())
+    all_opt <- getCreationOptions("GTiff")
+    expect_true(is.list(all_opt))
+    expect_true(length(names(all_opt)) > 10)
+    expect_true(is.list(all_opt$TILED))
+    expect_error(getCreationOptions("invalid format name"))
+    expect_error(getCreationOptions(NA))
+
 })
 
 test_that("dump_open_datasets works", {
@@ -81,6 +98,31 @@ test_that("inspectDataset works", {
     expect_equal(dsinfo$format, "GTiff")
     expect_true(dsinfo$supports_raster)
     expect_true(dsinfo$contains_raster)
+    expect_true(dsinfo$supports_subdatasets)
+    expect_false(dsinfo$contains_subdatasets)
+    expect_false(dsinfo$supports_vector)
+    expect_false(dsinfo$contains_vector)
+    expect_vector(dsinfo$layer_names, ptype = character(), size = 0)
+
+    # PostGISRaster / PostgreSQL
+    dsn <- "PG:dbname='testdb', host='127.0.0.1' port='5444' user='user'
+            password='pwd'"
+    dsinfo <- inspectDataset(dsn)
+    expect_equal(dsinfo$format, "PostgreSQL")
+    expect_false(dsinfo$supports_raster)
+    expect_false(dsinfo$contains_raster)
+    expect_false(dsinfo$supports_subdatasets)
+    expect_false(dsinfo$contains_subdatasets)
+    expect_true(dsinfo$supports_vector)
+    expect_false(dsinfo$contains_vector)
+    expect_vector(dsinfo$layer_names, ptype = character(), size = 0)
+
+    dsn <- "PG:dbname='testdb', host='127.0.0.1' port='5444' table='raster_tbl'
+            column='raster_col' user='user' password='pwd'"
+    dsinfo <- inspectDataset(dsn, vector = FALSE)
+    expect_equal(dsinfo$format, "PostGISRaster")
+    expect_true(dsinfo$supports_raster)
+    expect_false(dsinfo$contains_raster)
     expect_true(dsinfo$supports_subdatasets)
     expect_false(dsinfo$contains_subdatasets)
     expect_false(dsinfo$supports_vector)

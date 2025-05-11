@@ -28,9 +28,7 @@ filesystem-dependent options (GDAL >= 3.3, see Details).}
 \value{
 An object of class \code{VSIFile} which contains a pointer to a
 \code{VSIVirtualHandle}, and methods that operate on the file as described in
-Details. \code{VSIFile} is a C++ class exposed directly to R (via
-\code{RCPP_EXPOSED_CLASS}). Methods of the class are accessed using the
-\code{$} operator.
+Details.
 }
 \description{
 \code{VSIFile} provides bindings to the GDAL VSIVirtualHandle API. Encapsulates a
@@ -41,6 +39,9 @@ cloud storage services, Zip/GZip/7z/RAR, and in-memory files.
 It provides analogs of several Standard C file I/O functions, allowing
 virtualization of disk I/O so that non-file data sources can be made to
 appear as files.
+
+\code{VSIFile} is a C++ class exposed directly to R (via \code{RCPP_EXPOSED_CLASS}).
+Methods of the class are accessed using the \code{$} operator.
 }
 \note{
 File offsets are given as R \code{numeric} (i.e., \code{double} type), optionally
@@ -63,7 +64,7 @@ needed for writing with seek and read operations (if creating a new file,
 otherwise, \code{"r+"} to open an existing file), while \code{"w"} access would
 allow sequential write only.
 }
-\section{Usage}{
+\section{Usage (see Details)}{
 
 \preformatted{
 ## Constructors
@@ -73,7 +74,7 @@ vf <- new(VSIFile, filename, access)
 # specifying access and options (both required):
 vf <- new(VSIFile, filename, access, options)
 
-## Methods (see Details)
+## Methods
 vf$seek(offset, origin)
 vf$tell()
 vf$rewind()
@@ -94,22 +95,22 @@ vf$set_access(access)
 
 \section{Details}{
 
-\code{new(VSIFile, filename)}
-Constructor. Returns an object of class \code{VSIFile}, or an error is raised
-if a file handle cannot be obtained.
+\subsection{Constructors}{
 
-\code{new(VSIFile, filename, access)}
+\code{new(VSIFile, filename)}\cr
+Returns an object of class \code{VSIFile}, or an error is raised if a file
+handle cannot be obtained.
+
+\code{new(VSIFile, filename, access)}\cr
 Alternate constructor for passing \code{access} as a character string
 (e.g., \code{"r"}, \code{"r+"}, \code{"w"}, \code{"w+"}).
 Returns an object of class \code{VSIFile} with an open file handle, or an error
 is raised if a file handle cannot be obtained.
 
-\code{new(VSIFile, filename, access, options)}
+\code{new(VSIFile, filename, access, options)}\cr
 Alternate constructor for passing \code{access} as a character string, and
-\code{options} as a character vector of "NAME=VALUE" pairs (both arguments
+\code{options} as a character vector of "NAME=VALUE" pairs (all arguments
 required, GDAL >= 3.3 required for \code{options} support).
-Returns an object of class \code{VSIFile} with an open file handle, or an error
-is raised if a file handle cannot be obtained.
 
 The \code{options} argument is highly file system dependent. Supported options
 as of GDAL 3.9 include:
@@ -124,8 +125,11 @@ FILE_FLAG_WRITE_THROUGH flag to the \code{CreateFile()} function. In that mode,
 the data are written to the system cache but are flushed to disk without
 delay.
 }
+}
 
-\code{$seek(offset, origin)}
+\subsection{Methods}{
+
+\code{$seek(offset, origin)}\cr
 Seek to a requested \code{offset} in the file.
 \code{offset} is given as a positive numeric scalar, optionally as
 \code{bit64::integer64} type.
@@ -139,20 +143,20 @@ can only be used for positive seek. If negative seek is needed, use:
 
 Returns \code{0} on success or \code{-1} on failure.
 
-\code{$tell()}
+\code{$tell()}\cr
 Returns the current file read/write offset in bytes from the beginning of
 the file. The return value is a numeric scalar carrying the \code{integer64}
 class attribute.
 
-\code{$rewind()}
+\code{$rewind()}\cr
 Rewind the file pointer to the beginning of the file. This is equivalent to
 \code{vf$seek(0, SEEK_SET)}. No return value, called for that side effect.
 
-\code{$read(nbytes)}
+\code{$read(nbytes)}\cr
 Read \code{nbytes} bytes from the file at the current offset. Returns a vector
 of R \code{raw} type, or \code{NULL} if the operation fails.
 
-\code{$write(object)}
+\code{$write(object)}\cr
 Write bytes to the file at the current offset. \code{object} is a \code{raw} vector.
 Returns the number of bytes successfully written, as numeric scalar
 carrying the \code{integer64} class attribute.
@@ -160,17 +164,17 @@ See also base R \code{charToRaw()} / \code{rawToChar()}, convert to or from raw
 vectors, and \code{readBin()} / \code{writeBin()} which read binary data from or write
 binary data to a raw vector.
 
-\code{$eof()}
+\code{$eof()}\cr
 Test for end of file. Returns \code{TRUE} if an end-of-file condition occurred
 during the previous read operation. The end-of-file flag is cleared by a
 successful call to \verb{$seek()}.
 
-\code{$truncate(new_size)}
+\code{$truncate(new_size)}\cr
 Truncate/expand the file to the specified \code{new_size}, given as a positive
 numeric scalar, optionally as \code{bit64::integer64} type.
 Returns \code{0} on success.
 
-\code{$flush()}
+\code{$flush()}\cr
 Flush pending writes to disk. For files in write or update mode and on
 file system types where it is applicable, all pending output on the file is
 flushed to the physical disk.
@@ -179,38 +183,39 @@ On Windows regular files, this method does nothing, unless the
 been opened with the \code{WRITE_THROUGH} option).
 Returns \code{0} on success or \code{-1} on error.
 
-\code{$ingest(max_size)}
+\code{$ingest(max_size)}\cr
 Ingest a file into memory. Read the whole content of the file into a \code{raw}
 vector.
 \code{max_size} is the maximum size of file allowed, given as a numeric scalar,
 optionally as \code{bit64::integer64} type. If no limit, set to a negative value.
 Returns a \code{raw} vector, or \code{NULL} if the operation fails.
 
-\code{$close()}
+\code{$close()}\cr
 Closes the file. The file should always be closed when I/O has been
 completed. Returns \code{0} on success or \code{-1} on error.
 
-\code{$open()}
+\code{$open()}\cr
 This method can be used to re-open the file after it has been closed, using
 the same \code{filename}, and same \code{options} if any are set. The file will be
 opened using \code{access} as currently set. The \verb{$set_access()} method can be
 called to change the requested access while the file is closed.
 No return value. An error is raised if a file handle cannot be obtained.
 
-\code{$get_filename()}
+\code{$get_filename()}\cr
 Returns a character string containing the \code{filename} associated with this
 \code{VSIFile} object (the \code{filename} originally used to create the object).
 
-\code{$get_access()}
+\code{$get_access()}\cr
 Returns a character string containing the \code{access} as currently set on this
 \code{VSIFile} object.
 
-\code{$set_access(access)}
+\code{$set_access(access)}\cr
 Sets the requested read/write access on this \code{VSIFile} object, given as a
 character string (i.e., \code{"r"}, \code{"r+"}, \code{"w"}, \code{"w+"}). The access can be
 changed only while the \code{VSIFile} object is closed, and will apply when it is
 re-opened with a call to \verb{$open()}.
 Returns \code{0} on success or \code{-1} on error.
+}
 }
 
 \examples{
@@ -237,6 +242,8 @@ is_lcp <- function(bytes) {
 }
 
 vf <- new(VSIFile, lcp_file)
+vf
+
 vf$read(12) |> is_lcp()
 
 vf$tell()
@@ -312,7 +319,7 @@ ds$getMetadata(band = 0, domain = "")
 ds$getMetadataItem(band = 0, mdi_name = "DESCRIPTION", domain = "")
 
 ds$close()
-vsi_unlink(mem_file)
+\dontshow{vsi_unlink(mem_file)}
 }
 \seealso{
 GDAL Virtual File Systems (compressed, network hosted, etc...):\cr

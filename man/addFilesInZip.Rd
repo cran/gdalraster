@@ -99,7 +99,7 @@ lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 zip_file <- file.path(tempdir(), "storml_lcp.zip")
 
 # Requires GDAL >= 3.7
-if (as.integer(gdal_version()[2]) >= 3070000) {
+if (gdal_version_num() >= gdal_compute_version(3, 7, 0)) {
   addFilesInZip(zip_file, lcp_file, full_paths=FALSE, sozip_enabled="YES",
                 num_threads=1)
 
@@ -115,8 +115,7 @@ if (as.integer(gdal_version()[2]) >= 3070000) {
   ds <- new(GDALRaster, lcp_in_zip)
   ds$info()
   ds$close()
-
-  vsi_unlink(zip_file)
+  \dontshow{vsi_unlink(zip_file)}
 }
 }
 \seealso{
