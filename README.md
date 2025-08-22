@@ -12,6 +12,8 @@
 status](https://www.r-pkg.org/badges/version/gdalraster)](https://CRAN.R-project.org/package=gdalraster)
 [![r-universe
 status](https://usdaforestservice.r-universe.dev/badges/gdalraster)](https://usdaforestservice.r-universe.dev/gdalraster)
+[![Conda
+Version](https://img.shields.io/conda/vn/conda-forge/r-gdalraster)](https://anaconda.org/conda-forge/r-gdalraster)
 [![OpenSSF Best
 Practices](https://www.bestpractices.dev/projects/9382/badge)](https://www.bestpractices.dev/projects/9382)
 [![OpenSSF
@@ -30,13 +32,17 @@ and
 [`GDALVector`](https://usdaforestservice.github.io/gdalraster/reference/GDALVector-class.html),
 along with several [stand-alone
 functions](https://usdaforestservice.github.io/gdalraster/reference/index.html#stand-alone-functions).
-Bindings to the GDAL Virtual Systems Interface
-([VSI](https://gdal.org/en/stable/api/cpl.html#cpl-vsi-h)) are also
-included to support file system operations and binary I/O on URLs, cloud
-storage services, Zip/GZip/7z/RAR, and in-memory files, as well as
-regular file systems. Calling signatures resemble the native C, C++ and
-Python APIs provided by the GDAL project. The package supports:
+Initial bindings are provided to the “gdal” command line interface (CLI)
+algorithms added in GDAL 3.11. Bindings to the GDAL Virtual Systems
+Interface ([VSI](https://gdal.org/en/stable/api/cpl.html#cpl-vsi-h)) are
+also included to support file system operations on URLs, cloud storage
+services, Zip/GZip/7z/RAR, and in-memory files, as well as regular file
+systems. Calling signatures resemble the native C, C++ and Python APIs
+provided by the GDAL project. The package supports:
 
+- [using “gdal” CLI
+  algorithms](https://usdaforestservice.github.io/gdalraster/articles/use-gdal-cli-from-r.html)
+  from R when built against GDAL \>= 3.11.3
 - manual creation of uninitialized raster and vector datasets
 - vector layer creation and schema management
 - read/set parameters and metadata for raster bands and vector layers
@@ -44,25 +50,20 @@ Python APIs provided by the GDAL project. The package supports:
 - build/read/set color tables and raster attribute tables
 - virtual raster (VRT) for virtual cropping, resampling, kernel
   filtering, mosaicing
-- [wrapper of
-  `gdalwarp`](https://usdaforestservice.github.io/gdalraster/reference/warp.html)
-  for reproject/resample/crop/mosaic
-- coordinate transformations
+- [raster
+  utilities](https://usdaforestservice.github.io/gdalraster/reference/index.html#raster-utilities)
+- coordinate transformation
 - spatial reference systems
 - [geometry
   API](https://usdaforestservice.github.io/gdalraster/reference/index.html#geometry)
   operating on raw vectors of WKB or WKT strings
-- GDAL
-  [algorithms](https://usdaforestservice.github.io/gdalraster/reference/index.html#algorithms)
-  (`dem_proc()`, `polygonize()`, `rasterize()`, …)
 - OGR [vector
-  utilities](https://usdaforestservice.github.io/gdalraster/reference/index.html#ogr-vector-utilities)
-  (`ogrinfo()`, `ogr2ogr()`, `ogr_reproject()`, `ogr_manage` interface)
+  utilities](https://usdaforestservice.github.io/gdalraster/reference/index.html#vector-utilities)
 - GDAL facilities for [vector
   geoprocessing](https://usdaforestservice.github.io/gdalraster/reference/ogr_proc.html)
   (`ogr_proc()`)
 - raster and vector [dataset
-  management](https://usdaforestservice.github.io/gdalraster/reference/index.html#data-management)
+  management](https://usdaforestservice.github.io/gdalraster/reference/index.html#general-data-management)
   (inspect/copy files/rename/delete)
 - create/append to Seek-Optimized ZIP
   ([SOZip](https://github.com/sozip/sozip-spec))
@@ -103,6 +104,8 @@ low-level I/O, or prefer a direct GDAL API. Comprehensive
 
 ## Installation
 
+### From CRAN
+
 Install the released version from CRAN with:
 
 ``` r
@@ -111,6 +114,33 @@ install.packages("gdalraster")
 
 CRAN provides pre-compiled binary packages for Windows and macOS. These
 do not require any separate installation of external libraries for GDAL.
+
+### From conda-forge
+
+[Conda-forge](https://github.com/conda-forge/r-gdalraster-feedstock)
+provides pre-compiled binary packages that track CRAN releases, for the
+following platforms:
+
+[![Conda
+Platforms](https://img.shields.io/conda/pn/conda-forge/r-gdalraster.svg)](https://anaconda.org/conda-forge/r-gdalraster)
+
+To install **gdalraster** into a particular conda environment with
+[conda](https://docs.conda.io/projects/conda/en/stable/), in the
+activated environment:
+
+    conda install --channel conda-forge r-gdalraster
+
+### From R-universe
+
+[R-universe](https://usdaforestservice.r-universe.dev/gdalraster)
+provides pre-compiled binary packages for Windows and macOS that track
+the development version of **gdalraster**. New packages are built
+usually within ~1 hour of the most recent commit in branch `main`.
+
+``` r
+# Install the development version from r-universe
+install.packages("gdalraster", repos = c("https://usdaforestservice.r-universe.dev", "https://cran.r-project.org"))
+```
 
 ### From source code
 
@@ -187,18 +217,6 @@ It is not recommended to mix source installations and installation of
 macOS binaries from CRAN. Consider installing the development version
 from R-universe instead.
 
-### From R-universe
-
-[R-universe](https://usdaforestservice.r-universe.dev/gdalraster)
-provides pre-compiled binary packages for Windows and macOS that track
-the development version of **gdalraster**. New packages are built
-usually within ~1 hour of the most recent commit in branch `main`.
-
-``` r
-# Install the development version from r-universe
-install.packages("gdalraster", repos = c("https://usdaforestservice.r-universe.dev", "https://cran.r-project.org"))
-```
-
 ## Documentation
 
 - [Reference
@@ -207,6 +225,8 @@ install.packages("gdalraster", repos = c("https://usdaforestservice.r-universe.d
   Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html)
 - [Vector API
   Overview](https://usdaforestservice.github.io/gdalraster/articles/vector-api-overview.html)
+- [Using “gdal” CLI algorithms from
+  R](https://usdaforestservice.github.io/gdalraster/articles/use-gdal-cli-from-r.html)
 - [Raster Attribute
   Tables](https://usdaforestservice.github.io/gdalraster/articles/raster-attribute-tables.html)
 - [Raster

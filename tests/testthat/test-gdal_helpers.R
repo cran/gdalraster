@@ -46,7 +46,7 @@ test_that("getCreationOptions works", {
 })
 
 test_that("dump_open_datasets works", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    elev_file <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
     ds <- new(GDALRaster, elev_file)
     expect_output(dump_open_datasets())
     expect_true(dump_open_datasets() > 0)
@@ -93,7 +93,7 @@ test_that("inspectDataset works", {
     expect_vector(dsinfo$layer_names, ptype = character(), size = 1)
 
     # GTiff
-    src <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    src <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
     dsinfo <- inspectDataset(src)
     expect_equal(dsinfo$format, "GTiff")
     expect_true(dsinfo$supports_raster)
@@ -105,6 +105,9 @@ test_that("inspectDataset works", {
     expect_vector(dsinfo$layer_names, ptype = character(), size = 0)
 
     # PostGISRaster / PostgreSQL
+    skip_if(nrow(gdal_formats("PostgreSQL")) == 0 ||
+            nrow(gdal_formats("PostGISRaster")) == 0)
+
     dsn <- "PG:dbname='testdb', host='127.0.0.1' port='5444' user='user'
             password='pwd'"
     dsinfo <- inspectDataset(dsn)

@@ -12,7 +12,7 @@ test_that("gdal_formats returns a data frame", {
 })
 
 test_that(".check_gdal_filename works", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    elev_file <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
     b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
     expect_error(.check_gdal_filename(c(elev_file, b5_file)))
     vsifn <- paste0("/vsi/", b5_file)
@@ -98,7 +98,7 @@ test_that("createCopy writes correct output", {
 })
 
 test_that("internal apply_geotransform gives correct result", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    elev_file <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
     ds <- new(GDALRaster, elev_file, read_only=TRUE)
     gt <- ds$getGeoTransform()
     ds$close()
@@ -106,7 +106,7 @@ test_that("internal apply_geotransform gives correct result", {
 })
 
 test_that("apply_geotransform gives correct results", {
-    raster_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    raster_file <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
     ds <- new(GDALRaster, raster_file)
 
     # compute some raster coordinates in column/row space
@@ -182,7 +182,7 @@ test_that("get_pixel_line gives correct results", {
 })
 
 test_that("fillNodata writes correct output", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    elev_file <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
     mod_file <- paste0(tempdir(), "/", "storml_elev_fill.tif")
     file.copy(elev_file,  mod_file)
     fillNodata(mod_file, band=1)
@@ -359,6 +359,11 @@ test_that("footprint runs without error", {
 })
 
 test_that("ogr2ogr works", {
+    # this may be removed in the future
+    # cf. https://gdal.org/en/stable/programs/ogr2ogr.html#known-issues
+    set_config_option("OGR2OGR_USE_ARROW_API", "NO")
+    on.exit(set_config_option("OGR2OGR_USE_ARROW_API", ""))
+
     src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
 
     # convert GeoPackage to Shapefile
@@ -430,7 +435,7 @@ test_that("ogrinfo works", {
 })
 
 test_that("autoCreateWarpedVRT works", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    elev_file <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
     ds <- new(GDALRaster, elev_file)
 
     expect_no_error(ds2 <- autoCreateWarpedVRT(ds, epsg_to_wkt(5070),
@@ -462,6 +467,9 @@ test_that("identifyDriver works", {
     expect_equal(identifyDriver(src, file_list = "ynp_fires_1984_2022.gpkg"), "GPKG")
 
     # PostGISRaster vs. PostgreSQL
+    skip_if(nrow(gdal_formats("PostgreSQL")) == 0 ||
+            nrow(gdal_formats("PostGISRaster")) == 0)
+
     dsn <- "PG:dbname='testdb', host='127.0.0.1' port='5444' user='user' password='pwd'"
     expect_equal(identifyDriver(dsn), "PostGISRaster")
     expect_equal(identifyDriver(dsn, raster = FALSE), "PostgreSQL")

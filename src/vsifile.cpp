@@ -5,6 +5,7 @@
 */
 
 #include <cstdlib>
+#include <limits>
 #include <vector>
 
 #include "cpl_port.h"
@@ -58,7 +59,7 @@ void VSIFile::open() {
         opt_list[m_options.size()] = nullptr;
 
         m_fp = VSIFOpenEx2L(m_filename.c_str(), m_access.c_str(), TRUE,
-                          opt_list.data());
+                            opt_list.data());
     }
     else {
         m_fp = VSIFOpenExL(m_filename.c_str(), m_access.c_str(), TRUE);
@@ -141,15 +142,11 @@ SEXP VSIFile::read(Rcpp::NumericVector nbytes) {
     size_t nbytes_in = 0;
 
     if (Rcpp::isInteger64(nbytes)) {
-        int64_t tmp = Rcpp::fromInteger64(nbytes[0]);
-        if (static_cast<uint64_t>(tmp) > SIZE_MAX)
-            Rcpp::stop("'nbytes' is out of range");
-        else
-            nbytes_in = static_cast<size_t>(tmp);
+        nbytes_in = static_cast<size_t>(Rcpp::fromInteger64(nbytes[0]));
     }
     else {
-        if (nbytes[0] > SIZE_MAX)
-            Rcpp::stop("'nbytes' is out of range");
+        if (nbytes[0] > static_cast<double>(MAX_INT_AS_R_NUMERIC))
+            Rcpp::stop("'nbytes' given as type double is out of range");
         else
             nbytes_in = static_cast<size_t>(nbytes[0]);
     }
@@ -177,7 +174,7 @@ Rcpp::NumericVector VSIFile::write(const Rcpp::RawVector& object) {
 
     std::vector<int64_t> ret(1);
     ret[0] = static_cast<int64_t>(
-            VSIFWriteL(&object[0], 1, static_cast<size_t>(object.size()), m_fp));
+        VSIFWriteL(&object[0], 1, static_cast<size_t>(object.size()), m_fp));
 
     return Rcpp::wrap(ret);
 }

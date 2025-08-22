@@ -90,12 +90,15 @@
 #' written to an existing database.
 #'
 #' @seealso
-#' [ogr2ogr()], [warp()] for raster reprojection
+#' [ogr2ogr()]
 #'
 #' GDAL documentation for `ogr2ogr`:\cr
 #' \url{https://gdal.org/en/stable/programs/ogr2ogr.html}
 #'
+#' [warp()] for raster reprojection
+#'
 #' @examples
+#' \dontshow{set_config_option("OGR2OGR_USE_ARROW_API", "NO")}
 #' # MTBS fire perimeters
 #' f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
 #' (mtbs <- new(GDALVector, f, "mtbs_perims"))
@@ -104,7 +107,9 @@
 #'
 #' # YNP boundary
 #' f <- system.file("extdata/ynp_features.zip", package = "gdalraster")
-#' ynp_dsn <- file.path("/vsizip", f, "ynp_features.gpkg")
+#' unzip(f, files = "ynp_features.gpkg", exdir = tempdir())
+#' ynp_dsn <- file.path(tempdir(), "ynp_features.gpkg")
+#'
 #' (bnd <- new(GDALVector, ynp_dsn, "ynp_bnd"))
 #'
 #' bnd$getSpatialRef() |> srs_is_projected()  # FALSE
@@ -128,6 +133,8 @@
 #' bnd$close()
 #' bnd_mtsp$close()
 #' \dontshow{unlink(out_dsn)}
+#' \dontshow{unlink(ynp_dsn)}
+#' \dontshow{set_config_option("OGR2OGR_USE_ARROW_API", "")}
 #' @export
 ogr_reproject <- function(src_dsn, src_layer, out_dsn, out_srs,
                           out_fmt = NULL, overwrite = FALSE,

@@ -28,7 +28,7 @@
 #' All features in an OGR Layer share a common schema (feature class), modeled
 #' in GDAL by its `OGRFeatureDefn` class. A feature class definition includes
 #' the set of attribute fields and their data types and the geometry field(s).
-#' In R, a feature class definition is represented as a named list, with names
+#' In \R, a feature class definition is represented as a named list, with names
 #' being the attribute/geometry field names, and each list element holding an
 #' attribute or geometry field definition.
 #'
@@ -60,7 +60,7 @@
 #'
 #' A default field value is taken into account by format drivers (generally
 #' those with a SQL interface) that support it at field creation time.
-#' If given in the field definition, `$default` must be a character string.
+#' If given in the field definition, `default` must be a character string.
 #' The accepted values are `"NULL"`, a numeric value (e.g., `"0"`), a literal
 #' value enclosed between single quote characters (e.g., `"'a default value'"`,
 #' with any inner single quote characters escaped by repetition of the single
@@ -116,18 +116,18 @@
 #' * `Range`: a range constraint (min, max)
 #' * `GLOB`: a GLOB expression (matching expression like `"*[a-z][0-1]?"`)
 #'
-#' `$type` can also be specified as `"RangeDateTime"`, a range constraint for
-#' `OFTDateTime` fields with `$min_value` and `$max_value` given as
+#' `type` can also be specified as `"RangeDateTime"`, a range constraint for
+#' `OFTDateTime` fields with `min_value` and `max_value` given as
 #' `"POSIXct"` DateTimes.
 #'
 #' Split and merge policies are supported by ESRI File Geodatabase format via
 #' OpenFileGDB driver (or FileGDB driver dependent on FileGDB API library).
-#' When a feature is split in two, `$split_policy` defines how the value of
+#' When a feature is split in two, `split_policy` defines how the value of
 #' attributes following the domain are computed. Possible values are
 #' `"DEFAULT_VALUE"` (default value), `"DUPLICATE"` (duplicate), and
 #' `"GEOMETRY_RATIO"` (new values are computed by the ratio of their
 #' area/length compared to the area/length of the original feature).
-#' When a feature is built by merging two features, `$merge_policy` defines
+#' When a feature is built by merging two features, `merge_policy` defines
 #' how the value of attributes following the domain are computed. Possible
 #' values are `"DEFAULT_VALUE"` (default value), `"SUM"` (sum), and
 #' `"GEOMETRY_WEIGHTED"` (new values are computed as the weighted average of
@@ -391,9 +391,12 @@ ogr_def_field_domain <- function(domain_type, domain_name, description = NULL,
     if (is.na(domain_type) || !nzchar(domain_type)) {
         stop("'domain_type' is required", call. = FALSE)
     }
-    if (!(tolower(domain_type) %in% c("coded", "range", "rangedatetime", "glob"))) {
-        stop("'domain_type' must be one of \"Coded\", \"Range\", \"RangeDateTime\", \"GLOB\"",
-             call. = FALSE)
+    if (!(tolower(domain_type) %in%
+            c("coded", "range", "rangedatetime", "glob"))) {
+
+        cat("valid domain types are:\n")
+        cat("  \"Coded\", \"Range\", \"RangeDateTime\", \"GLOB\"\n")
+        stop("invalid 'domain_type'", call. = FALSE)
     }
     defn$type <- domain_type
 
@@ -435,9 +438,12 @@ ogr_def_field_domain <- function(domain_type, domain_name, description = NULL,
     if (is.na(split_policy) || !nzchar(split_policy)) {
         split_policy <- "DEFAULT_VALUE"
     }
-    if (!(toupper(split_policy) %in% c("DEFAULT_VALUE", "DUPLICATE", "GEOMETRY_RATIO"))) {
-        stop("'split_policy' must be one of \"DEFAULT_VALUE\", \"DUPLICATE\", \"GEOMETRY_RATIO\"",
-             call. = FALSE)
+    if (!(toupper(split_policy) %in%
+            c("DEFAULT_VALUE", "DUPLICATE", "GEOMETRY_RATIO"))) {
+
+        cat("valid split policies are:\n")
+        cat("  \"DEFAULT_VALUE\", \"DUPLICATE\", \"GEOMETRY_RATIO\"\n")
+        stop("invalid 'split_policy'", call. = FALSE)
     }
     defn$split_policy <- toupper(split_policy)
 
@@ -448,9 +454,12 @@ ogr_def_field_domain <- function(domain_type, domain_name, description = NULL,
     if (is.na(merge_policy) || !nzchar(merge_policy)) {
         merge_policy <- "DEFAULT_VALUE"
     }
-    if (!(toupper(merge_policy) %in% c("DEFAULT_VALUE", "SUM", "GEOMETRY_WEIGHTED"))) {
-        stop("'merge_policy' must be one of \"DEFAULT_VALUE\", \"SUM\", \"GEOMETRY_WEIGHTED\"",
-             call. = FALSE)
+    if (!(toupper(merge_policy) %in%
+            c("DEFAULT_VALUE", "SUM", "GEOMETRY_WEIGHTED"))) {
+
+        cat("valid merge policies are:\n")
+        cat("   \"DEFAULT_VALUE\", \"SUM\", \"GEOMETRY_WEIGHTED\"\n")
+        stop("invalid 'merge_policy'", call. = FALSE)
     }
     defn$merge_policy <- toupper(merge_policy)
 

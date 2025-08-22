@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "gdal.h"
+#include "gdal_priv.h"
 #include "cpl_port.h"
 #include "cpl_conv.h"
 #include "cpl_string.h"
@@ -83,9 +84,7 @@ std::string getGFU_string_(GDALRATFieldUsage gfu) {
 GDALRaster::GDALRaster() :
             m_fname(""),
             m_open_options(Rcpp::CharacterVector::create()),
-            m_shared(false),
-            m_hDataset(nullptr),
-            m_eAccess(GA_ReadOnly) {}
+            m_shared(false) {}
 
 GDALRaster::GDALRaster(const Rcpp::CharacterVector &filename) :
             GDALRaster(
@@ -112,11 +111,9 @@ GDALRaster::GDALRaster(const Rcpp::CharacterVector &filename, bool read_only,
 
 GDALRaster::GDALRaster(const Rcpp::CharacterVector &filename, bool read_only,
                        const Rcpp::Nullable<Rcpp::CharacterVector>
-                           &open_options,
-                       bool shared) :
-                m_shared(shared),
-                m_hDataset(nullptr),
-                m_eAccess(GA_ReadOnly) {
+                           &open_options, bool shared) :
+
+                m_shared(shared) {
 
     m_fname = Rcpp::as<std::string>(check_gdal_filename(filename));
 
@@ -133,8 +130,12 @@ GDALRaster::GDALRaster(const Rcpp::CharacterVector &filename, bool read_only,
 }
 
 GDALRaster::~GDALRaster() {
-    if (m_hDataset)
-        GDALClose(m_hDataset);
+    if (m_hDataset) {
+        if (m_shared)
+            GDALClose(m_hDataset);
+        else
+            GDALReleaseDataset(m_hDataset);
+    }
 }
 
 std::string GDALRaster::getFilename() const {
@@ -290,6 +291,7 @@ std::string GDALRaster::getDriverShortName() const {
     checkAccess_(GA_ReadOnly);
 
     GDALDriverH hDriver = GDALGetDatasetDriver(m_hDataset);
+    if (!hDriver) return("");
     return GDALGetDriverShortName(hDriver);
 }
 
@@ -297,6 +299,7 @@ std::string GDALRaster::getDriverLongName() const {
     checkAccess_(GA_ReadOnly);
 
     GDALDriverH hDriver = GDALGetDatasetDriver(m_hDataset);
+    if (!hDriver) return("");
     return GDALGetDriverLongName(hDriver);
 }
 
@@ -810,6 +813,9 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
 
             if (!quiet) {
                 pfnProgress((row_idx + 1.0) / num_pts, nullptr, nullptr);
+            }
+            if (row_idx % 1000 == 0) {
+                Rcpp::checkUserInterrupt();
             }
         }
     }
@@ -2072,20 +2078,22 @@ int GDALRaster::getChecksum(int band, int xoff, int yoff,
 }
 
 void GDALRaster::close() {
-    // make sure caches are flushed when access was GA_Update:
-    // since the dataset was opened shared, and could still have a shared
-    // read-only handle (not recommended), or may be re-opened for read and
-    // is on a /vsicurl/ filesystem,
-    if (m_eAccess == GA_Update) {
-        flushCache();
-        vsi_curl_clear_cache(true, m_fname, true);
-    }
+    if (m_hDataset == nullptr)
+        return;
 
-#if GDAL_VERSION_NUM >= 3070000
-    if (GDALClose(m_hDataset) != CE_None)
-        Rcpp::warning("error occurred during GDALClose()!");
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 7, 0)
+    if (m_shared) {
+        if (GDALClose(m_hDataset) != CE_None)
+            Rcpp::warning("error occurred during GDALClose()!");
+    }
+    else {
+        GDALReleaseDataset(m_hDataset);
+    }
 #else
-    GDALClose(m_hDataset);
+    if (m_shared)
+        GDALClose(m_hDataset);
+    else
+        GDALReleaseDataset(m_hDataset);
 #endif
 
     m_hDataset = nullptr;
@@ -2183,12 +2191,17 @@ GDALDatasetH GDALRaster::getGDALDatasetH_() const {
     return m_hDataset;
 }
 
-void GDALRaster::setGDALDatasetH_(GDALDatasetH hDs, bool with_update) {
+void GDALRaster::setGDALDatasetH_(const GDALDatasetH &hDs, bool with_update) {
     m_hDataset = hDs;
     if (with_update)
         m_eAccess = GA_Update;
     else
         m_eAccess = GA_ReadOnly;
+
+    if (GDALDataset::FromHandle(m_hDataset)->GetShared() == TRUE)
+        m_shared = true;
+    else
+        m_shared = false;
 }
 
 // ****************************************************************************
