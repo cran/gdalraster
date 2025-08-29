@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <sstream>
 #include <utility>
 
 #include "gdal.h"
@@ -24,9 +25,72 @@
 #include "transform.h"
 #include "gdalraster.h"
 
+void gdal_error_handler_r(CPLErr err_class, int err_no, const char *msg) {
+    switch (err_class) {
+        case CE_None:
+        break;
+
+        case CE_Debug:
+        {
+            Rcpp::Rcout << "GDAL DEBUG: " << msg << "\n";
+        }
+        break;
+
+        case CE_Warning:
+        {
+            // try to be compatible with sf, and terra default level 2
+            if (is_namespace_loaded_("sf")) {
+                std::stringstream ss_msg;
+                ss_msg << "GDAL WARNING " << err_no << ": " << msg;
+                Rcpp::warning(ss_msg.str());
+            }
+            else {
+                Rcpp::Rcout << "GDAL WARNING " << err_no << ": " << msg << "\n";
+            }
+        }
+        break;
+
+        case CE_Failure:
+        {
+            // try to be compatible with sf, and terra default level 2
+            if (is_namespace_loaded_("sf") || is_namespace_loaded_("terra")) {
+                std::stringstream ss_msg;
+                ss_msg << "GDAL FAILURE " << err_no << ": " << msg;
+                Rcpp::warning(ss_msg.str());
+            }
+            else {
+                Rcpp::Rcout << "GDAL FAILURE " << err_no << ": " << msg << "\n";
+            }
+        }
+        break;
+
+        case CE_Fatal:
+        {
+            Rcpp::Rcout << "GDAL FATAL ERROR " << err_no << ": " << msg << "\n";
+            Rcpp::stop("aborted for GDAL fatal error");
+        }
+
+        default:
+        {
+            Rcpp::Rcout << "UNKNOWN GDAL ERROR CLASS " << err_no << ": " <<
+                msg << "\n";
+        }
+        break;
+    }
+}
+
+void gdal_silent_errors_r(CPLErr err_class, int err_no, const char *msg) {
+    if (err_class == CE_Fatal) {
+        Rcpp::Rcout << "GDAL FATAL ERROR " << err_no << ": " << msg << "\n";
+        Rcpp::stop("aborted for GDAL fatal error");
+    }
+}
+
 // [[Rcpp::init]]
 void gdal_init(DllInfo *dll) {
+    CPLSetErrorHandler((CPLErrorHandler) gdal_silent_errors_r);
     GDALAllRegister();
+    CPLSetErrorHandler((CPLErrorHandler) gdal_error_handler_r);
     CPLSetConfigOption("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", "YES");
 }
 
@@ -375,8 +439,6 @@ bool GDALRaster::addBand(const std::string &dataType,
     CPLErr err = CE_None;
     err = GDALAddBand(m_hDataset, dt, opt_list.data());
     if (err != CE_None) {
-        if (!quiet)
-            Rcpp::Rcerr << CPLGetLastErrorMsg() << std::endl;
         return false;
     }
     else {
@@ -413,7 +475,6 @@ bool GDALRaster::setProjection(const std::string &projection) {
 
     if (GDALSetProjection(m_hDataset, projection.c_str()) == CE_Failure) {
         if (!quiet) {
-            Rcpp::Rcerr << CPLGetLastErrorMsg() << std::endl;
             Rcpp::Rcerr << "set projection failed\n";
         }
         return false;
@@ -938,7 +999,6 @@ void GDALRaster::buildOverviews(const std::string &resampling,
                                     nullptr);
 
     if (err == CE_Failure) {
-        Rcpp::Rcerr << CPLGetLastErrorMsg() << std::endl;
         Rcpp::stop("build overviews failed");
     }
 }
@@ -1385,8 +1445,6 @@ bool GDALRaster::setMetadata(int band, const Rcpp::CharacterVector &metadata,
     }
 
     if (err != CE_None) {
-        if (!quiet)
-            Rcpp::Rcerr << CPLGetLastErrorMsg() << std::endl;
         return false;
     }
     else {
@@ -1442,8 +1500,6 @@ bool GDALRaster::setMetadataItem(int band, const std::string &mdi_name,
     }
 
     if (err != CE_None) {
-        if (!quiet)
-            Rcpp::Rcerr << CPLGetLastErrorMsg() << std::endl;
         return false;
     }
     else {
@@ -1663,7 +1719,6 @@ void GDALRaster::write(int band, int xoff, int yoff, int xsize, int ysize,
     }
 
     if (err == CE_Failure) {
-        Rcpp::Rcerr << CPLGetLastErrorMsg() << std::endl;
         Rcpp::stop("write to raster failed");
     }
 }
