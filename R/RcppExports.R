@@ -618,6 +618,18 @@ inv_geotransform <- function(gt) {
     .Call(`_gdalraster_bbox_grid_to_geo_`, gt, grid_xmin, grid_xmax, grid_ymin, grid_ymax)
 }
 
+#' Returns a matrix of xchunkoff, ychunkoff, xoff, yoff, xsize, ysize, xmin,
+#' xmax, ymin, ymax (i.e., indexing of potentially multi-block chunks defined
+#' on block boundaries for iterating I/O operations over a raster).
+#' If max_pixels == 0, or any value less than block_xsize * block_ysize, then
+#' the chunks are the same as raster blocks.
+#' 'max_pixels' is a scalar value, but NumericVector is used so it can
+#' optionally carry the bit64::integer64 class attribute.
+#' @noRd
+.make_chunk_index <- function(raster_xsize, raster_ysize, block_xsize, block_ysize, gt, max_pixels) {
+    .Call(`_gdalraster_make_chunk_index_`, raster_xsize, raster_ysize, block_xsize, block_ysize, gt, max_pixels)
+}
+
 #' Flip raster data vertically
 #' @noRd
 .flip_vertical <- function(v, xsize, ysize, nbands) {
@@ -881,7 +893,8 @@ footprint <- function(src_filename, dst_filename, cl_arg = NULL) {
 #'
 #' # Dissolve features based on a shared attribute value
 #' if (has_spatialite()) {
-#'     sql <- "SELECT ig_year, ST_Union(geom) AS geom FROM mtbs_perims GROUP BY ig_year"
+#'     sql <- "SELECT ig_year, ST_Union(geom) AS geom
+#'               FROM mtbs_perims GROUP BY ig_year"
 #'     args <- c("-update", "-sql", sql, "-dialect", "SQLITE")
 #'     args <- c(args, "-nlt", "MULTIPOLYGON", "-nln", "dissolved_on_year")
 #'     ogr2ogr(src, ynp_gpkg, cl_arg = args)
@@ -1429,12 +1442,290 @@ validateCreationOptions <- function(format, options) {
     .Call(`_gdalraster_validateCreationOptions`, format, options)
 }
 
+#' Get metadata for a GDAL format driver
+#'
+#' `gdal_get_driver_md()` returns metadata for a driver.
+#'
+#' @param format Character string giving a format driver short name
+#' (e.g., `"GTiff"`).
+#' @param mdi_name Optional character string giving the name of a specific
+#' metadata item. Defaults to empty string (`""`) meaning fetch all metadata
+#' items.
+#' @returns Either a named list of metadata items and their values as character
+#' strings, or a single character string if `mdi_name` is specified. Returns
+#' `NULL` if no metadata items are found for the given inputs.
+#'
+#' @seealso
+#' [getCreationOptions()]
+#'
+#' @examples
+#' dmd <- gdal_get_driver_md("GTiff")
+#' str(dmd)
+gdal_get_driver_md <- function(format, mdi_name = "") {
+    .Call(`_gdalraster_gdal_get_driver_md`, format, mdi_name)
+}
+
 #' Add a file inside a new or existing ZIP file
 #' Mainly for create/append to Seek-Optimized ZIP
 #'
 #' @noRd
 .addFileInZip <- function(zip_filename, overwrite, archive_filename, in_filename, options, quiet) {
     .Call(`_gdalraster_addFileInZip`, zip_filename, overwrite, archive_filename, in_filename, options, quiet)
+}
+
+#' Report structure and content of a multidimensional dataset
+#'
+#' `mdim_info()` is an interface to the \command{gdalmdiminfo} command-line
+#' utility (see \url{https://gdal.org/en/stable/programs/gdalmdiminfo.html}).
+#' This function lists various information about a GDAL supported
+#' multidimensional raster dataset as JSON output. It follows the JSON schema
+#' [gdalmdiminfo_output.schema.json](https://github.com/OSGeo/gdal/blob/release/3.11/apps/data/gdalmdiminfo_output.schema.json).
+#' Requires GDAL >= 3.2.
+#'
+#' @param dsn Character string giving the data source name of the
+#' multidimensional raster (e.g., file, VSI path).
+#' @param array_name Character string giving the name of the MDarray in
+#' `dsn`.
+#' @param pretty Logical value, `FALSE` to output a single line without any
+#' indentation. Defaults to `TRUE`.
+#' @param detailed Logical value, `TRUE` for verbose output. Report attribute
+#' data types and array values. Defaults to `FALSE`.
+#' @param limit Integer value. Number of values in each dimension that is used
+#' to limit the display of array values. By default, unlimited. Only taken into
+#' account if used with `detailed = TRUE`. Set to a positive integer to enable.
+#' @param stats Logical value, `TRUE` to read and display array statistics.
+#' Forces computation if no statistics are stored in an array. Defaults to
+#' `FALSE`.
+#' @param array_options Optional character vector of `"NAME=VALUE"` pairs to
+#' filter reported arrays. Such option is format specific. Consult driver
+#' documentation (passed to `GDALGroup::GetMDArrayNames()`).
+#' @param allowed_drivers Optional character vector of driver short names that
+#' must be considered when opening `dsn`. It is generally not necessary to
+#' specify it, but it can be used to skip automatic driver detection, when it
+#' fails to select the appropriate driver.
+#' @param open_options Optional character vector of format-specific dataset
+#' openoptions as `"NAME=VALUE"` pairs.
+#' @param cout Logical value, `TRUE` to print info to the console (the
+#' default), or `FALSE` to suppress console output.
+#' @returns Invisibly, a JSON string containing information about the
+#' multidimensional raster dataset. By default, the info string is also printed
+#' to the console unless `cout` is set to `FALSE`.
+#'
+#' @seealso
+#' [mdim_as_classic()], [mdim_translate()]
+#'
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 2, 0) && isTRUE(gdal_formats("netCDF")$multidim_raster)
+#' f <- system.file("extdata/byte.nc", package="gdalraster")
+#' mdim_info(f)
+mdim_info <- function(dsn, array_name = "", pretty = TRUE, detailed = FALSE, limit = -1L, stats = FALSE, array_options = NULL, allowed_drivers = NULL, open_options = NULL, cout = TRUE) {
+    invisible(.Call(`_gdalraster_mdim_info`, dsn, array_name, pretty, detailed, limit, stats, array_options, allowed_drivers, open_options, cout))
+}
+
+#' Convert multidimensional data between different formats, and subset
+#'
+#' `mdim_translate()` is an interface to the \command{gdalmdimtranslate}
+#' command-line utility (see
+#' \url{https://gdal.org/en/stable/programs/gdalmdimtranslate.html}).
+#' This function converts multidimensional data between different formats and
+#' performs subsetting. Requires GDAL >= 3.2.
+#'
+#' @details
+#' \subsection{Array creation options}{
+#' Array creation options must be prefixed with `ARRAY:`. The scope may be
+#' further restricted to arrays of a certain dimension by adding
+#' `IF(DIM={ndims}):` after `ARRAY:`. For example,
+#' `"ARRAY:IF(DIM=2):BLOCKSIZE=256,256"` will restrict `BLOCKSIZE=256,256` to
+#' arrays of dimension 2. Restriction to arrays of a given name is done with
+#' adding `IF(NAME={name}):` after `ARRAY:`. `{name}` can also be a fully
+#' qualified name. A non-driver specific array option, `"AUTOSCALE=YES"` can
+#' be used to ask (non indexing) variables of type `Float32` or `Float64` to be
+#' scaled to `UInt16` with scale and offset values being computed from the
+#' minimum and maximum of the source array. The integer data type used can be
+#' set with `"AUTOSCALE_DATA_TYPE=Byte|UInt16|Int16|UInt32|Int32"`.
+#' }
+#'
+#' \subsection{`array_specs`}{
+#' Instead of converting the whole dataset, select one or more arrays, and
+#' possibly perform operations on them. One or more array specifications can
+#' be given as elements of a character vector.
+#'
+#' An array specification may be just an array name, potentially using a fully
+#' qualified syntax (`"/group/subgroup/array_name"`). Or it can be a
+#' combination of options with the syntax:
+#' ```
+#' "name={src_array_name}[,dstname={dst_array_name}][,resample=yes][,transpose=[{axis1},{axis2},...][,view={view_expr}]"
+#' ```
+#' The following options are processed in that order:
+#'
+#' * `resample=yes` asks for the array to run through
+#'   `GDALMDArray::GetResampled()`.
+#' * \code{[{axis1},{axis2},...]} is the argument of
+#'   `GDALMDArray::Transpose()`. For example, `transpose=[1,0]` switches the
+#'   axis order of a 2D array.
+#' * `{view_expr}` is the value of the `viewExpr` argument of
+#'   `GDALMDArray::GetView()`. When specifying a `view_expr` that performs a
+#'   slicing or subsetting on a dimension, the equivalent operation will be
+#'   applied to the corresponding indexing variable. See `?mdim_as_classic` for
+#'   details on view expressions.
+#' }
+#'
+#' \subsection{`group_specs`}{
+#' Instead of converting the whole dataset, select one or more groups, and
+#' possibly perform operations on them. One or more group specifications can
+#' be given in a character vector, to operate on different groups. If only one
+#' group is specified, its content will be copied directly to the target root
+#' group. If several are specified, they are copied under the target root
+#' group.
+#'
+#' A group specification may be just a group name, potentially using a fully
+#' qualified syntax (`"/group/subgroup/subsubgroup_name"`). Or it can be a
+#' combination of options with the syntax:
+#' ```
+#' "name={src_group_name}[,dstname={dst_group_name}][,recursive=no]"
+#' ```
+#' }
+#'
+#' \subsection{`subset_specs`}{
+#' Perform subsetting (trimming or slicing) operations along dimensions,
+#' provided that the dimension is indexed by a 1D variable of numeric or string
+#' data type, and whose values are monotonically sorted. One or more subset
+#' specifications can be given in a character vector. A subset specification
+#' string follows exactly the OGC WCS 2.0 KVP encoding for subsetting.
+#'
+#' Syntax is `"dim_name(min_val,max_val)"` or `"dim_name(sliced_val)"`. The
+#' first syntax will subset the dimension dim_name to values in the
+#' \code{[min_val,max_val]} range. The second syntax will slice the dimension
+#' `dim_name` to value `sliced_val` (and this dimension will be removed from
+#' the arrays that reference to it)
+#'
+#' Using a subset specification is incompatible with specifying a view option
+#' in `array_specs`.
+#' }
+#'
+#' \subsection{`scaleaxes_specs`}{
+#' Applies an integral scale factor to one or several dimensions, i.e., extract
+#' 1 value every N values (without resampling). A scale-axes specification
+#' string follows exactly the syntax of the KVP encoding of the SCALEAXES
+#' parameter of OGC WCS 2.0 Scaling Extension, but limited to integer scale
+#' factors.
+#'
+#' Syntax is a character string of the form:
+#' ```
+#' "<dim1_name>(<scale_factor>)[,<dim2_name>(<scale_factor>)]..."
+#' ```
+#'
+#' Using a scale-axes specification is incompatible with specifying a view
+#' option in `array_specs`.
+#' }
+#'
+#' @param src_dsn Character string giving the name of the source
+#' multidimensional raster dataset (e.g., file, VSI path).
+#' @param dst_dsn Character string giving the name of the destination
+#' multidimensional raster dataset (e.g., file, VSI path).
+#' @param output_format Character string giving the output format (driver short
+#' name). This can be a format that supports multidimensional output (such as
+#' NetCDF: Network Common Data Form, Multidimensional VRT), or a "classic" 2D
+#' format, if only one single 2D array results from the other specified
+#' conversion operations. When this option is not specified (i.e., empty string
+#' `""`), the format is guessed when possible from the extension of `dst_dsn`.
+#' @param creation_options Optional character vector of format-specific
+#' creation options as `"NAME=VALUE"` pairs. A list of options supported for a
+#' format can be obtained with `getCreationOptions()`, but the documentation
+#' for the format is the definitive source of information on driver creation
+#' options (see \url{https://gdal.org/en/stable/drivers/raster/index.html}).
+#' Array-level creation options may be passed by prefixing them with `ARRAY:`
+#' (see Details).
+#' @param array_specs Optional character vector of one or more array
+#' specifications, instead of converting the whole dataset (see Details).
+#' @param group_specs Optional character vector of one or more array
+#' specifications, instead of converting the whole dataset (see Details).
+#' @param subset_specs Optional character vector of one or more subset
+#' specifications, that perform trimming or slicing along a dimension, provided
+#' that it is indexed by a 1D variable of numeric or string data type, and
+#' whose values are monotonically sorted (see Details).
+#' @param scaleaxes_specs Optional character string for a scale-axes
+#' specification, that apply an integral scale factor to one or several
+#' dimensions, i.e., extract 1 value every N values (without resampling) (see
+#' Details).
+#' @param allowed_drivers Optional character vector of driver short names that
+#' must be considered when opening `src_dsn`. It is generally not necessary to
+#' specify it, but it can be used to skip automatic driver detection, when it
+#' fails to select the appropriate driver.
+#' @param open_options Optional character vector of format-specific dataset
+#' open options for `src_dsn` as `"NAME=VALUE"` pairs.
+#' @param strict Logical value, `FALSE` (the default) some failures during the
+#' translation are tolerated, such as not being able to write group attributes.
+#' If set to `TRUE`, such failures will cause the process to fail.
+#' @param quiet Logical value, set to `TRUE` to disable progress reporting.
+#' Defaults to `FALSE`.
+#' @returns Logical value indicating success (invisible `TRUE`, output written
+#' to `dst_dsn`). An error is raised if the operation fails.
+#'
+#' @seealso
+#' [mdim_as_classic()], [mdim_info()]
+#'
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 2, 0) && isTRUE(gdal_formats("netCDF")$multidim_raster)
+#' f_src <- system.file("extdata/byte.nc", package="gdalraster")
+#'
+#' ## COMPRESS option for MDArray creation
+#' opt <- NULL
+#' if (isTRUE(gdal_get_driver_md("netCDF")$NETCDF_HAS_NC4 == "YES")) {
+#'   # 4 x 4 is for illustration only, the sample dataset is only 20 x 20
+#'   opt <- c("ARRAY:IF(DIM=2):BLOCKSIZE=4,4",
+#'            "ARRAY:IF(NAME=Band1):COMPRESS=DEFLATE",
+#'            "ARRAY:ZLEVEL=6")
+#' }
+#'
+#' f_dst <- tempfile(fileext = ".nc")
+#' mdim_translate(f_src, f_dst, creation_options = opt)
+#' info <- mdim_info(f_dst, cout = FALSE) |> yyjsonr::read_json_str()
+#' # str(info)
+#' info$structural_info
+#' info$arrays$Band1$block_size
+#' info$arrays$Band1$structural_info
+#'
+#' (ds <- mdim_as_classic(f_dst, "Band1", 1, 0))
+#'
+#' plot_raster(ds, interpolate = FALSE, legend = TRUE, main = "Band1")
+#'
+#' ds$close()
+#'
+#' ## slice along the Y axis with array view
+#' f_dst2 <- tempfile(fileext = ".nc")
+#' mdim_translate(f_src, f_dst2, array_specs = "name=Band1,view=[10:20,...]")
+#' (ds <- mdim_as_classic(f_dst2, "Band1", 1, 0))
+#'
+#' plot_raster(ds, interpolate = FALSE, legend = TRUE,
+#'             main = "Band1[10:20,...]")
+#'
+#' ds$close()
+#'
+#' ## trim X and Y by subsetting
+#' f_dst3 <- tempfile(fileext = ".nc")
+#' subsets <- c("x(441000,441800)", "y(3750400,3751000)")
+#' mdim_translate(f_src, f_dst3, subset_specs = subsets)
+#' (ds <- mdim_as_classic(f_dst3, "Band1", 1, 0))
+#'
+#' plot_raster(ds, interpolate = FALSE, legend = TRUE,
+#'             main = "Band1 trimmed")
+#'
+#' ds$close()
+#'
+#' ## subsample along X and Y
+#' f_dst4 <- tempfile(fileext = ".nc")
+#' mdim_translate(f_src, f_dst4, scaleaxes_specs = "x(2),y(2)")
+#' (ds <- mdim_as_classic(f_dst4, "Band1", 1, 0))
+#'
+#' plot_raster(ds, interpolate = FALSE, legend = TRUE,
+#'             main = "Band1 subsampled")
+#'
+#' ds$close()
+#' \dontshow{deleteDataset(f_dst)}
+#' \dontshow{deleteDataset(f_dst2)}
+#' \dontshow{deleteDataset(f_dst3)}
+#' \dontshow{deleteDataset(f_dst4)}
+mdim_translate <- function(src_dsn, dst_dsn, output_format = "", creation_options = NULL, array_specs = NULL, group_specs = NULL, subset_specs = NULL, scaleaxes_specs = NULL, allowed_drivers = NULL, open_options = NULL, strict = FALSE, quiet = FALSE) {
+    invisible(.Call(`_gdalraster_mdim_translate`, src_dsn, dst_dsn, output_format, creation_options, array_specs, group_specs, subset_specs, scaleaxes_specs, allowed_drivers, open_options, strict, quiet))
 }
 
 #' Copy a source file to a target filename
@@ -1801,31 +2092,47 @@ vsi_unlink_batch <- function(filenames) {
 
 #' Get filesystem object info
 #'
-#' `vsi_stat()` fetches status information about a filesystem object (file,
-#' directory, etc).
-#' This function goes through the GDAL `VSIFileHandler` virtualization and may
-#' work on unusual filesystems such as in memory.
-#' It is a wrapper for `VSIStatExL()` in the GDAL Common Portability Library.
-#' Analog of the POSIX `stat()` function.
+#' These functions work on GDAL virtual file systems such as in-memory
+#' (/vsimem/), URLs (/vsicurl/), cloud storage services (e.g., /vsis3/,
+#' /vsigs/, /vsiaz/, etc.), compressed archives (e.g., /vsizip, /vsitar/,
+#' /vsi7z/, /vsigzip/, etc.), and others including "standard" file systems.
+#' See \url{https://gdal.org/en/stable/user/virtual_file_systems.html}.
+#'
+#' @name vsi_stat
+#'
+#' @details
+#' `vsi_stat()` fetches status information about a single filesystem object
+#' (file, directory, etc). It is a wrapper for `VSIStatExL()` in the GDAL
+#' Common Portability Library. Analog of the POSIX `stat()` function.
+#'
+#' `vsi_stat_exists()`, `vsi_stat_type()` and `vsi_stat_size()` are
+#' specializations operating on a vector of potentially multiple file system
+#' object names, returning, respectfully, a logical vector, a character vector,
+#' and a numeric vector carrying the `bit64::integer64` class attribute.
 #'
 #' @param filename Character string. The path of the filesystem object to be
 #' queried.
 #' @param info Character string. The type of information to fetch, one of
 #' `"exists"` (the default), `"type"` or `"size"`.
-#' @returns If `info = "exists"`, returns logical `TRUE` if the file system
+#' @param filenames Character vector of filesystem objects to query.
+#' @returns
+#' If `info = "exists"`, `vsi_stat()` returns logical `TRUE` if the file system
 #' object exists, otherwise `FALSE`. If `info = "type"`, returns a character
 #' string with one of `"file"` (regular file), `"dir"` (directory),
 #' `"symlink"` (symbolic link), or empty string (`""`). If `info = "size"`,
 #' returns the file size in bytes (as `bit64::integer64` type), or `-1` if an
 #' error occurs.
+#' `vsi_stat_exists()` returns a logical vector. `vsi_stat_type()` returns a
+#' character vector. `vsi_stat_size()` returns a numeric vector carrying the
+#' `bit64::integer64` class attribute.
 #'
 #' @note
 #' For portability, `vsi_stat()` supports a subset of `stat()`-type
 #' information for filesystem objects. This function is primarily intended
 #' for use with GDAL virtual file systems (e.g., URLs, cloud storage systems,
-#' ZIP/GZip/7z/RAR archives, in-memory files).
-#' The base R function `utils::file_test()` could be used instead for file
-#' tests on regular local filesystems.
+#' ZIP/GZip/7z/RAR archives, in-memory files), but can also be used on
+#' "standard" file systems (e.g., in the / hierarchy on Unix-like systems or
+#' in C:, D:, etc. drives on Windows).
 #'
 #' @seealso
 #' GDAL Virtual File Systems:\cr
@@ -1849,6 +2156,11 @@ vsi_unlink_batch <- function(filenames) {
 #' vsi_stat(nonexistent, "type")
 #' vsi_stat(nonexistent, "size")
 #'
+#' fs_objects <- c(data_dir, elev_file, nonexistent)
+#' vsi_stat_exists(fs_objects)
+#' vsi_stat_type(fs_objects)
+#' vsi_stat_size(fs_objects)
+#'
 #' # /vsicurl/ file system handler
 #' base_url <- "https://raw.githubusercontent.com/usdaforestservice/"
 #' f <- "gdalraster/main/sample-data/landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
@@ -1863,6 +2175,21 @@ vsi_unlink_batch <- function(filenames) {
 #' vsi_stat(url_file, "size")
 vsi_stat <- function(filename, info = "exists") {
     .Call(`_gdalraster_vsi_stat`, filename, info)
+}
+
+#' @rdname vsi_stat
+vsi_stat_exists <- function(filenames) {
+    .Call(`_gdalraster_vsi_stat_exists`, filenames)
+}
+
+#' @rdname vsi_stat
+vsi_stat_type <- function(filenames) {
+    .Call(`_gdalraster_vsi_stat_type`, filenames)
+}
+
+#' @rdname vsi_stat
+vsi_stat_size <- function(filenames) {
+    .Call(`_gdalraster_vsi_stat_size`, filenames)
 }
 
 #' Rename a file
@@ -2217,26 +2544,14 @@ vsi_is_local <- function(filename) {
 }
 
 #' @noRd
-.gdal_commands <- function(contains, recurse, cout) {
-    .Call(`_gdalraster_gdal_commands`, contains, recurse, cout)
+.gdal_commands <- function(contains, recurse, console_out) {
+    .Call(`_gdalraster_gdal_commands`, contains, recurse, console_out)
 }
 
 #' @noRd
 .gdal_global_reg_names <- function() {
     .Call(`_gdalraster_gdal_global_reg_names`)
 }
-
-#' @noRd
-NULL
-
-#' @noRd
-NULL
-
-#' @noRd
-NULL
-
-#' @noRd
-NULL
 
 #' get GEOS version
 #' @noRd
@@ -2290,6 +2605,16 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_geom_count <- function(geom, quiet = FALSE) {
+    .Call(`_gdalraster_g_geom_count`, geom, quiet)
+}
+
+#' @noRd
+.g_get_geom <- function(container, sub_geom_idx, as_iso, byte_order) {
+    .Call(`_gdalraster_g_get_geom`, container, sub_geom_idx, as_iso, byte_order)
+}
+
+#' @noRd
 .g_is_valid <- function(geom, quiet = FALSE) {
     .Call(`_gdalraster_g_is_valid`, geom, quiet)
 }
@@ -2297,6 +2622,11 @@ has_geos <- function() {
 #' @noRd
 .g_make_valid <- function(geom, method = "LINEWORK", keep_collapsed = FALSE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_make_valid`, geom, method, keep_collapsed, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_normalize <- function(geom, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_normalize`, geom, as_iso, byte_order, quiet)
 }
 
 #' @noRd
@@ -2405,13 +2735,23 @@ has_geos <- function() {
 }
 
 #' @noRd
-.g_delaunay_triangulation <- function(geom, tolerance = 0.0, only_edges = FALSE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
-    .Call(`_gdalraster_g_delaunay_triangulation`, geom, tolerance, only_edges, as_iso, byte_order, quiet)
+.g_concave_hull <- function(geom, ratio, allow_holes, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_concave_hull`, geom, ratio, allow_holes, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_delaunay_triangulation <- function(geom, constrained = FALSE, tolerance = 0.0, only_edges = FALSE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
+    .Call(`_gdalraster_g_delaunay_triangulation`, geom, constrained, tolerance, only_edges, as_iso, byte_order, quiet)
 }
 
 #' @noRd
 .g_simplify <- function(geom, tolerance, preserve_topology = TRUE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_simplify`, geom, tolerance, preserve_topology, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_unary_union <- function(geom, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_unary_union`, geom, as_iso, byte_order, quiet)
 }
 
 #' @noRd
@@ -2510,7 +2850,6 @@ bbox_from_wkt <- function(wkt, extend_x = 0, extend_y = 0) {
 #' rectangle in both directions along the y-axis
 #' (results in `ymin = bbox[2] - extend_y`, `ymax = bbox[4] + extend_y`).
 #' @return Character string for an OGC WKT polygon.
-#' `NA` is returned if GDAL was built without the GEOS library.
 #'
 #' @seealso
 #' [bbox_from_wkt()], [g_buffer()]

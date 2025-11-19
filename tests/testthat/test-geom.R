@@ -475,6 +475,11 @@ test_that("g_factory functions work", {
     expect_no_error(g_coll <- g_add_geom(mult_pt2, g_coll))
     expect_true(g_is_valid(g_coll))
 
+    # get subgeometry from container
+    expect_no_error(g_sub2 <- g_get_geom(g_coll, 2))
+    expect_equal(g_geom_count(g_sub2), 2)  # mult_pt2
+    expect_true(g_equals(g_get_geom(g_sub2, 1), "POINT(9 1)"))
+
     # polygon to polygon (add inner ring)
     container <- "POLYGON((0 0,0 10,10 10,0 0),(0.25 0.5,1 1.1,0.5 1,0.25 0.5))"
     # sub_geom <- "POLYGON((5.25 5.5,6 6.1,5.5 6,5.25 5.5))"
@@ -485,7 +490,19 @@ test_that("g_factory functions work", {
     wkt_expect <- "POLYGON((0 0,0 10,10 10,0 0),(0.25 0.5,1.0 1.1,0.5 1.0,0.25 0.5),(5.25 5.5,6.0 6.1,5.5 6.0,5.25 5.5))"
     empty_expected <- g_difference(new_wkb, wkt_expect)
     expect_true(g_is_empty(empty_expected))
-    # expect_true(g_equals(new_wkb, wkt_expect))
+
+    container <- new_wkb
+    # get rings of a polygon
+    # exterior
+    new_wkb <- g_get_geom(container, 1)
+    wkt_expect <- "POLYGON((0 0,0 10,10 10,0 0))"
+    empty_expected <- g_difference(new_wkb, wkt_expect)
+    expect_true(g_is_empty(empty_expected))
+    # last interior
+    new_wkb <- g_get_geom(container, 3)
+    wkt_expect <- "POLYGON((5.25 5.5,6.0 6.1,5.5 6.0,5.25 5.5))"
+    empty_expected <- g_difference(new_wkb, wkt_expect)
+    expect_true(g_is_empty(empty_expected))
 
     # multipoint with an empty point inside
     geom <- "MULTIPOINT(0 1)"
@@ -814,6 +831,14 @@ test_that("geometry properties are correct", {
     names(res) <- NULL
     expect_equal(res, c(0, 10, 0, 10, 0, 0))
 
+    # g_geom_count
+    expect_equal(g_geom_count(g1), 1)
+    expect_equal(g_geom_count(g_wk2wk(g1)), 1)
+    expect_equal(g_geom_count(wkt_3d), 2)
+    expect_equal(g_geom_count(list(g_wk2wk(g1), g_wk2wk(wkt_3d))), c(1, 2))
+    expect_equal(g_geom_count(c(g1, wkt_3d)), c(1, 2))
+    expect_equal(g_geom_count("GEOMETRYCOLLECTION EMPTY"), 0)
+
     # g_summary requires GDAL >= 3.7
     skip_if(gdal_version_num() < 3070000 )
 
@@ -936,6 +961,8 @@ test_that("geometry binary predicates/ops return correct values", {
 })
 
 test_that("unary ops return correct values", {
+    skip_if(!(geos_version()$major > 3 || geos_version()$minor >= 6))
+
     # g_buffer
     pt <- "POINT (0 0)"
     expect_error(g_buffer(geom = "invalid WKT", dist = 10))
@@ -1041,6 +1068,15 @@ test_that("unary ops return correct values", {
                                                     as_wkb = FALSE)) |>
         expect_warning()  # for as_wkb = FALSE
     expect_equal(g_dt, g_expect)
+    # constrained Delaunay, if GDAL >= 3.12 and GEOS >= 3.10
+    if (gdal_version_num() >= gdal_compute_version(3, 12, 0) &&
+        (geos_version()$major > 3 || geos_version()$minor >= 10)) {
+
+        g1 <- "POLYGON ((10 10, 20 40, 90 90, 90 10, 10 10))"
+        g_dt <- g_delaunay_triangulation(g1, constrained = TRUE, as_wkb = FALSE)
+        g_expect <- "GEOMETRYCOLLECTION (POLYGON ((90 10,20 40,90 90,90 10)),POLYGON ((20 40,90 10,10 10,20 40)))"
+        expect_equal(g_dt, g_expect)
+    }
 
     # g_simplify
     g1 <- "LINESTRING(0 0,1 0,10 0)"
@@ -1074,6 +1110,78 @@ test_that("unary ops return correct values", {
                                         as_wkb = FALSE)) |>
         expect_warning()  # for as_wkb = FALSE
     expect_equal(g_simp, g_expect)
+
+
+    # g_unary_union - requires GDAL >= 3.7
+    skip_if(gdal_version_num() < gdal_compute_version(3, 7, 0))
+
+    # from gdal/autotest/cpp/test_ogr_geos.cpp:
+    # CheckEqualGeometries() doesn't work with GEOS 3.6 with the above
+    # expected polygon, because of the order of the nodes, and for some
+    # reason OGR_G_Normalize() in CheckEqualGeometries() doesn't fix this,
+    # so just fallback to bounding box and area comparison
+    g1 <- "GEOMETRYCOLLECTION(POINT(0.5 0.5), POLYGON((0 0,0 1,1 1,1 0,0 0)), POLYGON((1 0,1 1,2 1,2 0,1 0)))"
+    g_uu <- g_unary_union(g1, as_wkb = FALSE)
+    g_expect <- "POLYGON ((0 1,1 1,2 1,2 0,1 0,0 0,0 1))"
+    expect_equal(g_area(g_uu), g_area(g_expect), tolerance = 0.1)
+    # wkb input
+    g_uu <- g_unary_union(g_wk2wk(g1), as_wkb = FALSE)
+    expect_equal(g_area(g_uu), g_area(g_expect), tolerance = 0.1)
+    # same but testing defaults in case any arguments are nulled out
+    g_uu <- g_unary_union(g_wk2wk(g1), as_wkb = FALSE, as_iso = NULL,
+                          byte_order = NULL, quiet = NULL)
+    expect_equal(g_area(g_uu), g_area(g_expect), tolerance = 0.1)
+    # empty raw vector
+    expect_true(is.null(g_unary_union(raw(0))))
+    # vector/list input
+    # character vector of wkt input
+    wkt_vec <- c(g1, g1, NA)
+    expect_warning(g_uu <- g_unary_union(wkt_vec, as_wkb = FALSE)) |>
+        expect_warning()  # input vector element is NA
+    expect_equal(g_area(g_uu), c(g_area(g_expect), g_area(g_expect), NA)) |>
+        expect_warning()  # input vector element is NA
+    # list of wkb input
+    expect_warning(wkb_list <- g_wk2wk(wkt_vec))
+    expect_warning(g_uu <- g_unary_union(wkb_list, as_wkb = FALSE))
+    expect_equal(g_area(g_uu), c(g_area(g_expect), g_area(g_expect), NA)) |>
+        expect_warning()  # input vector element is NA
+
+
+    # g_concave_hull() requires GEOS >= 3.11
+    skip_if(!(geos_version()$major > 3 || geos_version()$minor >= 11))
+
+    g1 <- "MULTIPOINT(0 0,0.4 0.5,0 1,1 1,0.6 0.5,1 0)"
+    expect_no_error(
+        g_hull <- g_concave_hull(g1, ratio = 0.5, allow_holes = FALSE))
+
+    # wkb input
+    expect_no_error(
+        g_hull <- g_concave_hull(g_wk2wk(g1), ratio = 0.5, allow_holes = FALSE))
+
+    # same but testing defaults in case optional arguments are nulled out
+    expect_no_error(
+        g_hull <- g_concave_hull(g_wk2wk(g1), ratio = 0.5, allow_holes = FALSE,
+                                 as_wkb = FALSE, as_iso = NULL,
+                                 byte_order = NULL, quiet = NULL))
+
+    # empty raw vector
+    expect_true(is.null(
+        g_concave_hull(raw(0), ratio = 0.5, allow_holes = FALSE)))
+    # vector/list input
+    # character vector of wkt input
+    expect_warning(
+        g_hull <- g_concave_hull(c(g1, NA), ratio = 0.5, allow_holes = FALSE,
+                                 as_wkb = FALSE)) |>
+            expect_warning()  # for as_wkb = FALSE
+    # list of wkb input
+    expect_warning(
+        g_hull <- g_concave_hull(g_wk2wk(c(g1, NA)), ratio = 0.5,
+                                 allow_holes = FALSE, as_wkb = FALSE)) |>
+            expect_warning()  # for as_wkb = FALSE
+
+    # error for required args
+    expect_error(g_hull <- g_concave_hull(g1, ratio = 0.5))
+    expect_error(g_hull <- g_concave_hull(g1))
 })
 
 test_that("geometry measures are correct", {
@@ -1223,6 +1331,33 @@ test_that("make_valid works", {
     expect_true(is.null(wkb_list[[2]]))
     expect_true(is.null(wkb_list[[5]]))
     expect_true(g_equals(g_wk2wk(wkb_list[[4]]), expected_wkt4))
+})
+
+test_that("normalize works", {
+    skip_if(gdal_version_num() < gdal_compute_version(3, 3, 0))
+
+    g <- "POLYGON ((0 1,1 1,1 0,0 0,0 1))"
+    expect_no_error(g_normalize(g))
+    expect_no_error(g_normalize(g, as_wkb = NULL, as_iso = NULL,
+                              byte_order = NULL, quiet = NULL))
+    g_norm <- g_normalize(g, as_wkb = FALSE)
+    g_expect <- "POLYGON ((0 0,0 1,1 1,1 0,0 0))"
+    expect_equal(g_norm, g_expect)
+    # wkb input
+    g_norm <- g_normalize(g_wk2wk(g), as_wkb = FALSE)
+    expect_equal(g_norm, g_expect)
+    # vector/list input
+    g_expect <- c(g_expect, g_expect, NA)
+    # character vector of wkt input
+    expect_warning(g_norm <- g_normalize(c(g, g, NA), as_wkb = FALSE,
+                                         quiet = TRUE)) |>
+        expect_warning()  # for as_wkb = FALSE
+    expect_equal(g_norm, g_expect)
+    # list of wkb input
+    expect_warning(g_norm <- g_normalize(g_wk2wk(c(g, g, NA)), as_wkb = FALSE,
+                                         quiet = TRUE)) |>
+        expect_warning()  # for as_wkb = FALSE
+    expect_equal(g_norm, g_expect)
 })
 
 test_that("g_set_3D / g_set_measured work", {

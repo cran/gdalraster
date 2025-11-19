@@ -4,15 +4,15 @@
    Copyright (c) 2023-2025 gdalraster authors
 */
 
-#ifndef SRC_GDALALG_H_
-#define SRC_GDALALG_H_
-
-#include "rcpp_util.h"
+#ifndef GDALALG_H_
+#define GDALALG_H_
 
 #if __has_include(<gdalalgorithm.h>)
     #include <gdalalgorithm.h>
 #endif
 #include <gdal.h>
+
+#include <Rcpp.h>
 
 #include <map>
 #include <string>
@@ -20,10 +20,19 @@
 
 #include "gdalvector.h"
 
-Rcpp::DataFrame gdal_commands(const std::string starts_with, bool recurse,
-                              bool cout);
+Rcpp::DataFrame gdal_commands(const std::string &contains, bool recurse,
+                              bool console_out);
 
 Rcpp::CharacterVector gdal_global_reg_names();
+
+struct VectorObjectProperties {
+    bool is_set {false};
+    std::string driver_short_name {};
+    std::string layer_name {};
+    bool is_sql {false};
+    std::string layer_sql {};
+    std::string sql_dialect {};
+};
 
 class GDALAlg {
  public:
@@ -49,11 +58,9 @@ class GDALAlg {
     void usage() const;
     Rcpp::String usageAsJSON() const;
 
-    // TODO:
-    // Rcpp::List getExplicitlySetArgs() const;
-    // bool setArg(const Rcpp::String &arg_name, const SEXP &arg_value);
-
+    bool setArg(const Rcpp::String &arg_name, const Rcpp::RObject &arg_value);
     bool parseCommandLineArgs();
+    Rcpp::List getExplicitlySetArgs() const;
     bool run();
     SEXP output() const;
     Rcpp::List outputs() const;
@@ -67,7 +74,7 @@ class GDALAlg {
     void instantiateAlg_();
     std::vector<std::string> getOutputArgNames_() const;
 #if __has_include(<gdalalgorithm.h>)
-    SEXP getOutputArgValue_(const GDALAlgorithmArgH &hArg) const;
+    SEXP getArgValue_(const GDALAlgorithmArgH &hArg) const;
 #endif
 
  private:
@@ -81,11 +88,11 @@ class GDALAlg {
     bool m_input_is_object {false};
     std::map<std::string, std::vector<GDALDatasetH>> m_map_input_hDS {};
     size_t m_num_input_datasets {0};
-    GDALVector *m_input_GDALVector {nullptr};
-    GDALVector *m_like_GDALVector {nullptr};
+    VectorObjectProperties m_in_vector_props;
+    VectorObjectProperties m_like_vector_props;
 };
 
 // cppcheck-suppress unknownMacro
 RCPP_EXPOSED_CLASS(GDALAlg)
 
-#endif  // SRC_GDALALG_H_
+#endif  // GDALALG_H_

@@ -7,13 +7,13 @@
 \alias{gdal_run}
 \alias{gdal_alg}
 \alias{gdal_global_reg_names}
-\title{Convenience functions for using GDAL CLI algorithms}
+\title{Functions for using GDAL CLI algorithms}
 \usage{
 gdal_commands(contains = NULL, recurse = TRUE, cout = TRUE)
 
 gdal_usage(cmd = NULL)
 
-gdal_run(cmd, args)
+gdal_run(cmd, args, setVectorArgsFromObject = TRUE)
 
 gdal_alg(cmd = NULL, args = NULL, parse = TRUE)
 
@@ -37,6 +37,12 @@ Defaults to \code{"gdal"}, the main entry point to CLI commands.}
 \item{args}{Either a character vector or a named list containing input
 arguments of the algorithm (see section \verb{Algorithm Argument Syntax} below).}
 
+\item{setVectorArgsFromObject}{Logical value, \code{TRUE} to set algorithm
+arguments automatically when the \code{"input"} argument or the \code{"like"} argument
+is an object of class \code{GDALVector} (the default). Can be set to \code{FALSE} to
+disable automatically setting algorithm arguments from \code{GDALVector} input
+(see Note).}
+
 \item{parse}{Logical value, \code{TRUE} to attempt parsing \code{args} if they are
 given in \code{gdal_alg()} (the default). Set to \code{FALSE} to instantiate the
 algorithm without parsing arguments. The \code{$parseCommandLineArgs()}
@@ -44,17 +50,17 @@ method on the returned object can be called to parse arguments and obtain
 the result of that, with potentially useful error messages.}
 }
 \description{
-This set of functions can be used to access and run GDAL utilities as \code{gdal}
-command line interface (CLI) algorithms.
+This set of functions can be used to access and run \code{gdal} command line
+interface (CLI) algorithms.
 
 \strong{Requires GDAL >= 3.11.3}
 
 \strong{Experimental} (see the section \verb{Development Status} below)
 }
 \details{
-These functions are convenient for accessing and running GDAL CLI algorithms
-by way of the C++ exposed class \code{\link{GDALAlg}}. See the class
-documentation for additional information (\code{?GDALAlg}).
+These functions provide an interface to GDAL CLI algorithms by way of the
+C++ exposed class \code{\link{GDALAlg}}. See the class documentation for
+additional information (\code{?GDALAlg}).
 
 \code{gdal_commands()} prints a list of commands and their descriptions to the
 console, and returns (invisibly) a data frame with columns \code{command},
@@ -103,6 +109,29 @@ character can be substituted for the dash characters that are used in some
 names. This avoids having to surround names in backticks when they are used
 to access list elements in the form \code{args$arg_name} (the form
 \code{args[["arg-name"]]} also works).
+
+When \code{setVectorArgsFromObject} is \code{TRUE} (the default) and the \code{"input"} or
+\code{"like"} argument for an algorithm is given as a \code{GDALVector} object,
+corresponding algorithm arguments will be set automatically based on
+properties of the object (when the argument is available to the algorithm):
+\itemize{
+\item \code{"input-format"}: set to the \code{GDALVector} object's driver short name
+\item \code{"input-layer"}: set to the \code{GDALVector} layer name if it is not a SQL
+layer
+\item \code{"sql"}: set to the SQL statement if the \code{GDALVector} layer is defined by
+one
+\item \code{"dialect"}: set to the SQL dialect if one is specified for a SQL layer
+\item \code{"like-layer"}: set to the \code{GDALVector} layer name if it is not a SQL
+layer
+\item \code{"like-sql"}: set to the SQL statement if the \code{GDALVector} layer is
+defined by one
+}
+
+Argument values specified explicitly will override the automatic setting (as
+long as they result in a parsable set of arguments). If
+\code{setVectorArgsFromObject} is \code{FALSE}, then only the vector dataset is passed
+to the algorithm, i.e., without automatically passing any layer
+specifications.
 }
 \section{Algorithm Argument Syntax}{
 
@@ -173,7 +202,7 @@ Please use with those cautions in mind. Bug reports may be filed at:
 }
 
 \examples{
-\dontshow{if (length(gdal_global_reg_names()) > 0) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (length(gdal_global_reg_names()) > 0) withAutoprint(\{ # examplesIf}
 ## top-level commands
 gdal_commands(recurse = FALSE)
 

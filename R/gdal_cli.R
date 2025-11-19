@@ -1,23 +1,23 @@
 # R interface to the GDAL CLI algorithms
-# convenience functions for using exposed class `GDALAlg`
+# functions for using exposed class `GDALAlg`
 # see R/gdalalg.R and src/gdalalg.h
 # Chris Toney <jctoney at gmail.com>
 
-#' Convenience functions for using GDAL CLI algorithms
+#' Functions for using GDAL CLI algorithms
 #'
 #' @name gdal_cli
 #' @description
-#' This set of functions can be used to access and run GDAL utilities as `gdal`
-#' command line interface (CLI) algorithms.
+#' This set of functions can be used to access and run `gdal` command line
+#' interface (CLI) algorithms.
 #'
 #' **Requires GDAL >= 3.11.3**
 #'
 #' **Experimental** (see the section `Development Status` below)
 #'
 #' @details
-#' These functions are convenient for accessing and running GDAL CLI algorithms
-#' by way of the C++ exposed class [`GDALAlg`][GDALAlg]. See the class
-#' documentation for additional information (`?GDALAlg`).
+#' These functions provide an interface to GDAL CLI algorithms by way of the
+#' C++ exposed class [`GDALAlg`][GDALAlg]. See the class documentation for
+#' additional information (`?GDALAlg`).
 #'
 #' `gdal_commands()` prints a list of commands and their descriptions to the
 #' console, and returns (invisibly) a data frame with columns `command`,
@@ -69,6 +69,11 @@
 #' Defaults to `"gdal"`, the main entry point to CLI commands.
 #' @param args Either a character vector or a named list containing input
 #' arguments of the algorithm (see section `Algorithm Argument Syntax` below).
+#' @param setVectorArgsFromObject Logical value, `TRUE` to set algorithm
+#' arguments automatically when the `"input"` argument or the `"like"` argument
+#' is an object of class `GDALVector` (the default). Can be set to `FALSE` to
+#' disable automatically setting algorithm arguments from `GDALVector` input
+#' (see Note).
 #' @param parse Logical value, `TRUE` to attempt parsing `args` if they are
 #' given in `gdal_alg()` (the default). Set to `FALSE` to instantiate the
 #' algorithm without parsing arguments. The \code{$parseCommandLineArgs()}
@@ -142,6 +147,27 @@
 #' names. This avoids having to surround names in backticks when they are used
 #' to access list elements in the form \code{args$arg_name} (the form
 #' \code{args[["arg-name"]]} also works).
+#'
+#' When `setVectorArgsFromObject` is `TRUE` (the default) and the `"input"` or
+#' `"like"` argument for an algorithm is given as a `GDALVector` object,
+#' corresponding algorithm arguments will be set automatically based on
+#' properties of the object (when the argument is available to the algorithm):
+#' * `"input-format"`: set to the `GDALVector` object's driver short name
+#' * `"input-layer"`: set to the `GDALVector` layer name if it is not a SQL
+#' layer
+#' * `"sql"`: set to the SQL statement if the `GDALVector` layer is defined by
+#' one
+#' * `"dialect"`: set to the SQL dialect if one is specified for a SQL layer
+#' * `"like-layer"`: set to the `GDALVector` layer name if it is not a SQL
+#' layer
+#' * `"like-sql"`: set to the SQL statement if the `GDALVector` layer is
+#' defined by one
+#'
+#' Argument values specified explicitly will override the automatic setting (as
+#' long as they result in a parsable set of arguments). If
+#' `setVectorArgsFromObject` is `FALSE`, then only the vector dataset is passed
+#' to the algorithm, i.e., without automatically passing any layer
+#' specifications.
 #'
 #' @seealso
 #' [`GDALAlg-class`][GDALAlg]
@@ -303,7 +329,7 @@ gdal_usage <- function(cmd = NULL) {
 
 #' @name gdal_cli
 #' @export
-gdal_run <- function(cmd, args) {
+gdal_run <- function(cmd, args, setVectorArgsFromObject = TRUE) {
     if (gdal_version_num() < gdal_compute_version(3, 11, 3)) {
         stop("gdal_run() requires GDAL >= 3.11.3", call. = FALSE)
     }
@@ -316,9 +342,22 @@ gdal_run <- function(cmd, args) {
     if (missing(args) || is.null(args) || all(is.na(args)))
         stop("'args' is required", call. = FALSE)
     if (!is.character(args) && !is.list(args))
-        stop("'args must be a character vector or named list", call. = FALSE)
+        stop("'args' must be a character vector or named list", call. = FALSE)
+
+    if (missing(setVectorArgsFromObject) || is.null(setVectorArgsFromObject) ||
+        all(is.na(setVectorArgsFromObject))) {
+
+        setVectorArgsFromObject <- TRUE
+    }
+    if (!is.logical(setVectorArgsFromObject) ||
+        length(setVectorArgsFromObject) != 1) {
+
+        stop("'setVectorArgsFromObject' must be a single logical value",
+             call. = FALSE)
+    }
 
     alg <- new(GDALAlg, cmd, args)
+    alg$setVectorArgsFromObject <- setVectorArgsFromObject
 
     if (!alg$parseCommandLineArgs()) {
         cat("parseCommandLineArgs() failed\n")
@@ -411,7 +450,7 @@ gdal_global_reg_names <- function() {
         }
     }
 
-    cat("Usage:", cmd)
+    cat("\nUsage:", cmd)
 
     if (alginfo$has_subalgorithms) {
         cat(" <SUBCOMMAND>")
@@ -437,7 +476,7 @@ gdal_global_reg_names <- function() {
         cat("\n")
     } else {
         if (length(alginfo$arg_names) > 0) {
-            if (has_non_positionals) {
+            if (has_non_positionals && alginfo$name != "pipeline") {
                 cat(" [OPTIONS]")
             }
             for (arg_nm in positional_args) {
@@ -569,18 +608,6 @@ gdal_global_reg_names <- function() {
         }
     }
 
-    print_pipeline_usage <- function() {
-        # TODO: add step names and their options
-
-        cat("<PIPELINE> is of the form: ")
-        if (isTRUE(grepl("raster", cmd, ignore.case = TRUE)))
-            str_out <- "read [READ-OPTIONS] ( ! <STEP-NAME> [STEP-OPTIONS] )* ! write [WRITE-OPTIONS]\n"
-        else
-            str_out <- "read|concat [READ-OPTIONS] ( ! <STEP-NAME> [STEP-OPTIONS] )* ! write [WRITE-OPTIONS]\n"
-        cat(str_out)
-        cat("\n")
-    }
-
     if (length(positional_args) > 0) {
         cat("Positional arguments:\n")
         for (arg_nm in positional_args) {
@@ -590,71 +617,109 @@ gdal_global_reg_names <- function() {
     }
 
     if (alginfo$name == "pipeline") {
-        print_pipeline_usage()
-    } else {
-        # non-positional args by category
-        common_args <- character()
-        base_args <- character()
-        advanced_args <- character()
-        esoteric_args <- character()
-        for (nm in alginfo$arg_names) {
-            arginfo <- alg$argInfo(nm)
-            if ((isTRUE(!as.logical(arginfo$is_only_for_cli)) ||  # GDAL < 3.12
-                isTRUE(!as.logical(arginfo$is_hidden_for_api)))  # GDAL >= 3.12
-                    && !arginfo$is_positional) {
+        cat("<PIPELINE> is of the form: ")
+        if (isTRUE(grepl("vector", cmd, ignore.case = TRUE)))
+            str_out <- "read|concat [READ-OPTIONS] ( ! <STEP-NAME> [STEP-OPTIONS] )* ! write [WRITE-OPTIONS]\n"
+        else
+            str_out <- "read [READ-OPTIONS] ( ! <STEP-NAME> [STEP-OPTIONS] )* ! write [WRITE-OPTIONS]\n"
 
-                if (tolower(arginfo$category) == "common")
-                    common_args <- append(common_args, nm)
-                else if (tolower(arginfo$category) == "base")
-                    base_args <- append(base_args, nm)
-                else if (tolower(arginfo$category) == "advanced")
-                    advanced_args <- append(advanced_args, nm)
-                else if (tolower(arginfo$category) == "esoteric")
-                    esoteric_args <- append(esoteric_args, nm)
-            }
+        cat(str_out)
+        cat("\n")
+    }
+
+    # non-positional args by category
+    common_args <- character()
+    base_args <- character()
+    advanced_args <- character()
+    esoteric_args <- character()
+    for (nm in alginfo$arg_names) {
+        arginfo <- alg$argInfo(nm)
+        if ((isTRUE(!as.logical(arginfo$is_only_for_cli)) ||  # GDAL < 3.12
+            isTRUE(!as.logical(arginfo$is_hidden_for_api)))  # GDAL >= 3.12
+                && !arginfo$is_positional) {
+
+            if (tolower(arginfo$category) == "common")
+                common_args <- append(common_args, nm)
+            else if (tolower(arginfo$category) == "base")
+                base_args <- append(base_args, nm)
+            else if (tolower(arginfo$category) == "advanced")
+                advanced_args <- append(advanced_args, nm)
+            else if (tolower(arginfo$category) == "esoteric")
+                esoteric_args <- append(esoteric_args, nm)
         }
+    }
 
-        if (length(common_args) > 0) {
-            cat("Common options:\n")
-            for (arg_nm in common_args) {
-                print_arg(arg_nm)
-            }
-            cat("\n")
+    if (length(common_args) > 0) {
+        cat("Common options:\n")
+        for (arg_nm in common_args) {
+            print_arg(arg_nm)
         }
+        cat("\n")
+    }
 
-        if (length(base_args) > 0) {
+    if (length(base_args) > 0) {
+        if (alginfo$name == "pipeline")
+            cat("Options for read input/write output:\n")
+        else
             cat("Options:\n")
-            for (arg_nm in base_args) {
-                print_arg(arg_nm)
-            }
-            cat("\n")
-        }
 
-        if (length(advanced_args) > 0) {
+        for (arg_nm in base_args) {
+            print_arg(arg_nm)
+        }
+        cat("\n")
+    }
+
+    if (length(advanced_args) > 0) {
+        if (alginfo$name == "pipeline")
+            cat("Advanced options for read input/write output:\n")
+        else
             cat("Advanced options:\n")
-            for (arg_nm in advanced_args) {
-                print_arg(arg_nm)
-            }
-            cat("\n")
-        }
 
-        if (length(esoteric_args) > 0) {
-            cat("Esoteric options:\n")
-            for (arg_nm in esoteric_args) {
-                print_arg(arg_nm)
-            }
-            cat("\n")
+        for (arg_nm in advanced_args) {
+            print_arg(arg_nm)
         }
+        cat("\n")
+    }
+
+    if (length(esoteric_args) > 0) {
+        if (alginfo$name == "pipeline")
+            cat("Esoteric options for read input/write output:\n")
+        else
+            cat("Esoteric options:\n")
+
+        for (arg_nm in esoteric_args) {
+            print_arg(arg_nm)
+        }
+        cat("\n")
     }
 
     if (alginfo$name == "pipeline") {
-        cat("See `gdal_usage(\"raster pipeline\")` or `gdal_usage(\"vector pipeline\")`\n")
+        x <- alg$usageAsJSON() |> yyjsonr::read_json_str()
+        if (!is.null(x$pipeline_algorithms) &&
+            is.data.frame(x$pipeline_algorithms) &&
+            nrow(x$pipeline_algorithms) > 0) {
+
+            cat("Potential steps are:\n")
+            for (i in seq_len(nrow(x$pipeline_algorithms))) {
+                if (x$pipeline_algorithms[i, "name"] != "read" &&
+                    x$pipeline_algorithms[i, "name"] != "write") {
+
+                cat("  ", x$pipeline_algorithms[i, "name"], "\n    ",
+                    x$pipeline_algorithms[i, "description"], "\n", sep = "")
+                }
+            }
+            cat("\n")
+        } else {
+            cat("See `gdal_usage(\"raster pipeline\")` or `gdal_usage(\"vector pipeline\")`\n")
+            cat("\n")
+        }
     } else if (alginfo$long_description != "") {
-        cat("\n", alginfo$long_description, "\n", sep = "")
+        cat(alginfo$long_description, "\n", sep = "")
+        cat("\n")
     }
 
     if (alginfo$URL != "")
-        cat("\nFor more details: ", alginfo$URL, "\n", sep = "")
+        cat("For more details: ", alginfo$URL, "\n", sep = "")
 
     alg$release()
 }

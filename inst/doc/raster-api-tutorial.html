@@ -373,7 +373,7 @@ accessed in R using the <code>$</code> operator:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>ds</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#&gt; C++ object of class GDALRaster</span></span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#&gt;  Driver : GeoTIFF (GTiff)</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt;  DSN    : /tmp/Rtmp4L8hdZ/Rinst49bda646f75c1/gdalraster/extdata/storml_tcc.tif</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt;  DSN    : /tmp/Rtmplfg5Iq/Rinst156185fc04821/gdalraster/extdata/storml_tcc.tif</span></span>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co">#&gt;  Dim    : 143, 107, 1</span></span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co">#&gt;  CRS    : NAD83 / UTM zone 12N (EPSG:26912)</span></span>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co">#&gt;  Res    : 30.000000, 30.000000</span></span>
@@ -383,22 +383,23 @@ accessed in R using the <code>$</code> operator:</p>
 <span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co">#&gt;  $ infoOptions  : chr(0) </span></span>
 <span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co">#&gt;  $ quiet        : logi FALSE</span></span>
 <span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co">#&gt;  $ readByteAsRaw: logi FALSE</span></span>
-<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt;  and 84 methods, of which 70 are  possibly relevant:</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt;  and 90 methods, of which 76 are  possibly relevant:</span></span>
 <span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co">#&gt;    addBand, apply_geotransform, bbox, buildOverviews, clearColorTable,</span></span>
 <span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="co">#&gt;    clearStatistics, close, deleteNoDataValue, dim, fillRaster, finalize,</span></span>
 <span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="co">#&gt;    flushCache, getActualBlockSize, getBlockSize, getChecksum, getColorTable,</span></span>
 <span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="co">#&gt;    getDataTypeName, getDefaultHistogram, getDefaultRAT, getDescription,</span></span>
 <span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="co">#&gt;    getDriverLongName, getDriverShortName, getFileList, getFilename,</span></span>
 <span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="co">#&gt;    getGeoTransform, getHistogram, getMaskBand, getMaskFlags, getMetadata,</span></span>
-<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co">#&gt;    getMetadataDomainList, getMetadataItem, getMinMax, getNoDataValue,</span></span>
-<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#&gt;    getOffset, getOverviewCount, getPaletteInterp, getProjection,</span></span>
-<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt;    getProjectionRef, getRasterColorInterp, getRasterCount, getRasterXSize,</span></span>
-<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt;    getRasterYSize, getScale, getStatistics, getUnitType, get_block_indexing,</span></span>
-<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt;    get_pixel_line, info, infoAsJSON, initialize, isOpen, open, pixel_extract,</span></span>
-<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt;    read, res, setColorTable, setDefaultRAT, setDescription, setFilename,</span></span>
-<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt;    setGeoTransform, setMetadata, setMetadataItem, setNoDataValue, setOffset,</span></span>
-<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt;    setProjection, setRasterColorInterp, setScale, setUnitType,</span></span>
-<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt;    show#envRefClass, write</span></span></code></pre></div>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co">#&gt;    getMetadataDomainList, getMetadataItem, getMinMax, getMinMaxLocation,</span></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#&gt;    getNoDataValue, getOffset, getOverviewCount, getPaletteInterp,</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt;    getProjection, getProjectionRef, getRasterColorInterp, getRasterCount,</span></span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt;    getRasterXSize, getRasterYSize, getScale, getStatistics, getUnitType,</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt;    get_block_indexing, get_pixel_line, info, infoAsJSON, initialize, isOpen,</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt;    make_chunk_index, open, pixel_extract, read, readBlock, readChunk, res,</span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt;    setColorTable, setDefaultRAT, setDescription, setFilename, setGeoTransform,</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt;    setMetadata, setMetadataItem, setNoDataValue, setOffset, setProjection,</span></span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt;    setRasterColorInterp, setScale, setUnitType, show#envRefClass, write,</span></span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt;    writeBlock, writeChunk</span></span></code></pre></div>
 </div>
 <div id="getting-dataset-information" class="section level2">
 <h2>Getting dataset information</h2>

@@ -377,7 +377,7 @@ usage is context dependent. Passing <code>value = &quot;&quot;</code> (empty
 string) will unset a value previously set by
 <code>set_config_option()</code>:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gdalraster)</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co">#&gt; GDAL 3.11.3 (released 2025-07-12), GEOS 3.12.2, PROJ 9.4.1</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co">#&gt; GDAL 3.11.4 (released 2025-09-04), GEOS 3.12.2, PROJ 9.4.1</span></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">set_config_option</span>(<span class="st">&quot;GDAL_NUM_THREADS&quot;</span>, <span class="st">&quot;ALL_CPUS&quot;</span>)</span>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co"># unset:</span></span>
@@ -417,7 +417,8 @@ Setting <code>GDAL_CACHEMAX</code> after that point will not resize the
 cache. It is a per-session setting. If <code>GDAL_CACHEMAX</code> has
 not been set upon first use of the cache, then the default cache size
 (<code>5%</code> of physical RAM) will be in effect for the current
-session. See also <a href="https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html">GDAL
+session. <code>gdalraster::set_cache_max()</code> can be used to change
+the value programmatically during operation of the program. See also <a href="https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html">GDAL
 Block Cache</a>.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># set to a specific size in MB</span></span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">set_config_option</span>(<span class="st">&quot;GDAL_CACHEMAX&quot;</span>, <span class="st">&quot;800&quot;</span>)</span>

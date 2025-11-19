@@ -53,7 +53,9 @@ alg$argInfo(arg_name)
 alg$usage()
 alg$usageAsJSON()
 
+alg$setArg(arg_name, arg_value)
 alg$parseCommandLineArgs()
+alg$getExplicitlySetArgs()
 alg$run()
 alg$output()
 alg$outputs()
@@ -83,15 +85,19 @@ automatically when the \code{"input"} argument or the \code{"like"} argument is 
 object of class \code{GDALVector}. Argument values specified explicitly will
 override the automatic setting (as long as they result in a parsable set of
 arguments). Automatically setting arguments from \code{GDALVector} input can
-be disabled by setting this field to \code{FALSE}.
-When enabled and the \code{"input"} or \code{"like"} argument for an algorithm is a
-\code{GDALVector} object, the following arguments will be set automatically based
-on properties of the object (when the argument is available to the
-algorithm):
+be disabled by setting this field to \code{FALSE}. In that case, only the vector
+dataset would be passed to the algorithm, i.e., without automatically
+passing any layer specifications.
+When enabled and the \code{"input"} or \code{"like"} argument for an algorithm is
+given as a \code{GDALVector} object, corresponding arguments will be set
+automatically based on properties of the object (when the argument is
+available to the algorithm):
 \itemize{
-\item \code{"input-format"}: set to the object's driver short name
-\item \code{"input-layer"}: set to the object's layer name if it is not a SQL layer
-\item \code{"sql"}: set to the SQL statement if the object's layer is defined by one
+\item \code{"input-format"}: set to the \code{GDALVector} object's driver short name
+\item \code{"input-layer"}: set to the \code{GDALVector} layer name if it is not a SQL
+layer
+\item \code{"sql"}: set to the SQL statement if the \code{GDALVector} layer is defined by
+one
 \item \code{"dialect"}: set to the SQL dialect if one is specified for a SQL layer
 \item \code{"like-layer"}: set to the \code{GDALVector} layer name if it is not a SQL
 layer
@@ -116,12 +122,13 @@ reporting along with various messages and warnings.
 Returns a named list of algorithm properties with the following elements:
 \itemize{
 \item \code{name}: character string, the algorithm name
+\item \code{full_path}: character string, the algorithm name as full path
 \item \code{description}: character string, the algorithm (short) description
 \item \code{long_description}: character string, the algorithm longer description
 \item \code{URL}: character string, the algorithm help URL
 \item \code{has_subalgorithms}: logical, \code{TRUE} if the algorithm has sub-algorithms
 \item \code{subalgorithm_names}: character vector of sub-algorithm names (may be
-empty)
+empty)parseCommandLineArgsparseCommanparseCommandLineArgsparseCommandLineArgsdLineArgs
 \item \code{arg_names}: character vector of available argument names
 }
 
@@ -191,11 +198,29 @@ Print a help message for the algorithm to the console. No return value.
 \code{$usageAsJSON()}\cr
 Returns the usage of the algorithm as a JSON-serialized string.
 
+\code{$setArg(arg_name, arg_value)}\cr
+Set the value of input algorithm argument \code{arg_name}, a character string
+containing the argument's \dQuote{long} name or an alias.
+The type of the \code{arg_value} parameter must be compatible with the algorithm
+argument type. Objects of class \code{GDALRaster} or \code{GDALVector} may be passed
+for algorithm arguments that accept dataset object input. A list of
+\code{GDALRaster} or \code{GDALVector} objects may be given for algorithm arguments of
+type \code{DATASET_LIST} that accept object input. Generally, an input dataset can
+also be specified by name as a character string (DSN), or character vector of
+DSNs for a \code{DATASET_LIST}.
+
 \code{$parseCommandLineArgs()}\cr
 Sets the value of arguments previously specified in the class constructor,
 and instantiates the actual algorithm that will be run (but without running
 it). Returns a logical value, \code{TRUE} indicating success or \code{FALSE} if an
 error occurs.
+
+\code{$getExplicitlySetArgs()}\cr
+Returns a named list of arguments that have been set explicitly along with
+their values. For arguments with dataset object values, the value of the list
+element is a string of the form \code{"<TYPE dataset object: DSN>"} where \code{TYPE}
+is one of \code{"raster"}, \code{"vector"} or \code{"multidim raster"} and \code{DSN} is the
+dataset name (filename, URL, etc.).
 
 \code{$run()}\cr
 Executes the algorithm, first parsing arguments if
@@ -310,7 +335,7 @@ Please use with those cautions in mind. Bug reports may be filed at:
 }
 
 \examples{
-\dontshow{if (length(gdal_global_reg_names()) > 0) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (length(gdal_global_reg_names()) > 0) withAutoprint(\{ # examplesIf}
 f <- system.file("extdata/storml_elev.tif", package="gdalraster")
 
 ## raster info

@@ -5,17 +5,12 @@
    Copyright (c) 2023-2025 gdalraster authors
 */
 
-#ifndef SRC_GDALRASTER_H_
-#define SRC_GDALRASTER_H_
+#ifndef GDALRASTER_H_
+#define GDALRASTER_H_
 
-#include <limits>
-#include <map>
-#include <string>
-#include <vector>
+#include <Rcpp.h>
 
-#include "rcpp_util.h"
-
-#ifndef SRC_GDALRASTER_TYPES_H_
+#ifndef GDALRASTER_TYPES_H_
 #include <cpl_port.h>
 #include <cpl_error.h>
 int CPL_STDCALL GDALTermProgressR(double, CPL_UNUSED const char *,
@@ -24,56 +19,14 @@ void gdal_error_handler_r(CPLErr err_class, int err_no, const char *msg);
 void gdal_silent_errors_r(CPLErr err_class, int err_no, const char *msg);
 #endif
 
+#include <string>
+#include <vector>
+
 // Predeclare some GDAL types until the public header is included
 #ifndef GDAL_H_INCLUDED
 typedef void *GDALDatasetH;
 typedef void *GDALRasterBandH;
 typedef enum {GA_ReadOnly = 0, GA_Update = 1} GDALAccess;
-#endif
-
-#ifdef GDAL_H_INCLUDED
-// Map certain GDAL enums to string names for use in R
-// GDALColorInterp (GCI)
-const std::map<std::string, GDALColorInterp> MAP_GCI{
-    {"Undefined", GCI_Undefined},
-    {"Gray", GCI_GrayIndex},
-    {"Palette", GCI_PaletteIndex},
-    {"Red", GCI_RedBand},
-    {"Green", GCI_GreenBand},
-    {"Blue", GCI_BlueBand},
-    {"Alpha", GCI_AlphaBand},
-    {"Hue", GCI_HueBand},
-    {"Saturation", GCI_SaturationBand},
-    {"Lightness", GCI_LightnessBand},
-    {"Cyan", GCI_CyanBand},
-    {"Magenta", GCI_MagentaBand},
-    {"Yellow", GCI_YellowBand},
-    {"Black", GCI_BlackBand},
-    {"YCbCr_Y", GCI_YCbCr_YBand},
-    {"YCbCr_Cb", GCI_YCbCr_CbBand},
-    {"YCbCr_Cr", GCI_YCbCr_CrBand}
-};
-// GDALRATFieldUsage (GFU)
-const std::map<std::string, GDALRATFieldUsage> MAP_GFU{
-    {"Generic", GFU_Generic},
-    {"PixelCount", GFU_PixelCount},
-    {"Name", GFU_Name},
-    {"Min", GFU_Min},
-    {"Max", GFU_Max},
-    {"MinMax", GFU_MinMax},
-    {"Red", GFU_Red},
-    {"Green", GFU_Green},
-    {"Blue", GFU_Blue},
-    {"Alpha", GFU_Alpha},
-    {"RedMin", GFU_RedMin},
-    {"GreenMin", GFU_GreenMin},
-    {"BlueMin", GFU_BlueMin},
-    {"AlphaMin", GFU_AlphaMin},
-    {"RedMax", GFU_RedMax},
-    {"GreenMax", GFU_GreenMax},
-    {"BlueMax", GFU_BlueMax},
-    {"AlphaMax", GFU_AlphaMax}
-};
 #endif
 
 
@@ -88,6 +41,9 @@ class GDALRaster {
                bool read_only,
                const Rcpp::Nullable<Rcpp::CharacterVector> &open_options,
                bool shared);
+    GDALRaster(const Rcpp::CharacterVector &filename, bool read_only,
+               const Rcpp::Nullable<Rcpp::CharacterVector> &open_options,
+               bool shared, const Rcpp::CharacterVector &allowed_drivers);
     ~GDALRaster();
 
     // read/write fields exposed to R
@@ -110,8 +66,8 @@ class GDALRaster {
 
     double getRasterXSize() const;
     double getRasterYSize() const;
-    std::vector<double> getGeoTransform() const;
-    bool setGeoTransform(std::vector<double> transform);
+    Rcpp::NumericVector getGeoTransform() const;
+    bool setGeoTransform(const Rcpp::NumericVector &transform);
     int getRasterCount() const;
     bool addBand(const std::string &dataType,
                  const Rcpp::Nullable<Rcpp::CharacterVector> &options);
@@ -120,9 +76,9 @@ class GDALRaster {
     std::string getProjectionRef() const;
     bool setProjection(const std::string &projection);
 
-    std::vector<double> bbox() const;
-    std::vector<double> res() const;
-    std::vector<double> dim() const;
+    Rcpp::NumericVector bbox() const;
+    Rcpp::NumericVector res() const;
+    Rcpp::NumericVector dim() const;
     Rcpp::NumericMatrix apply_geotransform(const Rcpp::RObject &col_row) const;
     Rcpp::IntegerMatrix get_pixel_line(const Rcpp::RObject &xy) const;
     Rcpp::NumericMatrix pixel_extract(const Rcpp::RObject &xy,
@@ -132,12 +88,17 @@ class GDALRaster {
                                       const std::string &xy_srs) const;
 
     Rcpp::NumericMatrix get_block_indexing(int band) const;
-    std::vector<int> getBlockSize(int band) const;
-    std::vector<int> getActualBlockSize(int band, int xblockoff,
-                                        int yblockoff) const;
+    Rcpp::NumericVector getBlockSize(int band) const;
+    Rcpp::NumericVector getActualBlockSize(int band, int xblockoff,
+                                           int yblockoff) const;
+
+    Rcpp::NumericMatrix make_chunk_index(
+        int band, const Rcpp::NumericVector &max_pixels) const;
+
     int getOverviewCount(int band) const;
     void buildOverviews(const std::string &resampling, std::vector<int> levels,
                         std::vector<int> bands);
+
     std::string getDataTypeName(int band) const;
     bool hasNoDataValue(int band) const;
     double getNoDataValue(int band) const;
@@ -158,11 +119,12 @@ class GDALRaster {
     std::string getRasterColorInterp(int band) const;
     void setRasterColorInterp(int band, const std::string &col_interp);
 
-    std::vector<double> getMinMax(int band, bool approx_ok) const;
+    Rcpp::NumericVector getMinMax(int band, bool approx_ok) const;
+    Rcpp::NumericVector getMinMaxLocation(int band) const;
     Rcpp::NumericVector getStatistics(int band, bool approx_ok,
                                       bool force) const;
     void clearStatistics();
-    std::vector<double> getHistogram(int band, double min, double max,
+    Rcpp::NumericVector getHistogram(int band, double min, double max,
                                      int num_buckets, bool incl_out_of_range,
                                      bool approx_ok) const;
     Rcpp::List getDefaultHistogram(int band, bool force) const;
@@ -181,8 +143,18 @@ class GDALRaster {
     SEXP read(int band, int xoff, int yoff, int xsize, int ysize,
               int out_xsize, int out_ysize) const;
 
+    SEXP readBlock(int band, int xblockoff, int yblockoff) const;
+
+    SEXP readChunk(int band, const Rcpp::IntegerVector &chunk_def) const;
+
     void write(int band, int xoff, int yoff, int xsize, int ysize,
                const Rcpp::RObject &rasterData);
+
+    void writeBlock(int band, int xblockoff, int yblockoff,
+                    const Rcpp::RObject &rasterData);
+
+    void writeChunk(int band, const Rcpp::IntegerVector &chunk_def,
+                    const Rcpp::RObject &rasterData);
 
     void fillRaster(int band, double value, double ivalue);
 
@@ -210,12 +182,13 @@ class GDALRaster {
     bool hasInt64_() const;
     void warnInt64_() const;
     GDALDatasetH getGDALDatasetH_() const;
-    void setGDALDatasetH_(const GDALDatasetH &hDs, bool with_update);
+    void setGDALDatasetH_(GDALDatasetH hDs);
 
  private:
     std::string m_fname {};
-    Rcpp::CharacterVector m_open_options {};
+    Rcpp::CharacterVector m_open_options;
     bool m_shared;
+    Rcpp::CharacterVector m_allowed_drivers;
     GDALDatasetH m_hDataset {nullptr};
     GDALAccess m_eAccess {GA_ReadOnly};
 };
@@ -244,7 +217,7 @@ std::string cpl_get_basename(const Rcpp::CharacterVector &full_filename);
 std::string cpl_get_extension(const Rcpp::CharacterVector &full_filename);
 
 Rcpp::CharacterVector check_gdal_filename(
-        const Rcpp::CharacterVector &filename);
+    const Rcpp::CharacterVector &filename);
 
 GDALRaster *create(const std::string &format,
                    const Rcpp::CharacterVector &dst_filename,
@@ -261,6 +234,8 @@ GDALRaster *createCopy(const std::string &format,
 std::string getCreationOptions(const std::string &format);
 bool validateCreationOptions(const std::string &format,
                              const Rcpp::CharacterVector &options);
+
+SEXP gdal_get_driver_md(const std::string &format, const std::string &mdi_name);
 
 bool copyDatasetFiles(const Rcpp::CharacterVector &new_filename,
                       const Rcpp::CharacterVector &old_filename,
@@ -292,26 +267,31 @@ bool addFileInZip(const std::string &zip_filename, bool overwrite,
                   const Rcpp::Nullable<Rcpp::CharacterVector> &options,
                   bool quiet);
 
-Rcpp::NumericVector apply_geotransform_(const std::vector<double> &gt,
+Rcpp::NumericVector apply_geotransform_(const Rcpp::NumericVector &gt,
                                         double pixel, double line);
 
 Rcpp::NumericMatrix apply_geotransform_gt(const Rcpp::RObject &col_row,
-                                          const std::vector<double> &gt);
+                                          const Rcpp::NumericVector &gt);
 
 Rcpp::NumericMatrix apply_geotransform_ds(const Rcpp::RObject &col_row,
                                           const GDALRaster* const &ds);
 
-Rcpp::NumericVector inv_geotransform(const std::vector<double> &gt);
+Rcpp::NumericVector inv_geotransform(const Rcpp::NumericVector &gt);
 
 Rcpp::IntegerMatrix get_pixel_line_gt(const Rcpp::RObject &xy,
-                                      const std::vector<double> &gt);
+                                      const Rcpp::NumericVector &gt);
 
 Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject &xy,
                                       const GDALRaster* const &ds);
 
-std::vector<double> bbox_grid_to_geo_(const std::vector<double> &gt,
+Rcpp::NumericVector bbox_grid_to_geo_(const Rcpp::NumericVector &gt,
                                       double grid_xmin, double grid_xmax,
                                       double grid_ymin, double grid_ymax);
+
+Rcpp::NumericMatrix make_chunk_index_(int raster_xsize, int raster_ysize,
+                                      int block_xsize, int block_ysize,
+                                      const Rcpp::NumericVector &gt,
+                                      const Rcpp::NumericVector &max_pixels);
 
 Rcpp::NumericVector flip_vertical(const Rcpp::NumericVector &v,
                                   int xsize, int ysize, int nbands);
@@ -367,7 +347,7 @@ Rcpp::String ogrinfo(const Rcpp::CharacterVector &dsn,
                      const Rcpp::Nullable<Rcpp::CharacterVector> &cl_arg,
                      const Rcpp::Nullable<Rcpp::CharacterVector> &open_options,
                      bool read_only,
-                     bool cout);
+                     bool console_out);
 
 bool polygonize(const Rcpp::CharacterVector &src_filename, int src_band,
                 const Rcpp::CharacterVector &out_dsn,
@@ -404,4 +384,30 @@ Rcpp::IntegerMatrix createColorRamp(int start_index,
                                     const Rcpp::IntegerVector &end_color,
                                     const std::string &palette_interp);
 
-#endif  // SRC_GDALRASTER_H_
+GDALRaster *mdim_as_classic(
+    const Rcpp::CharacterVector &filename, const std::string &array_name,
+    int idx_xdim, int idx_ydim, bool read_only, const std::string &group_name,
+    const std::string &view_expr,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &allowed_drivers,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &open_options);
+
+std::string mdim_info(
+    const Rcpp::CharacterVector &filename, const std::string &array_name,
+    bool pretty, bool detailed, int limit, bool stats,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &array_options,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &allowed_drivers,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &open_options,
+    bool cout);
+
+bool mdim_translate(
+    const Rcpp::CharacterVector &src_dsn, const Rcpp::CharacterVector &dst_dsn,
+    const std::string &output_format,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &creation_options,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &array_specs,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &group_specs,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &subset_specs,
+    const Rcpp::Nullable<Rcpp::String> &scaleaxes_specs,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &allowed_drivers,
+    const Rcpp::Nullable<Rcpp::CharacterVector> &open_options,
+    bool strict, bool quiet);
+#endif  // GDALRASTER_H_

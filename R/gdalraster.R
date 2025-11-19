@@ -8,14 +8,14 @@
 #' @description
 #' `GDALRaster` provides an interface for accessing a raster dataset via GDAL
 #' and calling methods on the underlying `GDALDataset`, `GDALDriver` and
-#' `GDALRasterBand` objects. See \url{https://gdal.org/en/stable/api/index.html} for
-#' details of the GDAL Raster API.
+#' `GDALRasterBand` objects. See \url{https://gdal.org/en/stable/api/index.html}
+#' for details of the GDAL Raster API.
 #'
-#' `GDALRaster` is a C++ class exposed directly to \R (via `RCPP_EXPOSED_CLASS`).
-#' Fields and methods of the class are accessed using the `$` operator. **Note
-#' that all arguments to class methods are required and must be given in the
-#' order documented.** Naming the arguments is optional but may be preferred
-#' for readability.
+#' `GDALRaster` is a C++ class exposed directly to \R (via
+#' `RCPP_EXPOSED_CLASS`). Fields and methods of the class are accessed using
+#' the `$` operator. **Note that all arguments to class methods are required
+#' and must be given in the order documented.** Naming the arguments is
+#' optional but may be preferred for readability.
 #'
 #' @param filename Character string containing the file name of a raster
 #' dataset to open, as full path or relative to the current working directory.
@@ -30,6 +30,8 @@
 #' specifying dataset open options.
 #' @param shared Logical. `FALSE` to open the dataset without using shared
 #' mode. Default is `TRUE` (see Note).
+#' @param allowed_drivers Optional character vector of driver short names that
+#' must be considered. By default, all known raster drivers are considered.
 #' @returns An object of class `GDALRaster`, which contains a pointer to the
 #' opened dataset.
 #' Class methods that operate on the dataset are described in Details, along
@@ -48,6 +50,8 @@
 #' ds <- new(GDALRaster, filename, read_only = TRUE|FALSE, open_options)
 #' # to open without using shared mode:
 #' new(GDALRaster, filename, read_only, open_options, shared = FALSE)
+#' # to specify certain allowed driver(s):
+#' new(GDALRaster, filename, read_only, open_options, shared, allowed_drivers)
 #'
 #' ## Read/write fields (per-object settings)
 #' ds$infoOptions
@@ -83,9 +87,12 @@
 #' ds$bbox()
 #' ds$res()
 #' ds$dim()
+#'
 #' ds$apply_geotransform(col_row)
 #' ds$get_pixel_line(xy)
+#'
 #' ds$get_block_indexing(band)
+#' ds$make_chunk_index(band, max_pixels)
 #'
 #' ds$getDescription(band)
 #' ds$setDescription(band, desc)
@@ -109,8 +116,10 @@
 #' ds$setRasterColorInterp(band, col_interp)
 #'
 #' ds$getMinMax(band, approx_ok)
+#' ds$getMinMaxLocation(band)
 #' ds$getStatistics(band, approx_ok, force)
 #' ds$clearStatistics()
+#'
 #' ds$getHistogram(band, min, max, num_buckets, incl_out_of_range, approx_ok)
 #' ds$getDefaultHistogram(band, force)
 #'
@@ -121,7 +130,12 @@
 #' ds$getMetadataDomainList(band)
 #'
 #' ds$read(band, xoff, yoff, xsize, ysize, out_xsize, out_ysize)
+#' ds$readBlock(band, xblockoff, yblockoff)
+#' ds$readChunk(band, chunk_def)
+#'
 #' ds$write(band, xoff, yoff, xsize, ysize, rasterData)
+#' ds$writeBlock(band, xblockoff, yblockoff, rasterData)
+#' ds$writeChunk(band, chunk_def, rasterData)
 #' ds$fillRaster(band, value, ivalue)
 #'
 #' ds$getColorTable(band)
@@ -156,6 +170,12 @@
 #' Alternate constructor for specifying the `shared` mode for dataset opening.
 #' The `shared` argument defaults to `TRUE` but can be set to `FALSE` with this
 #' constructor (see Note).
+#' All arguments are required with this form of the constructor, but
+#' `open_options` can be `NULL`. Returns an object of class `GDALRaster`.
+#'
+#' \code{new(GDALRaster, filename, read_only, open_options, shared, allowed_drivers)}\cr
+#' Alternate constructor for specifying the driver(s) allowed for dataset
+#' opening as a character vector of driver short names.
 #' All arguments are required with this form of the constructor, but
 #' `open_options` can be `NULL`. Returns an object of class `GDALRaster`.
 #'
@@ -335,17 +355,37 @@
 #' \code{$get_block_indexing(band)}\cr
 #' Helper method returning a numeric matrix with named columns: `xblockoff`,
 #' `yblockoff`, `xoff`, `yoff`, `xsize`, `ysize`, `xmin`, `xmax`, `ymin`,
-#' `ymax`. For the meanings of these names, refer to the following class
-#' methods below: \code{$getBlockSize()}, \code{$getActualBlockSize()} and
-#' \code{$read()}.
-#' All offsets are zero-based. The columns `xmin`, `xmax`, `ymin` and
-#' `ymax` give the extent of each block in geospatial coordinates.
-#' This method provides indexing values for the block layout of the given
-#' `band` number. The returned matrix has number of rows equal to the number
-#' of blocks comprising the band, with blocks ordered left to right, top
-#' to bottom. The `xoff`/`yoff` values are pixel offsets to the start of a
-#' block. The `xsize`/`ysize` values give the actual block sizes accounting
-#' for potentially incomplete blocks along the right and bottom edges.
+#' `ymax`. This method provides indexing values for the block layout of the
+#' given `band` number. See also the class methods:
+#' \code{$getBlockSize()}, \code{$getActualBlockSize()} and \code{$read()}.
+#' The returned matrix has number of rows equal to the number of blocks for the
+#' given `band` number, with blocks ordered left to right, top to bottom. All
+#' offsets are zero-based. The `xoff`/`yoff` values are pixel offsets to the
+#' start of a block. The `xsize`/`ysize` values give the actual block sizes
+#' accounting for potentially incomplete blocks along the right and bottom
+#' edges. The columns `xmin`, `xmax`, `ymin` and `ymax` give the extent of each
+#' block in geospatial coordinates.
+#'
+#' \code{$make_chunk_index(band, max_pixels)}\cr
+#' Helper method returning a numeric matrix with named columns: `xchunkoff`,
+#' `ychunkoff`, `xoff`, `yoff`, `xsize`, `ysize`, `xmin`, `xmax`, `ymin`,
+#' `ymax`. This method generates indexing information (offsets, sizes and
+#' geospatial bounding boxes) for potentially multi-block chunks, defined on
+#' block boundaries for efficient I/O. The output of this method can be used
+#' with the \code{$readChunk()}/\code{$writeChunk()} methods to iterate I/O
+#' operations conveniently on user-defined chunk sizes. The chunks will contain
+#' at most `max_pixels` given as a numeric value optionally carrying the
+#' `bit64::integer64` class attribute (numeric values will be coerced to 64-bit
+#' integer internally by truncation). A value of `max_pixels = 0` (or any value
+#' less than raster block xsize * block ysize, see \code{$getBlockSize()}
+#' below), will return output equivalent to \code{$get_block_indexing()}.
+#' The returned matrix has number of rows equal to the number of chunks for the
+#' given `band` number, with chunks ordered left to right, top to bottom. All
+#' offsets are zero-based. The `xoff`/`yoff` values are pixel offsets to the
+#' start of a chunk. The `xsize`/`ysize` values give the actual chunk sizes
+#' accounting for potentially incomplete chunks along the right and bottom
+#' edges. The columns `xmin`, `xmax`, `ymin` and `ymax` give the extent of each
+#' chunk in geospatial coordinates.
 #'
 #' \code{$getDescription(band)}\cr
 #' Returns a string containing the description for \code{band}. An empty
@@ -360,7 +400,7 @@
 #' changed by calling this method on an existing dataset.)
 #'
 #' \code{$getBlockSize(band)}\cr
-#' Returns an integer vector of length two (xsize, ysize) containing the
+#' Returns a numeric vector of length two (xsize, ysize) containing the
 #' "natural" block size of \code{band}. GDAL has a concept of the natural block
 #' size of rasters so that applications can organize data access efficiently
 #' for some file formats. The natural block size is the block size that is
@@ -372,7 +412,7 @@
 #' incomplete.
 #'
 #' \code{$getActualBlockSize(band, xblockoff, yblockoff)}\cr
-#' Returns an integer vector of length two (xvalid, yvalid) containing the
+#' Returns a numeric vector of length two (xvalid, yvalid) containing the
 #' actual block size for a given block offset in \code{band}. Handles partial
 #' blocks at the edges of the raster and returns the true number of pixels.
 #' `xblockoff` is an integer value, the horizontal block offset for which to
@@ -404,8 +444,8 @@
 #' (e.g., `set_config_option("COMPRESS_OVERVIEW", "LZW")`).
 #' Since GDAL 3.6, `COMPRESS_OVERVIEW` is honored when creating internal
 #' overviews of GTiff files. The [GDAL documentation for
-#' `gdaladdo`](https://gdal.org/en/stable/programs/gdaladdo.html) command-line utility
-#' describes additional configuration for overview building.
+#' `gdaladdo`](https://gdal.org/en/stable/programs/gdaladdo.html) command-line
+#' utility describes additional configuration for overview building.
 #' See also [set_config_option()]. No return value, called for side effects.
 #'
 #' \code{$getDataTypeName(band)}\cr
@@ -569,6 +609,18 @@
 #' maximum. If \code{approx_ok} is `FALSE`, then all pixels will be read and
 #' used to compute an exact range.
 #'
+#' \code{$getMinMaxLocation(band)}\cr
+#' Computes the min/max values for a band, and their locations. Pixels with
+#' value matching the nodata value or masked by the mask band are ignored. If
+#' the minimum or maximum value is hit in several locations, it is not
+#' specified which location will be returned. The locations are returned as
+#' column/row number (0-based), geospatial x/y in the coordinate system of the
+#' raster, and WGS84 longitude/latitude. Returns a numeric vector with the
+#' following named values: `min`, `min_col`, `min_row`, `min_geo_x`,
+#' `min_geo_y`, `min_wgs84_lon`, `min_wgs84_lat`, `max`, `max_col`, `max_row`,
+#' `max_geo_x`, `max_geo_y`, `max_wgs84_lon`, `max_wgs84_lat`. This method wraps
+#' `GDALComputeRasterMinMaxLocation()` in the GDAL C API requiring GDAL >= 3.11.
+#'
 #' \code{$getStatistics(band, approx_ok, force)}\cr
 #' Returns a numeric vector of length four containing the minimum, maximum,
 #' mean and standard deviation of pixel values in \code{band} (excluding
@@ -625,7 +677,8 @@
 #' Returns a character vector of all metadata `NAME=VALUE` pairs that exist in
 #' the specified \code{domain}, or empty string (`""`) if there are no
 #' metadata items in \code{domain} (metadata in the context of the GDAL
-#' Raster Data Model: \url{https://gdal.org/en/stable/user/raster_data_model.html}).
+#' Raster Data Model
+#' \url{https://gdal.org/en/stable/user/raster_data_model.html}).
 #' Set \code{band = 0} to retrieve dataset-level metadata, or to an integer
 #' band number to retrieve band-level metadata.
 #' Set \code{domain = ""} (empty string) to retrieve metadata in the
@@ -691,6 +744,25 @@
 #' An error is raised if the read operation fails. See also the setting
 #' \code{$readByteAsRaw} above.
 #'
+#' \code{$readBlock(band, xblockoff, yblockoff)}\cr
+#' Reads a block of raster data, without resampling. See the class methods
+#' \code{$getBlockSize()} and \code{$getActualBlockSize()} above for a
+#' description of raster blocks. This is a convenience method to read by block
+#' offsets. Returns a vector of pixel values with length equal to the actual
+#' block `xsize * ysize`, otherwise as described above for \code{$read()}.
+#'
+#' \code{$readChunk(band, chunk_def)}\cr
+#' Reads a potentially multi-block chunk of raster data, without resampling.
+#' This is a convenience method that can be used with the output of
+#' \code{$make_chunk_index()} (see above). The matrix of chunk offsets and sizes
+#' returned by \code{$make_chunk_index()} (or \code{$get_block_indexing()} to
+#' operate on blocks) can be used to iterate I/O over the raster in user-defined
+#' chunk sizes, i.e., a row of that matrix can be passed for the `chunk_def`
+#' argument. `chunk_def` can also be given as an numeric vector of length 4
+#' containing the 0-based pixel offsets and pixel sizes for a chunk (xoff, yoff,
+#' xsize, ysize). Returns a vector of pixel values with length equal to the
+#' chunk `xsize * ysize`, otherwise as described above for \code{$read()}.
+#'
 #' \code{$write(band, xoff, yoff, xsize, ysize, rasterData)}\cr
 #' Writes a region of raster data to \code{band}.
 #' \code{xoff} is the pixel (column) offset to the top left corner of the
@@ -705,6 +777,20 @@
 #' \code{rasterData} should be replaced with a suitable nodata value prior to
 #' writing (see \code{$getNoDataValue()} and \code{$setNoDataValue()} above).
 #' An error is raised if the operation fails (no return value).
+#'
+#' \code{$writeBlock(band, xblockoff, yblockoff, rasterData)}\cr
+#' Writes a block of raster data. See the class methods \code{$getBlockSize()}
+#' and \code{$getActualBlockSize()} above for a description of raster blocks.
+#' This is a convenience method to write by block offsets.. Otherwise, this
+#' method operates like \code{$write()}. The length of `rasterData` must be the
+#' same as the actual `xsize * ysize` of the destination block.
+#'
+#' \code{$writeChunk(band, chunk_def, rasterData)}\cr
+#' Writes a potentially multi-block chunk of raster data. This is a convenience
+#' method that can be used to iterate I/O over the raster in user-defined chunk
+#' sizes, see method \code{$readChunk()} above. Otherwise, this method operates
+#' like \code{$write()}. The length of `rasterData` must be the same as
+#' `xsize * ysize` of the destination chunk.
 #'
 #' \code{$fillRaster(band, value, ivalue)}\cr
 #' Fills `band` with a constant value. GDAL makes no guarantees about what
@@ -722,8 +808,8 @@
 #' integer matrix with five columns. To associate a color with a raster pixel,
 #' the pixel value is used as a subscript into the color table. This means that
 #' the colors are always applied starting at zero and ascending
-#' (see \href{https://gdal.org/en/stable/user/raster_data_model.html#color-table}{GDAL
-#' Color Table}).
+#' (see
+#' \href{https://gdal.org/en/stable/user/raster_data_model.html#color-table}{GDAL Color Table}).
 #' Column 1 contains the pixel values. Interpretation of columns 2:5 depends
 #' on the value of \code{$getPaletteInterp()} (see below).
 #' For "RGB", columns 2:5 contain red, green, blue, alpha as 0-255 integer
@@ -741,9 +827,7 @@
 #' * HLS: columns 2:4 contain hue, lightness, saturation (column 5 unused)
 #'
 #' \code{$setColorTable(band, col_tbl, palette_interp)}\cr
-#' Sets the raster color table for \code{band}
-#' (see \href{https://gdal.org/en/stable/user/raster_data_model.html#color-table}{GDAL
-#' Color Table}).
+#' Sets the raster color table for \code{band}.
 #' \code{col_tbl} is an integer matrix or data frame with either four or five
 #' columns (see \code{$getColorTable()} above). Column 1 contains the pixel
 #' values. Valid values are integers 0 and larger (note that GTiff format
@@ -877,7 +961,7 @@
 #' ds$getNoDataValue(band = 1)
 #'
 #' ## LCP driver reports several dataset- and band-level metadata
-#' ## see the format description at https://gdal.org/en/stable/drivers/raster/lcp.html
+#' ## (format description at https://gdal.org/en/stable/drivers/raster/lcp.html)
 #' ## set band = 0 to retrieve dataset-level metadata
 #' ## set domain = "" (empty string) for the default metadata domain
 #' ds$getMetadata(band = 0, domain = "")

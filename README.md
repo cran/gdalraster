@@ -42,7 +42,7 @@ provided by the GDAL project.
 
 The package supports:
 
-- [using “gdal” CLI
+- [using GDAL’s new CLI
   algorithms](https://usdaforestservice.github.io/gdalraster/articles/use-gdal-cli-from-r.html)
   from R when built against GDAL \>= 3.11.3
 - manual creation of uninitialized raster and vector datasets
@@ -54,17 +54,20 @@ The package supports:
   filtering, mosaicing
 - [raster
   utilities](https://usdaforestservice.github.io/gdalraster/reference/index.html#raster-utilities)
+- GDAL multidimensional raster
+  ([`mdim_as_classic()`](https://usdaforestservice.github.io/gdalraster/reference/mdim_as_classic.html),
+  [`mdim_info()`](https://usdaforestservice.github.io/gdalraster/reference/mdim_info.html),
+  [`mdim_translate()`](https://usdaforestservice.github.io/gdalraster/reference/mdim_translate.html))
 - coordinate transformation
 - spatial reference systems
 - [geometry
   API](https://usdaforestservice.github.io/gdalraster/reference/index.html#geometry)
   operating on raw vectors of WKB or WKT strings
-- OGR [vector
+- [vector
   utilities](https://usdaforestservice.github.io/gdalraster/reference/index.html#vector-utilities)
 - GDAL facilities for [vector
   geoprocessing](https://usdaforestservice.github.io/gdalraster/reference/ogr_proc.html)
-  (`ogr_proc()`)
-- raster and vector [dataset
+- [dataset
   management](https://usdaforestservice.github.io/gdalraster/reference/index.html#general-data-management)
   (inspect/copy files/rename/delete)
 - create/append to Seek-Optimized ZIP
@@ -97,8 +100,7 @@ Additional functionality includes:
   layers. Individual pixel coordinates are available as variables in the
   R expression, as either x/y in the raster projected coordinate system
   or inverse projected longitude/latitude.
-- [`plot_raster()`](https://usdaforestservice.github.io/gdalraster/reference/plot_raster.html)
-  displays raster data using base R graphics.
+- plot raster data, vector layers and WKB/WKT geometries
 
 **gdalraster** may be useful in applications that need scalable,
 low-level I/O, or prefer a direct GDAL API. Comprehensive
@@ -192,8 +194,8 @@ and all other dependent libraries that are needed to compile
 **gdalraster**. Note that CRAN release periodic revisions to RTools that
 often include updates to the libraries as new versions become available.
 [Release
-6608](https://cran.r-project.org/bin/windows/Rtools/rtools45/rtools.html)
-of RTools 4.5 contains GDAL 3.11.0, GEOS 3.13.1 and PROJ 9.6.0.
+6691](https://cran.r-project.org/bin/windows/Rtools/rtools45/rtools.html)
+of RTools 4.5 contains GDAL 3.11.4, GEOS 3.13.1 and PROJ 9.7.0.
 
 With RTools installed:
 
@@ -219,6 +221,18 @@ It is not recommended to mix source installations and installation of
 macOS binaries from CRAN. Consider installing the development version
 from R-universe instead.
 
+### Docker
+
+The `r-gdalraster` build at
+<https://github.com/mdsumner/gdal-builds/pkgs/container/gdal-builds> is
+based on the GDAL [`ubuntu-full-latest`
+image](https://github.com/OSGeo/gdal/tree/master/docker#full-ghcrioosgeogdalubuntu-full-latest-aliased-to-osgeogdal),
+and adds the current released version of R along with development
+version of **gdalraster** and its dependencies (thanks to Michael
+Sumner):
+
+    docker pull ghcr.io/mdsumner/gdal-builds:r-gdalraster
+
 ## Documentation
 
 - [Reference
@@ -227,7 +241,7 @@ from R-universe instead.
   Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html)
 - [Vector API
   Overview](https://usdaforestservice.github.io/gdalraster/articles/vector-api-overview.html)
-- [Using “gdal” CLI algorithms from
+- [Using `gdal` CLI algorithms from
   R](https://usdaforestservice.github.io/gdalraster/articles/use-gdal-cli-from-r.html)
 - [Raster Attribute
   Tables](https://usdaforestservice.github.io/gdalraster/articles/raster-attribute-tables.html)

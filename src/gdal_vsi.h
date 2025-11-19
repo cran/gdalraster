@@ -3,11 +3,12 @@
    Copyright (c) 2023-2025 gdalraster authors
 */
 
-#ifndef SRC_GDAL_VSI_H_
-#define SRC_GDAL_VSI_H_
+#ifndef GDAL_VSI_H_
+#define GDAL_VSI_H_
+
+#include <Rcpp.h>
 
 #include <string>
-#include <Rcpp.h>
 
 int vsi_copy_file(const Rcpp::CharacterVector &src_file,
                   const Rcpp::CharacterVector &target_file,
@@ -33,6 +34,9 @@ int vsi_rmdir(const Rcpp::CharacterVector &path, bool recursive);
 int vsi_unlink(const Rcpp::CharacterVector &filename);
 SEXP vsi_unlink_batch(const Rcpp::CharacterVector &filenames);
 SEXP vsi_stat(const Rcpp::CharacterVector &filename, const std::string &info);
+Rcpp::LogicalVector vsi_stat_exists(const Rcpp::CharacterVector &filenames);
+Rcpp::CharacterVector vsi_stat_type(const Rcpp::CharacterVector &filenames);
+Rcpp::NumericVector vsi_stat_size(const Rcpp::CharacterVector &filenames);
 int vsi_rename(const Rcpp::CharacterVector &oldpath,
                const Rcpp::CharacterVector &newpath);
 
@@ -56,4 +60,4 @@ SEXP vsi_get_signed_url(const Rcpp::CharacterVector &filename,
 bool vsi_is_local(const Rcpp::CharacterVector &filename);
 
 
-#endif  // SRC_GDAL_VSI_H_
+#endif  // GDAL_VSI_H_

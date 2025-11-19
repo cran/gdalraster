@@ -6,16 +6,15 @@
    Copyright (c) 2023-2025 gdalraster authors
 */
 
-#ifndef SRC_GEOM_API_H_
-#define SRC_GEOM_API_H_
-
-#include <string>
-#include <vector>
+#ifndef GEOM_API_H_
+#define GEOM_API_H_
 
 #include <Rcpp.h>
 
-#include "ogr_geometry.h"
+#include <ogr_geometry.h>
 
+#include <string>
+#include <vector>
 
 std::vector<int> getGEOSVersion();
 bool has_geos();  // GDAL built against GEOS is required at gdalraster 1.10
@@ -42,10 +41,17 @@ Rcpp::RawVector g_add_geom(const Rcpp::RawVector &sub_geom,
                            const Rcpp::RawVector &container,
                            bool as_iso, const std::string &byte_order);
 
+int g_geom_count(const Rcpp::RObject &geom, bool quiet);
+SEXP g_get_geom(const Rcpp::RawVector &container, int sub_geom_idx,
+                bool as_iso, const std::string &byte_order);
+
 Rcpp::LogicalVector g_is_valid(const Rcpp::RObject &geom, bool quiet);
 SEXP g_make_valid(const Rcpp::RObject &geom, const std::string &method,
                   bool keep_collapsed, bool as_iso,
                   const std::string &byte_order, bool quiet);
+
+SEXP g_normalize(const Rcpp::RObject &geom, bool as_iso,
+                 const std::string &byte_order, bool quiet);
 
 SEXP g_set_3D(const Rcpp::RObject &geom, bool is_3d, bool as_iso,
               const std::string &byte_order, bool quiet);
@@ -106,13 +112,19 @@ SEXP g_buffer(const Rcpp::RObject &geom, double dist, int quad_segs,
 SEXP g_convex_hull(const Rcpp::RObject &geom, bool as_iso,
                    const std::string &byte_order, bool quiet);
 
-SEXP g_delaunay_triangulation(const Rcpp::RObject &geom, double tolerance,
-                              bool only_edges, bool as_iso,
+SEXP g_concave_hull(const Rcpp::RObject &geom, double ratio, bool allow_holes,
+                    bool as_iso, const std::string &byte_order, bool quiet);
+
+SEXP g_delaunay_triangulation(const Rcpp::RObject &geom, bool constrained,
+                              double tolerance, bool only_edges, bool as_iso,
                               const std::string &byte_order, bool quiet);
 
 SEXP g_simplify(const Rcpp::RObject &geom, double tolerance,
                 bool preserve_topology, bool as_iso,
                 const std::string &byte_order, bool quiet);
+
+SEXP g_unary_union(const Rcpp::RObject &geom, bool as_iso,
+                   const std::string &byte_order, bool quiet);
 
 SEXP g_intersection(const Rcpp::RObject &this_geom,
                     const Rcpp::RObject &other_geom,
@@ -161,4 +173,4 @@ OGRwkbGeometryType getTargetGeomType(OGRwkbGeometryType geom_type,
                                      bool convert_to_linear,
                                      bool promote_to_multi);
 
-#endif  // SRC_GEOM_API_H_
+#endif  // GEOM_API_H_

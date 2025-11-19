@@ -1,3 +1,56 @@
+# gdalraster 2.3.0
+
+## Dependencies
+
+* package **yyjsonr** has been added to Imports
+
+## Features / enhancements
+
+### GDAL CLI bindings
+
+* `gdal_usage()`: include the list of potential step algorithms for `"raster pipeline"` and `"vector pipeline"` (#789)
+* `gdal_run()`: add argument `setVectorArgsFromObject` (#790)
+* add `GDALAlg::getExplicitlySetArgs()`: exposed class method to return a named list of arguments that have been set explicitly along with their values (#807)
+* add `GDALAlg::setArg()`: exposed class method to set algorithm argument values individually by API (#822)
+
+### Raster
+
+* class `GDALRaster`: add helper methods for iterating I/O on raster blocks, or on multi-block chunks of user-defined size, `readBlock()` / `writeBlock()`, `make_chunk_index()` and `readChunk()` / `writeChunk()` (#819)
+* add `make_chunk_index()` stand-alone function for use without a dataset object
+* add `GDALRaster::getMinMaxLocation()`: compute the min/max values for a raster band and their locations, using `GDALComputeRasterMinMaxLocation()` in GDAL >= 3.11 (#820)
+* `rasterToVRT()`: add argument `krnl_fn` supporting a Function element in KernelFilteredSource with GDAL >= 3.12, one of `"min"`, `"max"`, `"stddev"`, `"median"` or `"mode"` (#821)
+* class `GDALRaster`: add a constructor with `allowed_drivers` argument (#793)
+
+### Multidimensional raster
+
+* add `mdim_as_classic()`: return a view of an MDArray as a "classic" GDALDataset (i.e., 2D), and add column `multidim_raster` (`TRUE`|`FALSE`) in the data frame output of `gdal_formats()` (#799)
+* add `mdim_info()`: report structure and content of a multidimensional dataset, interface to `gdalmdiminfo` utility
+* add `mdim_translate()`: convert multidimensional data between different formats, and subset, interface to `gdalmdimtranslate` utility (#803) (2025-09-25)
+
+### Geometry API
+
+* add `g_geom_count()`: return the number of elements in a geometry or number of geometries in container
+* add `g_get_geom()`: fetch a geometry from a geometry container
+* add `g_unary_union()`: wrapper for `OGR_G_UnaryUnion()`
+* add `g_concave_hull()`: wrapper for `OGR_G_ConcaveHull()`
+* add `g_normalize()`: wrapper for `OGR_G_Normalize()`
+* `g_delaunay_triangulation()`: add argument `constrained`, wrapper for `OGR_G_ConstrainedDelaunayTriangulation()`
+* add `plot_geom()`: plot WKT or WKB geometries
+
+### Other features
+
+* add `gdal_get_driver_md()`: retrieve driver metadata (#795)
+* add `vsi_stat_exists()`, `vsi_stat_type()` and `vsi_stat_size()`: specializations of `vsi_stat()` operating on a vector of potentially multiple file system object names (#825)
+
+## Bug fix
+
+* fixes for `ogr_ds_delete_field_domain()`, and condition tests on GDAL 3.12 (#823)
+* ensure that the global error handler is restored when the input dataset cannot be opened in some OGR management functions (#787)
+
+## Internal
+
+* various C++ code linting, small refactorings and performance improvements (#788, #801, #818)
+
 # gdalraster 2.2.1
 
 ## Bug fix and maintenance release

@@ -40,20 +40,25 @@
   \code{\link[=buildVRT]{buildVRT()}},
   \code{\link[=rasterToVRT]{rasterToVRT()}}
 
-  \item reproject/resample/crop/mosaic: \code{\link[=warp]{warp()}}
-
-  \item algorithms: \code{\link[=dem_proc]{dem_proc()}},
+  \item algorithms/utilities: \code{\link[=dem_proc]{dem_proc()}},
   \code{\link[=fillNodata]{fillNodata()}},
   \code{\link[=footprint]{footprint()}},
+  \code{\link[=make_chunk_index]{make_chunk_index()}},
   \code{\link[=polygonize]{polygonize()}},
   \code{\link[=rasterize]{rasterize()}},
   \code{\link[=sieveFilter]{sieveFilter()}},
+  \code{\link[=warp]{warp()}},
   \code{\link[=GDALRaster]{GDALRaster$getChecksum()}}
 
   \item raster attribute tables: \code{\link[=buildRAT]{buildRAT()}},
   \code{\link[=displayRAT]{displayRAT()}},
   \code{\link[=GDALRaster]{GDALRaster$getDefaultRAT()}},
   \code{\link[=GDALRaster]{GDALRaster$setDefaultRAT()}}
+
+  \item multidimensional raster:
+  \code{\link[=mdim_as_classic]{mdim_as_classic()}},
+  \code{\link[=mdim_info]{mdim_info()}},
+  \code{\link[=mdim_translate]{mdim_translate()}}
 
   \item geotransform conversion:
   \code{\link[=apply_geotransform]{apply_geotransform()}},
@@ -112,7 +117,8 @@
   \code{\link[=g_coords]{g_coords()}},
   \code{\link[=g_envelope]{g_envelope()}},
   \code{\link[=g_transform]{g_transform()}},
-  \code{\link[=geos_version]{geos_version()}}
+  \code{\link[=geos_version]{geos_version()}},
+  \code{\link[=plot_geom]{plot_geom()}}
 
   \item Spatial Reference Systems API:
   \code{\link[=srs_convert]{srs_convert}},
@@ -157,6 +163,7 @@
   \code{\link[=gdal_version]{gdal_version}},
   \code{\link[=gdal_compute_version]{gdal_compute_version()}},
   \code{\link[=gdal_formats]{gdal_formats()}},
+  \code{\link[=gdal_get_driver_md]{gdal_get_driver_md()}},
   \code{\link[=get_cache_used]{get_cache_used()}},
   \code{\link[=get_cache_max]{get_cache_max()}},
   \code{\link[=set_cache_max]{set_cache_max()}},
