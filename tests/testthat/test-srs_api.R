@@ -67,6 +67,45 @@ test_that("srs functions work", {
     expect_equal(srs_get_axis_mapping_strategy("WGS84"),
                  "OAMS_AUTHORITY_COMPLIANT")
 
+    aou <- srs_get_area_of_use("EPSG:3976")
+    expect_true(is.list(aou))
+    expect_equal(length(aou), 5)
+    expect_true(is.character(aou$AreaName))
+    expect_equal(aou$WestLongitudeDeg, -180)
+    expect_equal(aou$SouthLatitudeDeg, -90)
+    expect_equal(aou$EastLongitudeDeg, 180)
+    expect_equal(aou$NorthLatitudeDeg, -60)
+
+    expect_equal(srs_get_axes_count("EPSG:4326"), 2)
+    expect_equal(srs_get_axes_count("EPSG:4979"), 3)
+
+    ax <- srs_get_axes("EPSG:4326", "GEOGCS")
+    expect_equal(names(ax), c("Geodetic_latitude", "Geodetic_longitude"))
+    expect_equal(ax[[1]], "north")
+    expect_equal(ax[[2]], "east")
+
+    ax <- srs_get_axes("EPSG:4326+5773")
+    expect_equal(names(ax), c("Geodetic_latitude", "Geodetic_longitude",
+                              "Gravity-related_height"))
+    expect_equal(ax[[1]], "north")
+    expect_equal(ax[[2]], "east")
+    expect_equal(ax[[3]], "up")
+
+    expect_true(srs_epsg_treats_as_lat_long("WGS84"))
+
+    # NAD83 / Conus Albers:
+    expect_false(srs_epsg_treats_as_northing_easting("EPSG:5070"))
+    # WGS 84 / UPS North (N,E):
+    expect_true(srs_epsg_treats_as_northing_easting("EPSG:32661"))
+
+    epsg <- srs_info_from_db("EPSG")
+    expect_true(is.data.frame(epsg))
+    expect_true(nrow(epsg) > 1000)
+    # if none found, should return a 0-row data frame
+    df <- srs_info_from_db("_invalid_")
+    expect_true(is.data.frame(df))
+    expect_equal(nrow(df), 0)
+
     # errors
     expect_error(epsg_to_wkt(-1))
     expect_equal(srs_to_wkt(""), "")
@@ -85,15 +124,32 @@ test_that("srs functions work", {
     expect_error(srs_get_linear_units("invalid"))
     expect_error(srs_get_utm_zone("invalid"))
     expect_error(srs_get_axis_mapping_strategy("invalid"))
-
+    expect_error(srs_get_area_of_use("invalid"))
+    expect_true(is.null(srs_get_area_of_use("")))
+    expect_error(srs_get_axes_count("invalid"))
+    expect_true(is.na(srs_get_axes_count("")))
+    expect_error(srs_get_axes("invalid"))
+    expect_error(srs_get_axes("EPSG:4326", "invalid"))
+    expect_true(is.null(srs_get_axes("")))
+    expect_false(srs_epsg_treats_as_lat_long(""))
+    expect_error(srs_epsg_treats_as_lat_long("invalid"))
+    expect_false(srs_epsg_treats_as_northing_easting(""))
+    expect_error(srs_epsg_treats_as_northing_easting("invalid"))
 
     # dynamic srs GDAL >= 3.4
-    skip_if(gdal_version_num() < 3040000)
+    skip_if(gdal_version_num() < gdal_compute_version(3, 4, 0))
 
     expect_true(srs_is_dynamic("EPSG:4326"))
     expect_false(srs_is_dynamic("EPSG:4171"))
     expect_error(srs_is_dynamic("invalid"))
     expect_equal(srs_get_coord_epoch("WGS84"), 0.0)
     expect_error(srs_get_coord_epoch("invalid"))
-})
 
+    # celestial body name GDAL >= 3.12, PROJ >= 8.1
+    skip_if(gdal_version_num() < gdal_compute_version(3, 12, 0))
+    pv <- proj_version()
+    skip_if(pv$major < 8 || (pv$major == 8 && pv$minor < 1))
+    expect_equal(srs_get_celestial_body_name("EPSG:4326"), "Earth")
+    expect_error(srs_get_celestial_body_name("invalid"))
+    expect_equal(srs_get_celestial_body_name(""), "")
+})

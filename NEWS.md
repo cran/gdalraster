@@ -1,3 +1,29 @@
+# gdalraster 2.4.0
+
+## Repository change
+
+* the development repository moved into the `firelab` organization at <https://github.com/firelab/gdalraster>
+* the package website with documentation and additional web articles is now at <https://firelab.github.io/gdalraster/>
+
+## Spatial Reference System API
+
+* add `srs_info_from_db()`: obtain information about coordinate reference systems in the PROJ database (#832)
+* add `srs_get_axes()`: return a list of the axis names and orientations for a spatial coordinate reference system (#837)
+* add to the set of SRS query functions: `srs_get_area_of_use()`, `srs_get_axes_count()`, `srs_epsg_treats_as_lat_long()`, `srs_epsg_treats_as_northing_easting()` and `srs_get_celestial_body_name()` (#831, #839)
+
+## Other features and improvements
+
+* `gdal_formats()`: add Update (`"u"`) to `rw_flags` when GDAL >= 3.11, and add several new columns to the output data frame containing various driver metadata (#833)
+* `vsi_read_dir()`: fix slow string processing of the file list for return, especially for large listings e.g. recursive (#841, thanks to @mdsumner)
+* `plot_raster()`: accept a color palette for the argument `col_map_fn`, to support an implied ramp function (#830, thanks to @wiesehahn)
+* add checks for ctrl-c user interrupt in `buildRAT()` and `combine()` (#844)
+* add `GDALRaster::getSpatialRef()`: class method on a `GDALRaster` object synonymous with `GDALRaster::getProjection()` and `GDALRaster::getProjectionRef()`, for consistency with class `GDALVector` and with the `osgeo.gdal` bindings (#845)
+
+## Documentation
+
+* update web article [Vector Read Benchmarks](https://firelab.github.io/gdalraster/articles/vector-read-benchmarks.html): new hardware specs, timings, and add C++ raw performance comparisons
+
+
 # gdalraster 2.3.0
 
 ## Dependencies
@@ -25,7 +51,7 @@
 
 * add `mdim_as_classic()`: return a view of an MDArray as a "classic" GDALDataset (i.e., 2D), and add column `multidim_raster` (`TRUE`|`FALSE`) in the data frame output of `gdal_formats()` (#799)
 * add `mdim_info()`: report structure and content of a multidimensional dataset, interface to `gdalmdiminfo` utility
-* add `mdim_translate()`: convert multidimensional data between different formats, and subset, interface to `gdalmdimtranslate` utility (#803) (2025-09-25)
+* add `mdim_translate()`: convert multidimensional data between different formats, and subset, interface to `gdalmdimtranslate` utility (#803)
 
 ### Geometry API
 
@@ -73,8 +99,8 @@
 ## Features
 
 * initial bindings to the "gdal" command line interface (CLI) added in GDAL 3.11
-  * [functions](https://usdaforestservice.github.io/gdalraster/reference/gdal_cli.html) for using "gdal" CLI algorithms: `gdal_commands()`, `gdal_usage()`, `gdal_run()`, `gdal_alg()`
-  * bindings to the GDALAlgorithm API implemented in class [`GDALAlg`](https://usdaforestservice.github.io/gdalraster/reference/GDALAlg-class.html)
+  * [functions](https://firelab.github.io/gdalraster/reference/gdal_cli.html) for using "gdal" CLI algorithms: `gdal_commands()`, `gdal_usage()`, `gdal_run()`, `gdal_alg()`
+  * bindings to the GDALAlgorithm API implemented in class [`GDALAlg`](https://firelab.github.io/gdalraster/reference/GDALAlg-class.html)
   * requires **gdalraster** built against GDAL >= 3.11.3
 
 ## Other updates and fixes
@@ -84,13 +110,13 @@
 * changes to address crash in `ogr_reproject()` following GDAL `ERROR 1: Reprojection failed` on certain CRAN platforms with alternative BLAS/LAPACK implementations
   * disable for now the Arrow code path for GDAL vector translate in the examples and tests for `ogr_reproject()` (cf. <https://gdal.org/en/stable/programs/ogr2ogr.html#known-issues>)
   * retain basic tests of `ogr_reproject()` across all GDAL versions but skip more complex tests if GDAL < 3.11.3 ("stable" version as of July 2025)
-  * move [*Vector API Overview*](https://usdaforestservice.github.io/gdalraster/articles/vector-api-overview.html) from vignette to a web article
+  * move [*Vector API Overview*](https://firelab.github.io/gdalraster/articles/vector-api-overview.html) from vignette to a web article
 
 ## Documentation
 
 * add conda-forge installation instructions in the README and web docs (#762, thanks to @matthewfeickert)
 * update the sample data elevation raster (inst/extdata/storml_elev.tif) to avoid visual artifacts (#768)
-* add web article [*Using "gdal" CLI algorithms from R*](https://usdaforestservice.github.io/gdalraster/articles/use-gdal-cli-from-r.html)
+* add web article [*Using "gdal" CLI algorithms from R*](https://firelab.github.io/gdalraster/articles/use-gdal-cli-from-r.html)
 
 ## Internal
 
@@ -138,7 +164,7 @@
 
 ## Bug fixes
 
-* `g_envelope()`: fix the order of xy coordinates in the returned envelope(s), fixes [#725](https://github.com/USDAForestService/gdalraster/issues/725) **a breaking change**
+* `g_envelope()`: fix the order of xy coordinates in the returned envelope(s), fixes [#725](https://github.com/firelab/gdalraster/issues/725) **a breaking change**
 * `pixel_extract()`: fix input validation for `xy_srs`
 
 ## Internal
@@ -151,15 +177,15 @@
 
 ## Documentation
 
-* add web article [Vector Read Benchmarks](https://usdaforestservice.github.io/gdalraster/articles/vector-read-benchmarks.html)
+* add web article [Vector Read Benchmarks](https://firelab.github.io/gdalraster/articles/vector-read-benchmarks.html)
 
 # gdalraster 2.0.0
 
 ## Summary of main changes
 
-* add bindings to the GDAL Vector API, implemented in the exposed C++ class [`GDALVector`](https://usdaforestservice.github.io/gdalraster/reference/GDALVector-class.html) along with several additions and enhancements to [`ogr_*()` stand-alone functions](https://usdaforestservice.github.io/gdalraster/reference/index.html#ogr-vector-utilities)
-* enhance and expand existing [bindings to the Geometry API](https://usdaforestservice.github.io/gdalraster/reference/index.html#geometry), now operating on raw vectors of WKB or WKT strings
-* enhance and expand existing [bindings to the Spatial Reference Systems API](https://usdaforestservice.github.io/gdalraster/reference/index.html#spatial-reference-systems)
+* add bindings to the GDAL Vector API, implemented in the exposed C++ class [`GDALVector`](https://firelab.github.io/gdalraster/reference/GDALVector-class.html) along with several additions and enhancements to [`ogr_*()` stand-alone functions](https://firelab.github.io/gdalraster/reference/index.html#ogr-vector-utilities)
+* enhance and expand existing [bindings to the Geometry API](https://firelab.github.io/gdalraster/reference/index.html#geometry), now operating on raw vectors of WKB or WKT strings
+* enhance and expand existing [bindings to the Spatial Reference Systems API](https://firelab.github.io/gdalraster/reference/index.html#spatial-reference-systems)
 * add several new features and improvements to the Raster API, Virtual Systems Interface (VSI) API, and coordinate transformation functions
 * add helper functions for working with GDAL raster data types (see `?data_type_helpers`)
 * add an S4 `show()` method for all **Rcpp** exposed classes
@@ -177,7 +203,7 @@
 
 ## Vector API bindings
 
-* add class [`GDALVector`](https://usdaforestservice.github.io/gdalraster/reference/GDALVector-class.html): encapsulates an `OGRLayer` object and the `GDALDataset` that contains it, exposing 48 class methods for obtaining vector layer information, attribute and spatial filtering, and reading/writing feature data
+* add class [`GDALVector`](https://firelab.github.io/gdalraster/reference/GDALVector-class.html): encapsulates an `OGRLayer` object and the `GDALDataset` that contains it, exposing 48 class methods for obtaining vector layer information, attribute and spatial filtering, and reading/writing feature data
 * wrap GDAL's Arrow C Stream interface for reading vector data by exposing an ArrowArrayStream on a layer as a `nanoarrow_array_stream` object (GDAL >= 3.6) (#591)
 * add `ogr_reproject()`: reproject a vector layer (purpose-built wrapper of `GDALVectorTranslate()`)
 * add `ogr_proc()`: interface to GDAL OGR facilities for vector geoprocessing
@@ -285,10 +311,10 @@
 ## Documentation
 
 * update the package Description
-* add package vignette [Vector API Overview](https://usdaforestservice.github.io/gdalraster/articles/vector-api-overview.html)
+* add package vignette [Vector API Overview](https://firelab.github.io/gdalraster/articles/vector-api-overview.html)
 * update descriptions of the C++ exposed classes and emphasize lack of named argument support in those cases (i.e., argument order matters, mainly of concern with class constructors)
-* update [Raster API Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html) to use the argument `return_obj` with `create()` and `createCopy()`
-* additions to the section on Azure (/vsiaz/) in [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html)
+* update [Raster API Tutorial](https://firelab.github.io/gdalraster/articles/raster-api-tutorial.html) to use the argument `return_obj` with `create()` and `createCopy()`
+* additions to the section on Azure (/vsiaz/) in [GDAL Config Quick Reference](https://firelab.github.io/gdalraster/articles/gdal-config-quick-ref.html)
 * add the `-srcband` and `-dstband` command-line options in the documentation for `warp()`
 * add an example in `ogr2ogr()` for dissolving features based on an attribute value
 * minor updates for `g_transform()`
@@ -296,9 +322,9 @@
 * update examples for `inspectDataset()` and `vsi_get_file_metadata()` to use the new sample data file `inst/extdata/ynp_features.zip` (#691)
 * add alt text to images in the package vignettes and other web-only articles
 * code that cleans up temp files in the examples is now wrapped in `\dontshow{}`
-* add [Development practices](https://usdaforestservice.github.io/gdalraster/CONTRIBUTING.html#development-practices) in CONTRIBUTING.md
+* add [Development practices](https://firelab.github.io/gdalraster/CONTRIBUTING.html#development-practices) in CONTRIBUTING.md
 * add the [OpenSSF best practices](https://www.bestpractices.dev/projects/9382) badge in README.md
-* add the [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/USDAForestService/gdalraster) badge in README.md
+* add the [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/firelab/gdalraster) badge in README.md
 
 # gdalraster 1.12.0
 
@@ -333,7 +359,7 @@
 
 * `vsi_curl_clear_cache()`: add parameter `quiet` to wrap the API call in a quiet error handler, `TRUE` by default
 
-* Documentation: document the `w+` access flag for class `VSIFile`; add `CPL_VSIL_USE_TEMP_FILE_FOR_RANDOM_WRITE` configuration option in vignette [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html); replace `paste0()` with `file.path()` in the examples throughout
+* Documentation: document the `w+` access flag for class `VSIFile`; add `CPL_VSIL_USE_TEMP_FILE_FOR_RANDOM_WRITE` configuration option in vignette [GDAL Config Quick Reference](https://firelab.github.io/gdalraster/articles/gdal-config-quick-ref.html); replace `paste0()` with `file.path()` in the examples throughout
 
 * code linting
 
@@ -401,8 +427,8 @@
 
 ## Documentation
 
-* add [Discussions](https://github.com/USDAForestService/gdalraster/discussions) on the GitHub repository
-* add a section for HTTP/HTTPS (/vsicurl/) in the vignette [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html)
+* add [Discussions](https://github.com/firelab/gdalraster/discussions) on the GitHub repository
+* add a section for HTTP/HTTPS (/vsicurl/) in the vignette [GDAL Config Quick Reference](https://firelab.github.io/gdalraster/articles/gdal-config-quick-ref.html)
 * DESCRIPTION file: add Michael D. Sumner in `Authors@R`
 
 ## Other internal changes and fixes
@@ -494,8 +520,8 @@
 
 ## Documentation
 
-* organize the website [reference index](https://usdaforestservice.github.io/gdalraster/reference/index.html)
-* add Microsoft Azure information in [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html)
+* organize the website [reference index](https://firelab.github.io/gdalraster/reference/index.html)
+* add Microsoft Azure information in [GDAL Config Quick Reference](https://firelab.github.io/gdalraster/articles/gdal-config-quick-ref.html)
 * update DESCRIPTION
 
 ## Internal
@@ -523,9 +549,9 @@
 ## Documentation
 
 * example code for `calc()` using Landsat bands should have applied scale/offset as given in the .json metadata - this has been corrected
-* add `AWS_REGION`, and a section for SOZip to [GDAL Config Quick Ref](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html)
+* add `AWS_REGION`, and a section for SOZip to [GDAL Config Quick Ref](https://firelab.github.io/gdalraster/articles/gdal-config-quick-ref.html)
 * update documentation and examples throughout for default `read_only=TRUE` in the constructor for `GDALRaster`
-* add `translate()` and `warp()` in [Raster API Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html#see-also)
+* add `translate()` and `warp()` in [Raster API Tutorial](https://firelab.github.io/gdalraster/articles/raster-api-tutorial.html#see-also)
 
 ## Internal
 
@@ -547,11 +573,11 @@
 
 ## Documentation
 
-* add [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html) to vignettes
+* add [GDAL Config Quick Reference](https://firelab.github.io/gdalraster/articles/gdal-config-quick-ref.html) to vignettes
 * `warp()` has additional documentation covering several processing options
 * add the `COMPRESS_OVERVIEW` configuration option to the documentation for `GDALRaster::buildOverviews()`
-* add `str()` of the `GDALRaster` object in the [Raster API Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html)
-* add display of the EVT raster itself along with its attribute table in [Raster Attribute Tables](https://usdaforestservice.github.io/gdalraster/articles/raster-attribute-tables.html)
+* add `str()` of the `GDALRaster` object in the [Raster API Tutorial](https://firelab.github.io/gdalraster/articles/raster-api-tutorial.html)
+* add display of the EVT raster itself along with its attribute table in [Raster Attribute Tables](https://firelab.github.io/gdalraster/articles/raster-attribute-tables.html)
 
 ## Internal
 
@@ -601,10 +627,10 @@
 
 ## Documentation
 
-* add vignette [Raster Attribute Tables](https://usdaforestservice.github.io/gdalraster/articles/raster-attribute-tables.html)
-* add [notes](https://usdaforestservice.github.io/gdalraster/reference/RunningStats-class.html#note) for `RunningStats-class`
-* update vignette [Raster API Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html) with `gdal_formats()` and `getCreationOptions()`
-* update installation instructions in [README](https://github.com/USDAForestService/gdalraster/blob/main/README.md)
+* add vignette [Raster Attribute Tables](https://firelab.github.io/gdalraster/articles/raster-attribute-tables.html)
+* add [notes](https://firelab.github.io/gdalraster/reference/RunningStats-class.html#note) for `RunningStats-class`
+* update vignette [Raster API Tutorial](https://firelab.github.io/gdalraster/articles/raster-api-tutorial.html) with `gdal_formats()` and `getCreationOptions()`
+* update installation instructions in [README](https://github.com/firelab/gdalraster/blob/main/README.md)
 
 
 # gdalraster 1.5.0
@@ -684,11 +710,11 @@
 
 * fix `GDALRaster$getMetadata()`: requesting band-level metadata for a domain other than the default metadata domain was returning dataset-level metadata instead
 
-* add vignette containing an [R port of the GDAL Raster API tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html)
+* add vignette containing an [R port of the GDAL Raster API tutorial](https://firelab.github.io/gdalraster/articles/raster-api-tutorial.html)
 
 * add description of the `GDAL_RASTERIO_RESAMPLING` configuration option in the documentation for `GDALRaster$read()`
 
-* add web article on the [GDAL block cache](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html) and configuration of `GDAL_CACHEMAX`
+* add web article on the [GDAL block cache](https://firelab.github.io/gdalraster/articles/gdal-block-cache.html) and configuration of `GDAL_CACHEMAX`
 
 
 # gdalraster 1.2.0

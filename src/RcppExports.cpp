@@ -2296,6 +2296,84 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// srs_get_area_of_use
+SEXP srs_get_area_of_use(const std::string& srs);
+RcppExport SEXP _gdalraster_srs_get_area_of_use(SEXP srsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type srs(srsSEXP);
+    rcpp_result_gen = Rcpp::wrap(srs_get_area_of_use(srs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// srs_get_axes_count
+int srs_get_axes_count(const std::string& srs);
+RcppExport SEXP _gdalraster_srs_get_axes_count(SEXP srsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type srs(srsSEXP);
+    rcpp_result_gen = Rcpp::wrap(srs_get_axes_count(srs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// srs_get_axes
+SEXP srs_get_axes(const std::string& srs, const Rcpp::Nullable<Rcpp::CharacterVector>& target_key);
+RcppExport SEXP _gdalraster_srs_get_axes(SEXP srsSEXP, SEXP target_keySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type srs(srsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::CharacterVector>& >::type target_key(target_keySEXP);
+    rcpp_result_gen = Rcpp::wrap(srs_get_axes(srs, target_key));
+    return rcpp_result_gen;
+END_RCPP
+}
+// srs_epsg_treats_as_lat_long
+bool srs_epsg_treats_as_lat_long(const std::string& srs);
+RcppExport SEXP _gdalraster_srs_epsg_treats_as_lat_long(SEXP srsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type srs(srsSEXP);
+    rcpp_result_gen = Rcpp::wrap(srs_epsg_treats_as_lat_long(srs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// srs_epsg_treats_as_northing_easting
+bool srs_epsg_treats_as_northing_easting(const std::string& srs);
+RcppExport SEXP _gdalraster_srs_epsg_treats_as_northing_easting(SEXP srsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type srs(srsSEXP);
+    rcpp_result_gen = Rcpp::wrap(srs_epsg_treats_as_northing_easting(srs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// srs_get_celestial_body_name
+std::string srs_get_celestial_body_name(const std::string& srs);
+RcppExport SEXP _gdalraster_srs_get_celestial_body_name(SEXP srsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type srs(srsSEXP);
+    rcpp_result_gen = Rcpp::wrap(srs_get_celestial_body_name(srs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// srs_info_from_db
+Rcpp::DataFrame srs_info_from_db(std::string auth_name);
+RcppExport SEXP _gdalraster_srs_info_from_db(SEXP auth_nameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type auth_name(auth_nameSEXP);
+    rcpp_result_gen = Rcpp::wrap(srs_info_from_db(auth_name));
+    return rcpp_result_gen;
+END_RCPP
+}
 // getPROJVersion
 std::vector<int> getPROJVersion();
 RcppExport SEXP _gdalraster_getPROJVersion() {
@@ -2575,6 +2653,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_srs_get_coord_epoch", (DL_FUNC) &_gdalraster_srs_get_coord_epoch, 1},
     {"_gdalraster_srs_get_utm_zone", (DL_FUNC) &_gdalraster_srs_get_utm_zone, 1},
     {"_gdalraster_srs_get_axis_mapping_strategy", (DL_FUNC) &_gdalraster_srs_get_axis_mapping_strategy, 1},
+    {"_gdalraster_srs_get_area_of_use", (DL_FUNC) &_gdalraster_srs_get_area_of_use, 1},
+    {"_gdalraster_srs_get_axes_count", (DL_FUNC) &_gdalraster_srs_get_axes_count, 1},
+    {"_gdalraster_srs_get_axes", (DL_FUNC) &_gdalraster_srs_get_axes, 2},
+    {"_gdalraster_srs_epsg_treats_as_lat_long", (DL_FUNC) &_gdalraster_srs_epsg_treats_as_lat_long, 1},
+    {"_gdalraster_srs_epsg_treats_as_northing_easting", (DL_FUNC) &_gdalraster_srs_epsg_treats_as_northing_easting, 1},
+    {"_gdalraster_srs_get_celestial_body_name", (DL_FUNC) &_gdalraster_srs_get_celestial_body_name, 1},
+    {"_gdalraster_srs_info_from_db", (DL_FUNC) &_gdalraster_srs_info_from_db, 1},
     {"_gdalraster_getPROJVersion", (DL_FUNC) &_gdalraster_getPROJVersion, 0},
     {"_gdalraster_getPROJSearchPaths", (DL_FUNC) &_gdalraster_getPROJSearchPaths, 0},
     {"_gdalraster_setPROJSearchPaths", (DL_FUNC) &_gdalraster_setPROJSearchPaths, 1},

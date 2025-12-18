@@ -113,6 +113,7 @@ ds$setGeoTransform(transform)
 
 ds$getProjection()
 ds$getProjectionRef()
+ds$getSpatialRef()
 ds$setProjection(projection)
 
 ds$bbox()
@@ -352,6 +353,10 @@ Sets the projection reference for this dataset.
 \code{projection} is a string in OGC WKT format.
 Returns logical \code{TRUE} on success or \code{FALSE} if the projection
 could not be set.
+
+\code{$getSpatialRef()}\cr
+Returns the coordinate reference system of the raster as an OGC WKT
+format string. Equivalent to \code{ds$getProjectionRef()}.
 
 \code{$bbox()}\cr
 Returns a numeric vector of length four containing the bounding box
@@ -1039,7 +1044,7 @@ ds_new$close()
 ## using a GDAL Virtual File System handler '/vsicurl/'
 ## see: https://gdal.org/en/stable/user/virtual_file_systems.html
 url <- "/vsicurl/https://raw.githubusercontent.com/"
-url <- paste0(url, "usdaforestservice/gdalraster/main/sample-data/")
+url <- paste0(url, "firelab/gdalraster/main/sample-data/")
 url <- paste0(url, "lf_elev_220_mt_hood_utm.tif")
 
 set_config_option("GDAL_HTTP_CONNECTTIMEOUT", "20")

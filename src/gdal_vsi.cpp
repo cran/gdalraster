@@ -165,10 +165,10 @@ void vsi_curl_clear_cache(bool partial = false,
 //' files whose name does not start with a dot). If `TRUE`, all file names
 //' will be returned.
 //' @returns A character vector containing the names of files and directories
-//' in the directory given by `path`. The listing is in alphabetical order, and
-//' does not include the special entries '.' and '..' even if they are present
-//' in the directory. An empty string (`""`) is returned if `path` does not
-//' exist.
+//' in the directory given by `path` (may be an empty vector `character(0)`).
+//' The listing is in alphabetical order, and does not include the special
+//' entries '.' and '..' even if they are present in the directory. An empty
+//' vector (`character(0)`) is returned if `path` does not exist.
 //'
 //' @note
 //' If `max_files` is set to a positive number, directory listing will stop
@@ -194,29 +194,63 @@ Rcpp::CharacterVector vsi_read_dir(const Rcpp::CharacterVector &path,
     const std::string path_in =
         Rcpp::as<std::string>(check_gdal_filename(path));
 
-    char **papszFiles = nullptr;
+    char **papszNames = nullptr;
     if (recursive)
-        papszFiles = VSIReadDirRecursive(path_in.c_str());
+        papszNames = VSIReadDirRecursive(path_in.c_str());
     else
-        papszFiles = VSIReadDirEx(path_in.c_str(), max_files);
+        papszNames = VSIReadDirEx(path_in.c_str(), max_files);
 
-    int nItems = CSLCount(papszFiles);
-    if (nItems > 0) {
-        std::vector<std::string> files{};
-        for (int i=0; i < nItems; ++i) {
-            if (!all_files && STARTS_WITH(papszFiles[i], "."))
-                continue;
-            if (!EQUAL(papszFiles[i], ".") && !EQUAL(papszFiles[i], "..")) {
-                files.push_back(papszFiles[i]);
+    if (!papszNames)
+        return Rcpp::CharacterVector::create();
+
+    int nCount = CSLCount(papszNames);
+    std::sort(papszNames, papszNames + nCount,
+        [](const char *a, const char *b) {
+            return std::strcmp(a, b) < 0;
+        });
+
+    int idx = -1;
+    idx = CSLFindString(papszNames, ".");
+    if (idx >= 0)
+        papszNames = CSLRemoveStrings(papszNames, idx, 1, nullptr);
+
+    if (papszNames) {
+        idx = -1;
+        idx = CSLFindString(papszNames, "..");
+        if (idx >= 0)
+            papszNames = CSLRemoveStrings(papszNames, idx, 1, nullptr);
+    }
+
+    nCount = CSLCount(papszNames);
+    if (nCount > 0 && !all_files) {
+        int nStartIdx = -1;
+        int nNumToRemove = 0;
+        for (int i = 0; i < nCount; ++i) {
+            if (STARTS_WITH(papszNames[i], ".")) {
+                ++nNumToRemove;
+                if (nStartIdx < 0)
+                    nStartIdx = i;
             }
-            std::sort(files.begin(), files.end());
+            else if (nNumToRemove > 0) {
+                break;
+            }
         }
-        CSLDestroy(papszFiles);
-        return Rcpp::wrap(files);
+
+        if (nNumToRemove) {
+            papszNames = CSLRemoveStrings(papszNames, nStartIdx, nNumToRemove,
+                                          nullptr);
+            nCount = CSLCount(papszNames);
+        }
+    }
+
+    if (nCount > 0) {
+        Rcpp::CharacterVector names(papszNames, papszNames + nCount);
+        CSLDestroy(papszNames);
+        return names;
     }
     else {
-        CSLDestroy(papszFiles);
-        return "";
+        CSLDestroy(papszNames);
+        return Rcpp::CharacterVector::create();
     }
 }
 
@@ -297,7 +331,7 @@ Rcpp::CharacterVector vsi_read_dir(const Rcpp::CharacterVector &path,
 //' \dontrun{
 //' # sample-data is a directory in the git repository for gdalraster that is
 //' # not included in the R package:
-//' # https://github.com/USDAForestService/gdalraster/tree/main/sample-data
+//' # https://github.com/firelab/gdalraster/tree/main/sample-data
 //' # A copy of sample-data in an AWS S3 bucket, and a partial copy in an
 //' # Azure Blob container, were used to generate the example below.
 //'
@@ -620,7 +654,7 @@ SEXP vsi_unlink_batch(const Rcpp::CharacterVector &filenames) {
 //' vsi_stat_size(fs_objects)
 //'
 //' # /vsicurl/ file system handler
-//' base_url <- "https://raw.githubusercontent.com/usdaforestservice/"
+//' base_url <- "https://raw.githubusercontent.com/firelab/"
 //' f <- "gdalraster/main/sample-data/landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
 //' url_file <- paste0("/vsicurl/", base_url, f)
 //'

@@ -173,18 +173,36 @@ gdal_version_num <- function() {
 #' @param format A character string containing a driver short name. By default,
 #' information for all configured raster and vector format drivers will be
 #' returned.
-#' @returns A data frame containing the format short name, long name, raster
-#' (logical), vector (logical), read/write flag (`ro` is read-only,
-#' `w` supports CreateCopy, `w+` supports Create), virtual I/O supported
-#' (logical), and subdatasets (logical).
+#' @returns A data frame containing:
+#' * the format short name
+#' * file extension(s) if applicable (space-delimited string), or empty string
+#' (`""`)
+#' * supports raster (logical)
+#' * supports multidimensional raster (logical)
+#' * supports vector (logical)
+#' * supports geography network (logical)
+#' * read/write flags (concatenated string, `ro` is read-only, `w` supports
+#' CreateCopy, `w+` supports Create, and `u` supports Update is reported if
+#' GDAL >= 3.11)
+#' * supports virtual I/O e.g. /vsimem/ (logical)
+#' * supports subdatasets (logical)
+#' * supported SQL dialects reported if GDAL >= 3.6 (e.g.,
+#' `"NATIVE OGRSQL SQLITE"`)
+#' * creation raster data types (e.g., `"Byte Int16 UInt16 Float32"` etc.)
+#' * creation vector field types (e.g.,
+#' `"Integer Integer64 Real String Date DateTime Binary"` etc.)
+#' * creation field sub-types (e.g., `"Boolean Int16 Float32 JSON"` etc.)
+#' * supports multiple vector layers reported if GDAL >= 3.4 (logical)
+#' * supports reading field domains if GDAL >= 3.5 (logical)
+#' * creation field domain types if GDAL >= 3.5 (supported values are `Coded`,
+#' `Range` and `Glob`)
 #'
 #' @note
 #' Virtual I/O refers to operations on GDAL Virtual File Systems. See
 #' \url{https://gdal.org/en/stable/user/virtual_file_systems.html#virtual-file-systems}.
 #'
 #' @examples
-#' nrow(gdal_formats())
-#' head(gdal_formats())
+#' gdal_formats() |> str()
 #'
 #' gdal_formats("GPKG")
 gdal_formats <- function(format = "") {
@@ -299,7 +317,7 @@ get_cache_max <- function(units = "MB") {
 #' of the available cache memory currently in use in the requested units.
 #'
 #' @seealso
-#' [GDAL Block Cache](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)
+#' [GDAL Block Cache](https://firelab.github.io/gdalraster/articles/gdal-block-cache.html)
 #'
 #' [get_cache_max()], [set_cache_max()]
 #'
@@ -1826,10 +1844,10 @@ vsi_curl_clear_cache <- function(partial = FALSE, file_prefix = "", quiet = TRUE
 #' files whose name does not start with a dot). If `TRUE`, all file names
 #' will be returned.
 #' @returns A character vector containing the names of files and directories
-#' in the directory given by `path`. The listing is in alphabetical order, and
-#' does not include the special entries '.' and '..' even if they are present
-#' in the directory. An empty string (`""`) is returned if `path` does not
-#' exist.
+#' in the directory given by `path` (may be an empty vector `character(0)`).
+#' The listing is in alphabetical order, and does not include the special
+#' entries '.' and '..' even if they are present in the directory. An empty
+#' vector (`character(0)`) is returned if `path` does not exist.
 #'
 #' @note
 #' If `max_files` is set to a positive number, directory listing will stop
@@ -1926,7 +1944,7 @@ vsi_read_dir <- function(path, max_files = 0L, recursive = FALSE, all_files = FA
 #' \dontrun{
 #' # sample-data is a directory in the git repository for gdalraster that is
 #' # not included in the R package:
-#' # https://github.com/USDAForestService/gdalraster/tree/main/sample-data
+#' # https://github.com/firelab/gdalraster/tree/main/sample-data
 #' # A copy of sample-data in an AWS S3 bucket, and a partial copy in an
 #' # Azure Blob container, were used to generate the example below.
 #'
@@ -2162,7 +2180,7 @@ vsi_unlink_batch <- function(filenames) {
 #' vsi_stat_size(fs_objects)
 #'
 #' # /vsicurl/ file system handler
-#' base_url <- "https://raw.githubusercontent.com/usdaforestservice/"
+#' base_url <- "https://raw.githubusercontent.com/firelab/"
 #' f <- "gdalraster/main/sample-data/landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
 #' url_file <- paste0("/vsicurl/", base_url, f)
 #'
@@ -3192,6 +3210,38 @@ srs_to_projjson <- function(srs, multiline = TRUE, indent_width = 2L, schema = N
 #' axis.
 #' * `OAMS_CUSTOM`: custom-defined data axis
 #'
+#' `srs_get_area_of_use()` is a wrapper of `OSRGetAreaOfUse()` in the GDAL API.
+#' Returns a named list containing the following elements (or returns `NULL` if
+#' the API call does not succeed):
+#' * `AreaName`: the area of use
+#' * `WestLongitudeDeg`: the western-most longitude expressed in degree, or
+#' `NA` if the bounding box is unknown
+#' * `SouthLatitudeDeg`: the southern-most latitude expressed in degree, or
+#' `NA` if the bounding box is unknown
+#' * `EastLongitudeDeg`: the eastern-most longitude expressed in degree, or
+#' `NA` if the bounding box is unknown
+#' * `NorthLatitudeDeg`: the northern-most latitude expressed in degree, or
+#' `NA` if the bounding box is unknown
+#'
+#' `srs_get_axes_count()` returns the integer number of axes of the coordinate
+#' system of the SRS. Wrapper of `OSRGetAxesCount()` in the GDAL API.
+#'
+#' `srs_get_axes()` returns a named list of the axis names and their
+#' orientations. Wrapper of `OSRGetAxis()` in the GDAL API.
+#'
+#' `srs_epsg_treats_as_lat_long()` returns `TRUE` if this geographic coordinate
+#' system should be treated as having latitude/longitude coordinate ordering.
+#' Wrapper of `OSREPSGTreatsAsLatLong()` in the GDAL API.
+#'
+#' `srs_epsg_treats_as_northing_easting()` returns `TRUE` if this geographic
+#' coordinate system should be treated as having northing/easting coordinate
+#' ordering. Wrapper of `OSREPSGTreatsAsNorthingEasting()` in the GDAL API.
+#'
+#' `srs_get_celestial_body_name()` returns the name of the celestial body of
+#' the SRS, e.g., `"Earth"` for an Earth SRS. Wrapper of
+#' `OSRGetCelestialBodyName()` in the GDAL API. Requires GDAL >= 3.12 and
+#' PROJ >= 8.1.
+#'
 #' @param srs Character string containing an SRS definition in various
 #' formats (e.g., WKT, PROJ.4 string, well known name such as NAD27, NAD83,
 #' WGS84, etc., see [srs_to_wkt()]).
@@ -3210,6 +3260,8 @@ srs_to_projjson <- function(srs, multiline = TRUE, indent_width = 2L, schema = N
 #' in a data frame, including a confidence value (0-100) for each match. The
 #' default is `FALSE` which returns a character string in the form
 #' `"EPSG:<code>"` for the first match (highest confidence).
+#' @param target_key Optional character string giving the coordinate system
+#' part to query, either `"PROJCS"` or `"GEOGCS"` (case-insensitive)
 #'
 #' @seealso
 #' [srs_convert]
@@ -3258,6 +3310,29 @@ srs_to_projjson <- function(srs, multiline = TRUE, indent_width = 2L, schema = N
 #'
 #' srs_is_vertical("EPSG:5705")
 #'
+#' srs_get_area_of_use("EPSG:3976")
+#'
+#' srs_get_axes_count("EPSG:4326")
+#' srs_get_axes_count("EPSG:4979")
+#'
+#' # ordered list of axis names and their orientation
+#' srs_get_axes("EPSG:4326+5773")
+#'
+#' srs_epsg_treats_as_lat_long("WGS84")
+#'
+#' # NAD83 / Conus Albers:
+#' srs_epsg_treats_as_northing_easting("EPSG:5070")
+#' # WGS 84 / UPS North (N,E):
+#' srs_epsg_treats_as_northing_easting("EPSG:32661")
+#' # WGS 84 / UPS South (N,E):
+#' srs_epsg_treats_as_northing_easting("EPSG:32761")
+#'
+#' ## Requires GDAL >= 3.12 and PROJ >= 8.1
+#' # srs_get_celestial_body_name("EPSG:4326")
+#' #> [1] "Earth"
+#' # srs_get_celestial_body_name("IAU_2015:30100")
+#' #> [1] "Moon"
+#'
 #' f <- system.file("extdata/storml_elev.tif", package="gdalraster")
 #' ds <- new(GDALRaster, f)
 #'
@@ -3272,7 +3347,7 @@ srs_to_projjson <- function(srs, multiline = TRUE, indent_width = 2L, schema = N
 #'
 #' ds$close()
 #'
-#' # Requires GDAL >= 3.4
+#' ## Requires GDAL >= 3.4
 #' if (gdal_version_num() >= gdal_compute_version(3, 4, 0)) {
 #'   if (srs_is_dynamic("WGS84"))
 #'     print("WGS84 is dynamic")
@@ -3357,6 +3432,71 @@ srs_get_utm_zone <- function(srs) {
 #' @rdname srs_query
 srs_get_axis_mapping_strategy <- function(srs) {
     .Call(`_gdalraster_srs_get_axis_mapping_strategy`, srs)
+}
+
+#' @rdname srs_query
+srs_get_area_of_use <- function(srs) {
+    .Call(`_gdalraster_srs_get_area_of_use`, srs)
+}
+
+#' @rdname srs_query
+srs_get_axes_count <- function(srs) {
+    .Call(`_gdalraster_srs_get_axes_count`, srs)
+}
+
+#' @rdname srs_query
+srs_get_axes <- function(srs, target_key = NULL) {
+    .Call(`_gdalraster_srs_get_axes`, srs, target_key)
+}
+
+#' @rdname srs_query
+srs_epsg_treats_as_lat_long <- function(srs) {
+    .Call(`_gdalraster_srs_epsg_treats_as_lat_long`, srs)
+}
+
+#' @rdname srs_query
+srs_epsg_treats_as_northing_easting <- function(srs) {
+    .Call(`_gdalraster_srs_epsg_treats_as_northing_easting`, srs)
+}
+
+#' @rdname srs_query
+srs_get_celestial_body_name <- function(srs) {
+    .Call(`_gdalraster_srs_get_celestial_body_name`, srs)
+}
+
+#' Obtain information about coordinate reference systems in the PROJ DB
+#'
+#' `srs_info_from_db()` returns a data frame containing descriptive information
+#' about spatial coordinate reference systems in the PROJ database. Wrapper of
+#' `OSRGetCRSInfoListFromDatabase()` in the GDAL SRS API.
+#'
+#' @details
+#' The returned information includes the authority name, object code, object
+#' name, object type (e.g., Geographic 2D CRS, Geographic 3D CRS, Projected
+#' CRS, etc.), whether the object is deprecated, whether the bounding box
+#' values for the area of use are valid, the bounding box values in longitude
+#' and latitude degrees, the name of the area of use, the name of the
+#' projection method for a projected CRS, and the name of the celestial body of
+#' the CRS (e.g., "Earth", populated only if GDAL >= 3.12 and PROJ >= 8.1).
+#'
+#' @param auth_name Character string containing an authority name used to
+#' restrict the search, or empty string (`""`) for all authorities (the
+#' default).
+#' @returns
+#' A data frame (will contain `0` rows if no objects are found that match the
+#' search criterion).
+#'
+#' @seealso
+#' [srs_query]
+#'
+#' @examples
+#' epsg <- srs_info_from_db("EPSG")
+#' str(epsg)
+#'
+#' iau <- srs_info_from_db("IAU_2015")
+#' str(iau)
+srs_info_from_db <- function(auth_name = "") {
+    .Call(`_gdalraster_srs_info_from_db`, auth_name)
 }
 
 #' get PROJ version
