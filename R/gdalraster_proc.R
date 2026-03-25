@@ -7,17 +7,17 @@
 #' These values are currently used in `gdalraster` when a nodata value is
 #' needed but has not been specified:
 #' \preformatted{
-#'     list("Byte" = 255, "Int8" = -128,
+#'     list("Byte" = 255, "UInt8" = 255, "Int8" = -128,
 #'          "UInt16" = 65535, "Int16" = -32767,
 #'          "UInt32" = 4294967293, "Int32" = -2147483647,
-#'          "Float32" = -99999.0, "Float64" = -99999.0)
+#'          "Float32" = -99999.0, "Float64" = NaN)
 #' }
 #' @export
 DEFAULT_NODATA <- list(
-    "Byte" = 255, "Int8" = -128,
+    "Byte" = 255, "UInt8" = 255, "Int8" = -128,
     "UInt16" = 65535, "Int16" = -32767,
     "UInt32" = 4294967293, "Int32" = -2147483647,
-    "Float32" = -99999.0, "Float64" = -99999.0)
+    "Float32" = -99999.0, "Float64" = NaN)
 
 
 #' List of default DEM processing options
@@ -57,14 +57,14 @@ DEFAULT_DEM_PROC <- list(
 .getGDALformat <- function(file) {
     # Only for guessing common output formats
     file <- as.character(file)
-    if (endsWith(tolower(file), ".img")) {
-        return("HFA")
-    }
     if (endsWith(tolower(file), ".tif")) {
         return("GTiff")
     }
     if (endsWith(tolower(file), ".vrt")) {
         return("VRT")
+    }
+    if (endsWith(tolower(file), ".img")) {
+        return("HFA")
     }
     return(NULL)
 }
@@ -256,6 +256,10 @@ read_ds <- function(ds, bands = NULL, xoff = 0, yoff = 0,
     dtype <- "Byte"
     for (b in bands) {
         dtype <- dt_union(dtype, ds$getDataTypeName(b))
+    }
+    # sync as_raw with object property for Byte data
+    if (!as_raw && ds$readByteAsRaw && dtype == "Byte") {
+      as_raw <- TRUE
     }
 
     if (as_list) {
@@ -900,25 +904,22 @@ rasterToVRT <- function(srcfile,
 #'
 #' @description
 #' `calc()` evaluates an \R expression for each pixel in a raster layer or
-#' stack of layers. Each layer is defined by a raster filename, band number,
-#' and a variable name to use in the \R expression. If not specified, band
-#' defaults to 1 for each input raster.
-#' Variable names default to `LETTERS` if not specified
-#' (`A` (layer 1), `B` (layer 2), ...).
+#' stack of layers. Each layer is defined by a raster filename or dataset
+#' object, band number, and a variable name to use in the \R expression. If not
+#' specified, band defaults to `1` for each input raster. Variable names
+#' default to `LETTERS` if not specified (`A` (layer 1), `B` (layer 2), ...).
 #' All of the input layers must have the same extent and cell size.
-#' The projection will be read from the first raster in the list
-#' of inputs.
+#' The projection will be read from the first raster in the list of inputs.
 #' Individual pixel coordinates are also available as variables in the
 #' \R expression, as either x/y in the raster projected coordinate system or
 #' inverse projected longitude/latitude.
-#' Multiband output is supported as of gdalraster 1.11.0.
+#' Multi-band output is supported as of gdalraster 1.11.0.
 #'
 #' @details
-#' The variables in `expr` are vectors of length raster xsize
-#' (row vectors of the input raster layer(s)).
-#' The expression should return a vector also of length raster xsize
-#' (an output row).
-#' Four special variable names are available in `expr`:
+#' The variables in `expr` are vectors of length raster xsize (i.e., row
+#' vectors of the input raster layer(s), with length the number of raster
+#' columns). The expression should return a vector also of length raster xsize
+#' (an output row). Four special variable names are available in `expr`:
 #' `pixelX` and `pixelY` provide pixel center coordinates in projection units.
 #' `pixelLon` and `pixelLat` can also be used, in which case the pixel x/y
 #' coordinates will be inverse projected to longitude/latitude
@@ -926,9 +927,9 @@ rasterToVRT <- function(srcfile,
 #' which is read from the first input raster). Note that inverse projection
 #' adds computation time.
 #'
-#' To refer to specific bands in a multi-band input file, repeat the filename in
-#' `rasterfiles` and specify corresponding band numbers in `bands`, along with
-#' optional variable names in `var.names`, for example,
+#' To refer to specific bands in a multi-band input file, repeat the filename
+#' or dataset object in `rasterfiles` and specify corresponding band numbers in
+#' `bands`, along with optional variable names in `var.names`, e.g.,
 #' \preformatted{
 #' rasterfiles = c("multiband.tif", "multiband.tif")
 #' bands = c(4, 5)
@@ -938,8 +939,10 @@ rasterToVRT <- function(srcfile,
 #' Output will be written to `dstfile`. To update a file that already
 #' exists, set `write_mode = "update"` and set `out_band` to an existing
 #' band number(s) in `dstfile` (new bands cannot be created in `dstfile`).
+#' `dstfile` can optionally be given as an object of class `GDALRaster` open
+#' for write access.
 #'
-#' To write multiband output, `expr` must return a vector of values
+#' To write multi-band output, `expr` must return a vector of values
 #' interleaved by band. This is equivalent to, and can also be returned as,
 #' a matrix `m` with `nrow(m)` equal to `length()` of an input vector, and
 #' `ncol(m)` equal to the number of output bands. In matrix form, each column
@@ -949,39 +952,48 @@ rasterToVRT <- function(srcfile,
 #' read from the return value of `expr`.
 #'
 #' @param expr An \R expression as a character string (e.g., `"A + B"`).
-#' @param rasterfiles Character vector of source raster filenames.
+#' @param rasterfiles Input rasters, either a character vector of filenames,
+#' or a list with each element either a filename as character string or an
+#' object of class `GDALRaster` (must be an open dataset for the latter).
 #' @param bands Integer vector of band numbers to use for each raster layer.
 #' @param var.names Character vector of variable names to use for each raster
 #' layer.
-#' @param dstfile Character filename of output raster.
+#' @param dstfile Either a character string with the output raster filename, or
+#' an object of class `GDALRaster` with which to write output. If given as an
+#' object, the dataset must be open for write access, and the arguments below
+#' related to raster creation are ignored (i.e., `fmt`, `dtName`, `options`,
+#' `setRasterNodataValue`). The `write_mode` must be set to `"update"` for
+#' writing with an existing dataset object.
 #' @param fmt Output raster format name (e.g., "GTiff" or "HFA"). Will attempt
 #' to guess from the output filename if not specified.
 #' @param dtName Character name of output data type (e.g., Byte, Int16,
 #' UInt16, Int32, UInt32, Float32).
 #' @param out_band Integer band number(s) in `dstfile` for writing output.
-#' Defaults to `1`. Multiband output is supported as of gdalraster 1.11.0,
+#' Defaults to `1L`. Multi-band output is supported as of gdalraster 1.11.0,
 #' in which case `out_band` would be a vector of band numbers.
 #' @param options Optional list of format-specific creation options in a
 #' vector of "NAME=VALUE" pairs
-#' (e.g., \code{options = c("COMPRESS=LZW")} to set LZW compression
-#' during creation of a GTiff file).
-#' @param nodata_value Numeric value to assign if `expr` returns NA.
-#' @param setRasterNodataValue Logical. `TRUE` will attempt to set the raster
-#' format nodata value to `nodata_value`, or `FALSE` not to set a raster
-#' nodata value.
-#' @param usePixelLonLat This argument is deprecated and will be removed in a
-#' future version. Variable names `pixelLon` and `pixelLat` can be used in
-#' `expr`, and the pixel x/y coordinates will be inverse projected to
-#' longitude/latitude (adds computation time).
-#' @param write_mode Character. Name of the file write mode for output.
+#' (e.g., \code{options = c("TILED=YES", "COMPRESS=LZW")} to set LZW compression
+#' during creation of a tiled GTiff file).
+#' @param nodata_value Numeric value to assign if `expr` returns `NA`.
+#' @param setRasterNodataValue Logical value. `TRUE` will attempt to set the
+#' raster format nodata value to `nodata_value`, or `FALSE` not to set a raster
+#' nodata value on the output dataset.
+#' @param write_mode Character string. Name of the file write mode for output.
 #' One of:
 #'   * `safe` - execution stops if `dstfile` already exists (no output written)
-#'   * `overwrite` - if `dstfile` exists if will be overwritten with a new file
-#'   * `update` - if `dstfile` exists, will attempt to open in update mode
-#'   and write output to `out_band`
-#' @param quiet Logical scalar. If `TRUE`, a progress bar will not be
-#' displayed. Defaults to `FALSE`.
-#' @returns Returns the output filename invisibly.
+#'   * `overwrite` - if `dstfile` exists it will be overwritten with a new file
+#'   * `update` - if `dstfile` exists, will attempt to open in update mode, or
+#'   write to the existing dataset if `dstfile` is given as an object
+#' @param quiet Logical value. If `TRUE`, a progress bar and informational
+#' messages will not be displayed. Defaults to `FALSE`.
+#' @param return_obj Logical value. If `TRUE`, an object of class
+#' [`GDALRaster`][GDALRaster] opened on the newly created dataset will be
+#' returned. The default is `FALSE`.
+#' @param ... Additional arguments, none currently supported.
+#' @returns By default, returns the output filename invisibly. An object of
+#' class [`GDALRaster`][GDALRaster] open on the output dataset will be returned
+#' if `return_obj = TRUE`.
 #'
 #' @seealso
 #' [`GDALRaster-class`][GDALRaster], [combine()], [rasterToVRT()]
@@ -1020,27 +1032,30 @@ rasterToVRT <- function(srcfile,
 #' ds$close()
 #' \dontshow{deleteDataset(hi_file)}
 #'
-#'
 #' ## Calculate normalized difference vegetation index (NDVI)
+#' ## input rasters given as dataset objects
+#' ## output to an in-memory raster (MEM format)
 #'
 #' # Landast band 4 (red) and band 5 (near infrared):
 #' b4_file <- system.file("extdata/sr_b4_20200829.tif", package="gdalraster")
+#' b4 <- new(GDALRaster, b4_file)
 #' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
+#' b5 <- new(GDALRaster, b5_file)
 #'
 #' expr <- "((B5 * 0.0000275 - 0.2) - (B4 * 0.0000275 - 0.2)) /
 #'          ((B5 * 0.0000275 - 0.2) + (B4 * 0.0000275 - 0.2))"
-#' ndvi_file <- calc(expr = expr,
-#'                   rasterfiles = c(b4_file, b5_file),
-#'                   var.names = c("B4", "B5"),
-#'                   dtName = "Float32",
-#'                   nodata_value = -32767,
-#'                   setRasterNodataValue = TRUE)
 #'
-#' ds <- new(GDALRaster, ndvi_file)
-#' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
-#' ds$close()
-#' \dontshow{deleteDataset(ndvi_file)}
+#' (ndvi <- calc(expr, list(b4, b5), var.names = c("B4", "B5"), fmt = "MEM",
+#'               dtName = "Float32", setRasterNodataValue = TRUE,
+#'               return_obj = TRUE))
 #'
+#' plot_raster(ndvi, legend = TRUE,
+#'             col_map_fn = c("#7b3294", "#c2a5cf", "#a6dba0", "#008837"),
+#'             main = "Storm Lake NDVI 2020-08-29")
+#'
+#' ndvi$close()
+#' b4$close()
+#' b5$close()
 #'
 #' ## Reclassify a variable by rule set
 #'
@@ -1100,20 +1115,42 @@ calc <- function(expr,
                  rasterfiles,
                  bands = NULL,
                  var.names = NULL,
-                 dstfile = tempfile("rastcalc", fileext=".tif"),
+                 dstfile = tempfile("rastcalc", fileext = ".tif"),
                  fmt = NULL,
                  dtName = "Int16",
-                 out_band = NULL,
+                 out_band = 1L,
                  options = NULL,
                  nodata_value = NULL,
                  setRasterNodataValue = FALSE,
-                 usePixelLonLat = NULL,
                  write_mode = "safe",
-                 quiet = FALSE) {
+                 quiet = FALSE,
+                 return_obj = FALSE,
+                 ...) {
 
-    calc_expr <- parse(text=expr)
+    calc_expr <- parse(text = expr)
 
-    if (write_mode == "safe" && file.exists(dstfile))
+    dstfile_exists <- TRUE
+    dstfile_is_object <- FALSE
+    output_name <- ""
+
+    if (is(dstfile, "Rcpp_GDALRaster")) {
+        dstfile_is_object <- TRUE
+        if (!dstfile$isOpen() || dstfile$isReadOnly()) {
+            stop("'dstfile' as dataset object must be open with write access",
+                 call. = FALSE)
+        }
+        output_name <- dstfile$getDescription(0)
+        fmt <- dstfile$getDriverShortName()
+    } else if (is.character(dstfile) && length(dstfile) == 1) {
+        output_name <- dstfile
+        if (!vsi_stat_exists(dstfile))
+            dstfile_exists <- FALSE
+    } else {
+        stop("'dstfile' must be a character string or GDALRaster object",
+             call. = FALSE)
+    }
+
+    if (write_mode == "safe" && dstfile_exists)
         stop("'dstfile' already exists and 'write_mode' is \"safe\"",
              call. = FALSE)
 
@@ -1126,25 +1163,27 @@ calc <- function(expr,
     } else if (write_mode == "safe" || write_mode == "overwrite") {
         update_mode <- FALSE
         if (is.null(out_band))
-            out_band <- 1
+            out_band <- 1L
     } else {
         stop("unknown 'write_mode'", call. = FALSE)
     }
 
     nrasters <- length(rasterfiles)
+    if (nrasters == 0)
+        stop("'rasterfiles' is empty", call. = FALSE)
 
     if (!is.null(bands)) {
         if (length(bands) != nrasters) {
-            stop("'bands' must have same length as 'rasterfiles'",
+            stop("'bands' must have the same length as 'rasterfiles'",
                  call. = FALSE)
         }
     } else {
-        bands <- rep(1, nrasters)
+        bands <- rep(1L, nrasters)
     }
 
     if (!is.null(var.names)) {
         if (length(var.names) != nrasters) {
-            stop("'var.names' must have same length as 'rasterfiles'",
+            stop("'var.names' must have the same length as 'rasterfiles'",
                  call. = FALSE)
         }
     } else {
@@ -1156,41 +1195,82 @@ calc <- function(expr,
             stop("variable name '", nm, "' not in 'expr'", call. = FALSE)
     }
 
-    if (is.null(fmt)) {
-        fmt <- .getGDALformat(dstfile)
+    if (is.null(fmt) && !dstfile_is_object) {
+        fmt <- .getGDALformat(output_name)
         if (is.null(fmt)) {
-            stop("use 'fmt' to specify a GDAL raster format code",
+            stop("use 'fmt' to specify the short name of a GDAL raster format",
                  call. = FALSE)
         }
+    }
+    fmt <- toupper(fmt)
+    if (fmt == "MEM" && !return_obj) {
+        stop("'return_obj' must be TRUE for \"MEM\" format", call. = FALSE)
+    } else if (fmt == "MEM") {
+        output_name = "in-memory-raster"
     }
 
     if (is.null(nodata_value)) {
         nodata_value <- DEFAULT_NODATA[[dtName]]
         if (is.null(nodata_value)) {
-            stop("a default nodata value is not available for 'dtName'",
+            stop("a default nodata value is unknown for the given 'dtName'",
                  call. = FALSE)
         }
     }
+    if (!(is.numeric(nodata_value) && length(nodata_value) == 1))
+        stop("'nodata_value' must be a single numeric value", call. = FALSE)
+
+    in_raster_is_object <- rep(FALSE, nrasters)
+    if (is.list(rasterfiles)) {
+        for (i in seq_along(rasterfiles)) {
+            if (is(rasterfiles[[i]], "Rcpp_GDALRaster")) {
+                if (!rasterfiles[[i]]$isOpen()) {
+                    stop("'rasterfiles[[", i, "]]:' dataset is not open",
+                         call. = FALSE)
+                }
+                in_raster_is_object[i] <- TRUE
+            }
+            else if (!is.character(rasterfiles[[i]])) {
+                stop("'rasterfiles[[", i, "]]' is not a valid input type",
+                     call. = FALSE)
+            }
+        }
+    } else if (!is.character(rasterfiles)) {
+        stop("'rasterfiles' must be a list or character vector", call. = FALSE)
+    }
 
     # use first raster as reference
-    ref <- new(GDALRaster, rasterfiles[1], TRUE)
-    nrows <- ref$getRasterYSize()
-    ncols <- ref$getRasterXSize()
+    if (in_raster_is_object[1])
+        ref <- rasterfiles[[1]]
+    else
+        ref <- new(GDALRaster, rasterfiles[[1]])
+    nrows <- as.integer(ref$getRasterYSize())
+    ncols <- as.integer(ref$getRasterXSize())
     cellsizeX <- ref$res()[1]
     cellsizeY <- ref$res()[2]
-    xmin <- ref$bbox()[1]
-    ymax <- ref$bbox()[4]
-    srs <- ref$getProjectionRef()
-    ref$close()
+    bb <- ref$bbox()
+    xmin <- bb[1]
+    ymax <- bb[4]
+    gt <- ref$getGeoTransform()
+    srs <- ref$getProjection()
+    if (!in_raster_is_object[1])
+        ref$close()
 
     if (nrasters > 1) {
-        for (r in rasterfiles) {
-            ds <- new(GDALRaster, r, read_only=TRUE)
+        # currently only checking that raster dims are the same
+        for (i in seq_along(rasterfiles[2:length(rasterfiles)])) {
+            if (in_raster_is_object[i])
+                ds <- rasterfiles[[i]]
+            else
+                ds <- new(GDALRaster, rasterfiles[[i]])
+
             dm <- ds$dim()
-            ds$close()
-            if (dm[2] != nrows || dm[1] != ncols) {
-                message(r)
-                stop("all input rasters must have the same extent",
+
+            if (!in_raster_is_object[i])
+                ds$close()
+
+            if (dm[1] != ncols || dm[2] != nrows) {
+                message("rasterfiles[", i, "] has incompatible dimension")
+                stop("all input rasters must have the same X size/Y size",
                      call. = FALSE)
             }
         }
@@ -1198,27 +1278,46 @@ calc <- function(expr,
 
     if (update_mode) {
         # write to an existing raster
-        dst_ds <- new(GDALRaster, dstfile, read_only=FALSE)
+        if (dstfile_is_object)
+            dst_ds <- dstfile
+        else
+            dst_ds <- new(GDALRaster, output_name, read_only = FALSE)
+
+        dm <- dst_ds$dim()
+        if (dm[2] != nrows || dm[1] != ncols) {
+            if (!dstfile_is_object)
+                dst_ds$close()
+            stop("'dstfile' must have the same extent as the input rasters",
+                 call. = FALSE)
+        }
+
     } else {
         # create the output raster
-        dstnodata <- NULL
-        if (setRasterNodataValue)
-            dstnodata <- nodata_value
+        out_band <- as.integer(out_band)
+        if (isFALSE(all.equal(out_band, seq_along(out_band)))) {
+            stop("raster create: 'out_band' must be sequential starting at 1",
+                 call. = FALSE)
+        }
 
-        rasterFromRaster(rasterfiles[1],
-                         dstfile,
-                         fmt,
-                         nbands = length(out_band),
-                         dtName = dtName,
-                         options = options,
-                         dstnodata = dstnodata)
-        dst_ds <- new(GDALRaster, dstfile, read_only=FALSE)
+        dst_ds <- create(fmt, output_name, ncols, nrows, length(out_band),
+                         dtName, options, TRUE)
+
+        dst_ds$setGeoTransform(gt)
+        dst_ds$setProjection(srs)
+        if (setRasterNodataValue) {
+            for (band in out_band) {
+                dst_ds$setNoDataValue(band, nodata_value)
+            }
+        }
     }
 
     # list of GDALRaster objects for each raster layer
-    ds_list <- list()
+    ds_list <- vector("list", nrasters)
     for (i in seq_len(nrasters)) {
-        ds_list[[i]] <- new(GDALRaster, rasterfiles[i], read_only=TRUE)
+        if (in_raster_is_object[i])
+            ds_list[[i]] <- rasterfiles[[i]]
+        else
+            ds_list[[i]] <- new(GDALRaster, rasterfiles[[i]])
     }
 
     # are pixel coordinates being used
@@ -1241,7 +1340,7 @@ calc <- function(expr,
     }
 
     if (usePixelX) {
-        x <- seq(from = xmin + (cellsizeX/2),
+        x <- seq(from = xmin + (cellsizeX / 2),
                  by = cellsizeX,
                  length.out = ncols)
         assign("pixelX", x)
@@ -1264,56 +1363,62 @@ calc <- function(expr,
         }
 
         for (i in seq_len(nrasters)) {
-            inrow <- ds_list[[i]]$read(band = bands[i],
-                                       xoff = 0,
-                                       yoff = row,
-                                       xsize = ncols,
-                                       ysize = 1,
-                                       out_xsize = ncols,
-                                       out_ysize = 1)
+            inrow <- ds_list[[i]]$read(bands[i], 0, row, ncols, 1, ncols, 1)
             assign(var.names[i], inrow)
         }
 
         outrow <- eval(calc_expr)
+
         if (length(outrow) != expect_outrow_len) {
-            dst_ds$close()
+            if (!dstfile_is_object)
+                dst_ds$close()
             for (i in seq_len(nrasters)) {
-                ds_list[[i]]$close()
+                if (!in_raster_is_object[i])
+                    ds_list[[i]]$close()
             }
             stop("result vector is the wrong size", call. = FALSE)
         }
-        outrow <- ifelse(is.na(outrow), nodata_value, outrow)
+
+        outrow[is.na(outrow)] <- nodata_value
         dim(outrow) <- c(ncols, num_out_bands)
-        i <- 1
+        i <- 1L
         for (b in out_band) {
-            dst_ds$write(band = b,
-                         offx = 0,
-                         offy = row,
-                         xsize = ncols,
-                         ysize = 1,
-                         rasterData = outrow[, i])
-            i <- i + 1
+            dst_ds$write(b, 0, row, ncols, 1, outrow[, i])
+            i <- i + 1L
         }
-        if (!quiet)
-            setTxtProgressBar(pb, row+1)
 
         return()
     }
 
-    if (!quiet) {
-        message("calculating from ", nrasters, " input layer(s)...")
-        pb <- txtProgressBar(min=0, max=nrows)
-    }
-    lapply(0:(nrows-1), process_row)
-    close(pb)
+    # process by rows
+    if (!quiet)
+        cli::cli_progress_bar("Calculating", total = nrows)
 
-    message("output written to: ", dstfile)
-    dst_ds$close()
+    for (i in seq.int(0L, (nrows - 1L), 1L)) {
+        process_row(i)
+        if (!quiet)
+            cli::cli_progress_update()
+    }
+
+    if (!quiet)
+        cli::cli_progress_done()
+
+    dst_ds$flushCache()
+    if (!quiet)
+        message("output written to ", output_name)
+
     for (i in seq_len(nrasters)) {
-        ds_list[[i]]$close()
+        if (!in_raster_is_object[i])
+            ds_list[[i]]$close()
     }
 
-    return(invisible(dstfile))
+    if (return_obj) {
+        return(dst_ds)
+    } else {
+        if (!dstfile_is_object)
+            dst_ds$close()
+        return(invisible(output_name))
+    }
 }
 
 
@@ -1524,6 +1629,257 @@ dem_proc <- function(mode,
                                mode_options,
                                color_file,
                                quiet)))
+}
+
+
+#' Check line of sight between pairs of point locations
+#'
+#' @description
+#' `is_los_visible()` is an interface to GDAL's line-of-sight algorithm
+#' implemented by `GDALIsLineOfSightVisible()` in the Algorithms C API
+#' (\url{https://gdal.org/en/stable/api/gdal_alg.html}). It checks line of sight
+#' across a DEM surface using a Bresenham algorithm. The function can operate
+#' pairwise on sets of input points, or one-to-many. Requires GDAL >= 3.9.
+#'
+#' @param dem Either a character string giving the filename of the DEM
+#' raster, or an object of class `GDALRaster` for the DEM.
+#' @param ptsA A data frame or numeric matrix containing geospatial point
+#' coordinates, or point geometries (with Z values) as a list of WKB raw vectors
+#' or character vector of WKT strings. If data frame or matrix, the number of
+#' columns must be three (x, y, z). May be also be given as a numeric vector for
+#' one point (`c(x, y, z)`). If this argument contains a single point, then
+#' line of sight will be checked between it and each point in `ptsB`, otherwise
+#' `length(ptsA)` must equal `length(ptsB)`, and line of sight will be checked
+#' pairwise.
+#' @param ptsB The second set of points, as described above for `ptsA`.
+#' @param band An integer value specifying the band number in `dem` to use.
+#' Defaults to `1L`.
+#' @param srsA An optional character string specifying the spatial reference
+#' system for `ptsA`. May be in WKT format or any of the formats supported by
+#' [srs_to_wkt()]. If this argument is `NULL` (the default), then `ptsA` are
+#' assumed to be in the same coordinate reference system as `dem`. Otherwise,
+#' `ptsA` will be reprojected from `srsA` to the spatial reference of `dem`.
+#' @param srsB An optional character string specifying the spatial reference
+#' system for `ptsB` (see above). Defaults to `NULL`. If not `NULL`, `ptsB` will
+#' be reprojected from `srsB` to the spatial reference of `dem`.
+#' @param ZinterpA A character string specifying the interpretation of the Z
+#' values for `ptsA`. The default is `"RELATIVE_TO_DEM"`, in which case the
+#' location heights of `ptsA` are obtained by querying the DEM surface and
+#' adding the Z value given in `ptsA`. Alternatively, the Z values can be
+#' interpreted as absolute heights to be used unmodified by setting this
+#' argument to `"ACTUAL"`.
+#' @param ZinterpB A character string specifying the interpretation of the Z
+#' values for `ptsB`. See the description above for `ZinterpA`.
+#' @param quiet A logical value with default of `FALSE`. If set to `TRUE`, will
+#' suppress a progress bar and informational messages.
+#' @returns A logical vector of `length(ptsB)`, `TRUE` for each pair of points
+#' that are within line of sight, otherwise `FALSE`.
+#' The checks are done pairwise if `(length(ptsA) == length(ptsB))`, or
+#' one-to-many if `length(ptsA) == 1` and multiple points are given in `ptsB`.
+#'
+#' @note
+#' Input coordinates must be within the raster bounds. `NA` will be returned if
+#' either coordinate is outside the raster extent, or is missing a Z value.
+#'
+#' The GDAL documentation notes that line of sight is computed in raster
+#' coordinate space, and thus may not be appropriate for some applications. For
+#' example, datasets referenced against geographic coordinates at high latitudes
+#' may have issues.
+#'
+#' At the time of writing (GDAL 3.9 through 3.12.2), a point exactly on the
+#' surface of the DEM is never visible with `GDALIsLineOfSightVisible()`, even
+#' if viewed from a point directly above. For a detailed description, see
+#' \url{https://github.com/OSGeo/gdal/issues/12458}. A workaround for that case
+#' could be to set a small but negligible positive Z value (if using
+#' `"RELATIVE_TO_DEM"`) for points that are intended to be on the DEM surface,
+#' if appropriate for the use case.
+#'
+#' @seealso
+#' \href{https://www.researchgate.net/publication/2411280_Efficient_Line-of-Sight_Algorithms_for_Real_Terrain_Data}{Efficient Line-of-Sight Algorithms for Real Terrain Data}
+#'
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 9, 0)
+#' dem <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#'
+#' ## no reprojection, the point coordinates are in the same projection as DEM
+#'
+#' ## one-to-many
+#' ptA <- c(324625.0, 5104724.0, 1.7)
+#' ptsB <-c(324803.0, 5104517.0, 10,
+#'          325286.0, 5102923.0, 10,
+#'          323847.0, 5104538.0, 10)
+#' ptsB <- matrix(ptsB, nrow = 3, ncol = 3, byrow = TRUE)
+#'
+#' is_los_visible(dem, ptA, ptsB)
+#'
+#' ## pairwise, same ptA location with varying height
+#' ptsA <- c(324625.0, 5104724.0, 1,
+#'           324625.0, 5104724.0, 10,
+#'           324625.0, 5104724.0, 1000)
+#' ptsA <- matrix(ptsA, nrow = 3, ncol = 3, byrow = TRUE)
+#'
+#' is_los_visible(dem, ptsA, ptsB)
+#'
+#' ## WKB points
+#' (ptsA_wkb <- g_create("POINT", ptsA))
+#'
+#' # as WKT
+#' g_wk2wk(ptsA_wkb)
+#'
+#' # or as ISO WKT
+#' g_wk2wk(ptsA_wkb, as_iso = TRUE)
+#'
+#' is_los_visible(dem, ptsA_wkb, ptsB)
+#'
+#' ## reprojecting ptsA, and the DEM given as a dataset object
+#' (ds <- new(GDALRaster, dem))
+#'
+#' ptsA_wkb_wgs84 <- g_transform(ptsA_wkb, ds$getSpatialRef(), "WGS84")
+#' g_wk2wk(ptsA_wkb_wgs84)
+#'
+#' is_los_visible(ds, ptsA_wkb_wgs84, ptsB, srsA = "WGS84")
+#'
+#' ## read ptsB from a vector dataset, use original ptA
+#'
+#' dsn <- system.file("extdata/storml_los_pts_b.geojson", package="gdalraster")
+#' (lyr <- new(GDALVector, dsn))
+#'
+#' (features <- lyr$fetch(-1))
+#'
+#' is_los_visible(ds, ptA, features$geom, srsB = lyr$getSpatialRef(),
+#'                ZinterpB = "ACTUAL")
+#'
+#' ds$close()
+#' lyr$close()
+#' @export
+is_los_visible <- function(dem, ptsA, ptsB, band = 1L,
+                           srsA = NULL, srsB = NULL,
+                           ZinterpA = "RELATIVE_TO_DEM",
+                           ZinterpB = "RELATIVE_TO_DEM",
+                           quiet = FALSE) {
+
+    if (gdal_version_num() < gdal_compute_version(3, 9, 0))
+        stop("is_los_visible() requires GDAL >= 3.9", call. = FALSE)
+
+    ds <- NULL
+    close_ds <- FALSE
+    if (is(dem, "Rcpp_GDALRaster")) {
+        ds <- dem
+        if (!ds$isOpen()) {
+            stop("raster dataset is not open", call. = FALSE)
+        }
+    } else if (is.character(dem) && length(dem) == 1) {
+        ds <- new(GDALRaster, dem)
+        close_ds <- TRUE
+    } else {
+        stop("'dem' must be a character string or GDALRaster object",
+             call. = FALSE)
+    }
+
+    if (is.null(band))
+        band <- 1L
+    if (!(is.numeric(band) && length(band == 1)))
+        stop("'band' must be a single numeric value", call. = FALSE)
+
+    if (missing(ptsA) || is.null(ptsA))
+        stop("'ptsA' is required", call. = FALSE)
+
+    if (missing(ptsB) || is.null(ptsB))
+        stop("'ptsB' is required", call. = FALSE)
+
+    if (is.null(srsA))
+        srsA <- ""
+    else if (!is.character(srsA) || length(srsA) > 1)
+        stop("'srsA' must be a character string", call. = FALSE)
+
+    if (is.null(srsB))
+        srsB <- ""
+    else if (!is.character(srsB) || length(srsB) > 1)
+        stop("'srsB' must be a character string", call. = FALSE)
+
+    if (is.null(ZinterpA))
+        ZinterpA <- "RELATIVE_TO_DEM"
+    else if (!is.character(ZinterpA) || length(ZinterpA) > 1)
+        stop("'ZinterpA' must be a character string", call. = FALSE)
+    if (!(toupper(ZinterpA) %in% c("ACTUAL", "RELATIVE_TO_DEM"))) {
+        stop("'ZinterpA' must be one of \"ACTUAL\" or \"RELATIVE_TO_DEM\"",
+             call. = FALSE)
+    }
+
+    if (is.null(ZinterpB))
+        ZinterpB <- "RELATIVE_TO_DEM"
+    else if (!is.character(ZinterpB) || length(ZinterpB) > 1)
+        stop("'ZinterpB' must be a character string", call. = FALSE)
+    if (!(toupper(ZinterpB) %in% c("ACTUAL", "RELATIVE_TO_DEM"))) {
+        stop("'ZinterpB' must be one of \"ACTUAL\" or \"RELATIVE_TO_DEM\"",
+             call. = FALSE)
+    }
+
+    ptsA_in <- NULL
+    if (is.raw(ptsA) || (is.list(ptsA) && is.raw(ptsA[[1]]) ||
+        is.character(ptsA))) {
+
+        if (is.character(ptsA))
+            ptsA <- g_wk2wk(ptsA)
+
+        if (is.raw(ptsA)) {
+            geom_type <- g_name(ptsA)
+        } else {
+            geom_type <- g_name(ptsA[[1]])
+        }
+        if (!startsWith(geom_type, "POINT"))
+            stop("'ptsA' does not contain a POINT geometry type", call. = FALSE)
+
+        coords <- g_coords(ptsA)
+        if (!is.null(coords$z)) {
+            ptsA_in <- coords[, c("x", "y", "z")]
+        } else {
+            stop("'ptsA' does not contain Z values", call. = FALSE)
+        }
+    } else if (is.data.frame(ptsA) || is.matrix(ptsA) || is.vector(ptsA)) {
+        ptsA_in <- ptsA
+    } else {
+        stop("'ptsA' is not a valid input type", call. = FALSE)
+    }
+
+    ptsB_in <- NULL
+    if (is.raw(ptsB) || (is.list(ptsB) && is.raw(ptsB[[1]]) ||
+        is.character(ptsB))) {
+
+        if (is.character(ptsB))
+            ptsB <- g_wk2wk(ptsB)
+
+        if (is.raw(ptsB)) {
+            geom_type <- g_name(ptsB)
+        } else {
+            geom_type <- g_name(ptsB[[1]])
+        }
+        if (!startsWith(geom_type, "POINT"))
+            stop("'ptsB' does not contain a POINT geometry type", call. = FALSE)
+
+        coords <- g_coords(ptsB)
+        if (!is.null(coords$z)) {
+            ptsB_in <- coords[, c("x", "y", "z")]
+        } else {
+            stop("'ptsB' does not contain Z values", call. = FALSE)
+        }
+    } else if (is.data.frame(ptsB) || is.matrix(ptsB) || is.vector(ptsB)) {
+        ptsB_in <- ptsB
+    } else {
+        stop("'ptsB' is not a valid input type", call. = FALSE)
+    }
+
+    if (is.null(quiet))
+        quiet <- FALSE
+    if (!is.logical(quiet) || length(quiet) > 1)
+        stop("'quiet' must be a single logical value", call. = FALSE)
+
+    ret <- .isLineOfSightVisible(ds, band, ptsA_in, srsA, ZinterpA,
+                                 ptsB_in, srsB, ZinterpB, quiet)
+
+    if (close_ds)
+        ds$close()
+
+    return(ret)
 }
 
 
@@ -2384,4 +2740,90 @@ rasterize <- function(src_dsn,
     }
 
     return(invisible(ret))
+}
+
+
+#' Read raster data as nativeRaster
+#'
+#' @description
+#' `read_to_nativeRaster()` will read from a raster dataset that is already open
+#' in a `GDALRaster` object and return a `nativeRaster` object suitable for fast
+#' rendering. By default, it attempts to read the full raster extent at full
+#' resolution.
+#'
+#' @details
+#' The dataset must have 1, 3, or 4 bands of Byte data type. For 1-band
+#' (grayscale) data, the value is replicated across RGB channels. For 3-band
+#' data, bands are interpreted as RGB. For 4-band data, bands are interpreted
+#' as RGBA.
+#'
+#' @param ds An object of class `GDALRaster` in open state, with 1, 3, or 4
+#' bands of Byte data type.
+#' @param xoff Integer. The pixel (column) offset to the top left corner of the
+#' raster region to be read (zero to start from the left side).
+#' @param yoff Integer. The line (row) offset to the top left corner of the
+#' raster region to be read (zero to start from the top).
+#' @param xsize Integer. The width in pixels of the region to be read.
+#' @param ysize Integer. The height in pixels of the region to be read.
+#' @param out_xsize Integer. The width in pixels of the output buffer into
+#' which the desired region will be read (e.g., to read a reduced resolution
+#' overview).
+#' @param out_ysize Integer. The height in pixels of the output buffer into
+#' which the desired region will be read (e.g., to read a reduced resolution
+#' overview).
+#' @returns An object of class `nativeRaster`.
+#'
+#' @note
+#' By default, this function will attempt to read the full raster into memory.
+#' It generally should not be called on large raster datasets using the default
+#' argument values. Use `out_xsize` and `out_ysize` for quick setting to smallish values,
+#' such as 1024.
+#'
+#' @seealso
+#' [read_ds()], [`GDALRaster$readToNativeRaster()`][GDALRaster]
+#'
+#' @examples
+#' # read an RGB image as nativeRaster
+#' img_file <- system.file("help/figures/logo.png", package="survival")
+#' if (file.exists(img_file)) {
+#' ds <- new(GDALRaster, img_file)
+#' r <- read_to_nativeRaster(ds)
+#' bb <- ds$bbox()  ## will warn for non-spatial image but is harmless
+#' ds$close()
+#' plot(NA, xlab = "", ylab = "", asp = 1, xlim = bb[c(1, 3)], ylim = bb[c(2, 4)])
+#' rasterImage(r, bb[1], bb[2], bb[3], bb[4])
+#' }
+#' @export
+read_to_nativeRaster <- function(ds, xoff = 0, yoff = 0,
+                                 xsize = ds$getRasterXSize(),
+                                 ysize = ds$getRasterYSize(),
+                                 out_xsize = xsize, out_ysize = ysize) {
+
+  if (!is(ds, "Rcpp_GDALRaster")) {
+    stop("'ds' must be an object of class GDALRaster", call. = FALSE)
+  }
+  if (is.null(xoff) || !(is.numeric(xoff) && length(xoff) == 1)) {
+    stop("'xoff' must be a numeric value", call. = FALSE)
+  }
+  if (is.null(yoff) || !(is.numeric(yoff) && length(yoff) == 1)) {
+    stop("'yoff' must be a numeric value", call. = FALSE)
+  }
+  if (is.null(xsize) || !(is.numeric(xsize) && length(xsize) == 1)) {
+    stop("'xsize' must be a numeric value", call. = FALSE)
+  }
+  if (is.null(ysize) || !(is.numeric(ysize) && length(ysize) == 1)) {
+    stop("'ysize' must be a numeric value", call. = FALSE)
+  }
+  if (is.null(out_xsize) ||
+      !(is.numeric(out_xsize) && length(out_xsize) == 1)) {
+
+    stop("'out_xsize' must be a numeric value", call. = FALSE)
+  }
+  if (is.null(out_ysize) ||
+      !(is.numeric(out_ysize) && length(out_ysize) == 1)) {
+
+    stop("'out_ysize' must be a numeric value", call. = FALSE)
+  }
+  r <- ds$readToNativeRaster(xoff, yoff, xsize, ysize, out_xsize, out_ysize)
+  r
 }

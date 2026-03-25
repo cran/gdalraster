@@ -250,16 +250,23 @@ get_config_option <- function(key) {
 #' `set_config_option()`.
 #' @returns No return value, called for side effects.
 #'
+#' @note
+#' The configuration option `"CPL_LOG_ERRORS"` can be set to `"OFF"` to disable
+#' printing error massages to the console by GDAL. This only affects messages
+#' printed by GDAL, and does not disable errors, warnings or other messages
+#' emitted by \pkg{gdalraster}. The latter can generally be configured using a
+#' function argument or object-level setting in most cases.
+#'
 #' @seealso
 #' [get_config_option()]
 #'
 #' `vignette("gdal-config-quick-ref")`
 #'
 #' @examples
-#' set_config_option("GDAL_CACHEMAX", "10%")
-#' get_config_option("GDAL_CACHEMAX")
-#' ## unset:
-#' set_config_option("GDAL_CACHEMAX", "")
+#' set_config_option("CPL_LOG_ERRORS", "OFF")
+#' get_config_option("CPL_LOG_ERRORS")
+#' ## unset to default:
+#' set_config_option("CPL_LOG_ERRORS", "")
 set_config_option <- function(key, value) {
     invisible(.Call(`_gdalraster_set_config_option`, key, value))
 }
@@ -387,13 +394,17 @@ set_cache_max <- function(nbytes) {
 #' handler specific to the R environment is in use by default.
 #'
 #' Setting `handler = "logging"` will use `CPLLoggingErrorHandler()`, error
-#' handler that logs into the file defined by the `CPL_LOG` configuration
+#' handler that logs into the file defined by the `"CPL_LOG"` configuration
 #' option. Be sure that option is set when using this error handler.
 #'
 #' This only affects error reporting from GDAL.
 #'
+#' Also note that the configuration option `"CPL_LOG_ERRORS"` can be set to
+#' `"OFF"` to disable globally the printing of error massages to the console
+#' by GDAL.
+#'
 #' @seealso
-#' [pop_error_handler()]
+#' [pop_error_handler()], [set_config_option()]
 #'
 #' @examples
 #' push_error_handler("quiet")
@@ -529,6 +540,16 @@ http_enabled <- function() {
 }
 
 #' @noRd
+.cpl_get_path <- function(full_filename) {
+    .Call(`_gdalraster_cpl_get_path`, full_filename)
+}
+
+#' @noRd
+.cpl_get_dirname <- function(full_filename) {
+    .Call(`_gdalraster_cpl_get_dirname`, full_filename)
+}
+
+#' @noRd
 .cpl_get_basename <- function(full_filename) {
     .Call(`_gdalraster_cpl_get_basename`, full_filename)
 }
@@ -536,6 +557,11 @@ http_enabled <- function() {
 #' @noRd
 .cpl_get_extension <- function(full_filename) {
     .Call(`_gdalraster_cpl_get_extension`, full_filename)
+}
+
+#' @noRd
+.cpl_launder_for_filename <- function(full_filename) {
+    .Call(`_gdalraster_cpl_launder_for_filename`, full_filename)
 }
 
 #' @noRd
@@ -846,6 +872,21 @@ fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_it
 #' }
 footprint <- function(src_filename, dst_filename, cl_arg = NULL) {
     invisible(.Call(`_gdalraster_footprint`, src_filename, dst_filename, cl_arg))
+}
+
+#' Check Line of Sight between pairs of points
+#'
+#' Interface to GDALIsLineOfSightVisible() in GDAL >= 3.9
+#'
+#' see also https://github.com/OSGeo/gdal/issues/12458:
+#' GDALIsLineOfSightVisible(): points exactly on the DEM surface are never
+#' visible
+#'
+#' Called from and documented in R/gdalraster_proc.R
+#'
+#' @noRd
+.isLineOfSightVisible <- function(ds, band, ptsA, srsA, ZinterpA, ptsB, srsB, ZinterpB, quiet) {
+    .Call(`_gdalraster_isLineOfSightVisible`, ds, band, ptsA, srsA, ZinterpA, ptsB, srsB, ZinterpB, quiet)
 }
 
 #' Convert vector data between different formats
@@ -1491,6 +1532,10 @@ gdal_get_driver_md <- function(format, mdi_name = "") {
     .Call(`_gdalraster_addFileInZip`, zip_filename, overwrite, archive_filename, in_filename, options, quiet)
 }
 
+.gt_from_dim_bbox <- function(dim, bbox) {
+    .Call(`_gdalraster_gt_from_dim_bbox_`, dim, bbox)
+}
+
 #' Report structure and content of a multidimensional dataset
 #'
 #' `mdim_info()` is an interface to the \command{gdalmdiminfo} command-line
@@ -1858,7 +1903,7 @@ vsi_curl_clear_cache <- function(partial = FALSE, file_prefix = "", quiet = TRUE
 #' `recursive = TRUE`.
 #'
 #' @seealso
-#' [vsi_mkdir()], [vsi_rmdir()], [vsi_stat()], [vsi_sync()]
+#' [vsi_glob()], [vsi_mkdir()], [vsi_rmdir()], [vsi_stat()], [vsi_sync()]
 #'
 #' @examples
 #' # regular file system for illustration
@@ -1866,6 +1911,81 @@ vsi_curl_clear_cache <- function(partial = FALSE, file_prefix = "", quiet = TRUE
 #' vsi_read_dir(data_dir)
 vsi_read_dir <- function(path, max_files = 0L, recursive = FALSE, all_files = FALSE) {
     .Call(`_gdalraster_vsi_read_dir`, path, max_files, recursive, all_files)
+}
+
+#' Get file and directory names matching a pattern that may contain wildcards
+#'
+#' `vsi_glob()` returns a character vector of file and directory names matching
+#' a pattern that can contain wildcards. This function has similar behavior to
+#' the POSIX `glob()` function. Wrapper of `VSIGlob()` in the GDAL Common
+#' Portability Library. Requires GDAL >= 3.11.
+#'
+#' @details
+#' The following wildcards are supported
+#'   * `*`: match any string
+#'   * `?`: match any single character
+#'   * `[`: match character class or range, with `!` immediately after `[` to
+#'   indicate negation
+#'
+#' Refer to to the `glob()` man page for more details
+#' (\url{https://man7.org/linux/man-pages/man7/glob.7.html}).
+#' It also supports the `**` recursive wildcard, behaving similarly to Python
+#' `glob.glob()` with `recursive = True`. Be careful of the amount of memory
+#' and time required when using the recursive wildcard on directories with a
+#' large amount of files and subdirectories.
+#'
+#' Examples, given a file hierarchy:
+#'   * `one.tif`
+#'   * `my_subdir/two.tif`
+#'   * `my_subdir/subsubdir/three.tif`
+#' 
+#' ```
+#' vsi_glob("one.tif")
+#'   # returns ("one.tif")
+#' vsi_glob("*.tif")
+#'   # returns ("one.tif")
+#' vsi_glob("on?.tif")
+#'   # returns ("one.tif")
+#' vsi_glob("on[a-z].tif")
+#'   # returns ("one.tif")
+#' vsi_glob("on[ef].tif")
+#'   # returns ("one.tif")
+#' vsi_glob("on[!e].tif")
+#'   # returns empty vector character()
+#' vsi_glob("my_subdir/*.tif")
+#'   # returns ("my_subdir/two.tif")
+#' vsi_glob("**/*.tif") returns
+#'   # returns ("one.tif", "my_subdir/two.tif", "my_subdir/subsubdir/three.tif")
+#' ```
+#'
+#' In the current implementation, matching is done based on the assumption that
+#' a character fits into a single byte, which will not work properly on
+#' non-ASCII UTF-8 filenames.
+#'
+#' @param pattern Character string. The relative or absolute path of a
+#' directory to read, potentially containing wildcards, assumed to be UTF-8
+#' encoded (see Details).
+#' @param show_progress Logical scalar. If `TRUE`, a progress bar will be
+#' displayed. Default is `FALSE`.
+#' @returns A character vector containing the matching names of files and
+#' directories.
+#'
+#' @note
+#' GDAL's `VSIGlob()` works with any virtual file systems supported by GDAL,
+#' including network file systems such as /vsis3/, /vsigs/, /vsiaz/, etc. But
+#' note that for those, the pattern is not passed to the remote server, and
+#' thus a large amount of filenames can be transferred from the remote server
+#' to the host where the filtering is done.
+#'
+#' @seealso
+#' [vsi_read_dir()]
+#'
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 11, 0)
+#' # Requires GDAL >= 3.11
+#' data_dir <- system.file("extdata", package="gdalraster")
+#' vsi_glob(file.path(data_dir, "ynp*"))
+vsi_glob <- function(pattern, show_progress = FALSE) {
+    .Call(`_gdalraster_vsi_glob`, pattern, show_progress)
 }
 
 #' Synchronize a source file/directory with a target file/directory
@@ -2561,6 +2681,23 @@ vsi_is_local <- function(filename) {
     .Call(`_gdalraster_vsi_is_local`, filename)
 }
 
+#' Return VSI compatible paths from URIs / URLs
+#'
+#' `vsi_uri_to_vsi_path()` substitutes URIs / URLs starting with `s3://`,
+#' `gs://`, etc. by their VSI prefix equivalents. If no known substitution is
+#' found, the input string is returned unmodified.
+#' Wrapper of `VSIURIToVSIPath()` in the GDAL API. Requires GDAL >= 3.12.
+#'
+#' @param uris Character vector of input URI strings.
+#' @returns Character vector of VSI paths.
+#'
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 12, 0)
+#' # Requires GDAL >= 3.12
+#' vsi_uri_to_vsi_path("gs://cmip6/")
+vsi_uri_to_vsi_path <- function(uris) {
+    .Call(`_gdalraster_vsi_uri_to_vsi_path`, uris)
+}
+
 #' @noRd
 .gdal_commands <- function(contains, recurse, console_out) {
     .Call(`_gdalraster_gdal_commands`, contains, recurse, console_out)
@@ -2630,6 +2767,16 @@ has_geos <- function() {
 #' @noRd
 .g_get_geom <- function(container, sub_geom_idx, as_iso, byte_order) {
     .Call(`_gdalraster_g_get_geom`, container, sub_geom_idx, as_iso, byte_order)
+}
+
+#' @noRd
+.g_build_collection <- function(geoms, coll_type, as_iso, byte_order) {
+    .Call(`_gdalraster_g_build_collection`, geoms, coll_type, as_iso, byte_order)
+}
+
+#' @noRd
+.g_build_polygon_from_edges <- function(lines, auto_close, tolerance, as_iso, byte_order) {
+    .Call(`_gdalraster_g_build_polygon_from_edges`, lines, auto_close, tolerance, as_iso, byte_order)
 }
 
 #' @noRd
@@ -3019,6 +3166,16 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
 #' @noRd
 .ogr_execute_sql <- function(dsn, sql, spatial_filter = "", dialect = "") {
     invisible(.Call(`_gdalraster_ogr_execute_sql`, dsn, sql, spatial_filter, dialect))
+}
+
+#' Get pointer address of R data as a character string
+#'
+#' @param x Vector of type numeric, integer, raw or complex.
+#' @returns Character string pointer address with format suitable as
+#' DATAPOINTER for a GDAL MEM dataset.
+#' @noRd
+.get_data_ptr <- function(x) {
+    .Call(`_gdalraster_get_data_ptr`, x)
 }
 
 #' @noRd

@@ -174,7 +174,7 @@ test_that("get/set metadata works", {
 
 test_that("open/close/re-open works", {
     elev_file <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
-    ds <- new(GDALRaster, elev_file, read_only=TRUE)
+    ds <- new(GDALRaster, elev_file)
     dm <- ds$dim()
     r <- read_ds(ds)
     ds$close()
@@ -184,16 +184,18 @@ test_that("open/close/re-open works", {
                      nbands = 1,
                      dtName = "UInt32",
                      init = DEFAULT_NODATA[["UInt32"]])
-    ds <- new(GDALRaster, mod_file, read_only=TRUE)
+    ds <- new(GDALRaster, mod_file)
     expect_true(ds$isOpen())
+    expect_true(ds$isReadOnly())
     expect_true(all(is.na(read_ds(ds))))
     ds$close()
     expect_false(ds$isOpen())
     expect_equal(ds$getFilename(), .check_gdal_filename(mod_file))
-    ds$open(read_only=FALSE)
+    ds$open(read_only = FALSE)
     expect_true(ds$isOpen())
-    ds$setDescription(band=1, "test")
-    expect_equal(ds$getDescription(band=1), "test")
+    expect_false(ds$isReadOnly())
+    ds$setDescription(band = 1, "test")
+    expect_equal(ds$getDescription(band = 1), "test")
     r[is.na(r)] <- DEFAULT_NODATA[["UInt32"]]
     ds$write(band=1, 0, 0, dm[1], dm[2], r)
     expect_silent(ds$flushCache())
@@ -332,6 +334,12 @@ test_that("Byte I/O works", {
     ds$readByteAsRaw <- TRUE
     expect_warning(r_raw1 <- read_ds(ds, as_raw = TRUE))
 
+    ## read as raw via field only (no as_raw argument)
+    ds$readByteAsRaw <- TRUE
+    expect_warning(r_raw2 <- read_ds(ds))
+    expect_type(r_raw2, "raw")
+    ds$readByteAsRaw <- FALSE
+
     deleteDataset(f)
 
     expect_type(r_int, "integer")
@@ -393,13 +401,14 @@ test_that("build overviews runs without error", {
 
 test_that("get/set color table works", {
     f <- system.file("extdata/storml_evc.tif", package="gdalraster")
-    f2 <- paste0(tempdir(), "/", "storml_evc_ct.tif")
-    calc("A", f, dstfile=f2, dtName="UInt16", nodata_value=65535,
-         setRasterNodataValue=TRUE)
-    ds <- new(GDALRaster, f2, read_only=FALSE)
+    f2 <- tempfile("storml_evc_ct", fileext = ".tif")
+    on.exit(deleteDataset(f2), add = TRUE)
+    calc("A", f, dstfile = f2, dtName = "UInt16", nodata_value = 65535,
+         setRasterNodataValue = TRUE)
+    ds <- new(GDALRaster, f2, read_only = FALSE)
     evc_csv <- system.file("extdata/LF20_EVC_220.csv", package="gdalraster")
     vat <- read.csv(evc_csv)
-    ct <- vat[,c(1,3:5)]
+    ct <- vat[, c(1, 3:5)]
     expect_warning(ds$setColorTable(1, ct, "RGB"))
     # close and re-open flushes the write cache
     ds$open(read_only = TRUE)
@@ -409,7 +418,6 @@ test_that("get/set color table works", {
     ds$open(read_only = FALSE)
     expect_true(ds$clearColorTable(1))
     ds$close()
-    deleteDataset(f2)
 })
 
 test_that("get/set band color interpretation works", {
@@ -495,6 +503,61 @@ test_that("get/set default RAT works", {
 
     ds$close()
     deleteDataset(f)
+
+    ## test read/write RAT with new field types GFT_Boolean, GFT_DateTime and
+    ## and GFT_WKBGeometry with GDAL >= 3.12
+    skip_if(gdal_version_num() < gdal_compute_version(3, 12, 0))
+
+    # adapted from GDAL autotest/gcore/tiff_write.py
+    # https://github.com/OSGeo/gdal/blob/2327638e4a399ac1e902623bfda68a03956288b6/autotest/gcore/tiff_write.py#L12490
+    f <- tempfile(fileext = ".tif")
+    on.exit(deleteDataset(f), add = TRUE)
+
+    set_config_option("GTIFF_WRITE_RAT_TO_PAM", "")
+
+    ds <- create(format = "GTiff", dst_filename = f, xsize = 1, ysize = 1,
+                 nbands = 1, dataType = "Byte", return_obj = TRUE)
+
+    tbl <- data.frame(v_int = as.integer(123))
+    tbl$v_dbl <- 45.5
+    tbl$v_str <- "str"
+    tbl$v_bool <- TRUE
+    tbl$v_dt <- as.POSIXct("2025-12-31 23:58:59.500 GMT", tz = "UTC")
+    tbl$v_wkb <- list(g_wk2wk("POINT (1.0 2)"))
+
+    expect_true(ds$setDefaultRAT(band=1, tbl))
+    ds$flushCache()
+
+    pam_file <- paste0(f, ".aux.xml")
+    expect_false(vsi_stat(pam_file))
+
+    tbl2 <- ds$getDefaultRAT(band=1)
+    ignored_attrs <- c("waldo_opts", "GFU", "tzone")
+    expect_equal(nrow(tbl2), nrow(tbl))
+    expect_equal(ncol(tbl2), ncol(tbl))
+    expect_equal(tbl2$v_int, tbl$v_int, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_dbl, tbl$v_dbl, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_bool, tbl$v_bool, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_dt, tbl$v_dt, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_wkb, tbl$v_wkb, ignore_attr = ignored_attrs)
+
+    rm(tbl2)
+    ds$close()
+
+    f2 <- tempfile(fileext = ".tif")
+    on.exit(deleteDataset(f2), add = TRUE)
+    ds2 <- createCopy("GTiff", f2, f, return_obj = TRUE)
+    # repeat on the copied dataset
+    tbl2 <- ds2$getDefaultRAT(band=1)
+    expect_equal(nrow(tbl2), nrow(tbl))
+    expect_equal(ncol(tbl2), ncol(tbl))
+    expect_equal(tbl2$v_int, tbl$v_int, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_dbl, tbl$v_dbl, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_bool, tbl$v_bool, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_dt, tbl$v_dt, ignore_attr = ignored_attrs)
+    expect_equal(tbl2$v_wkb, tbl$v_wkb, ignore_attr = ignored_attrs)
+
+    ds2$close()
 })
 
 test_that("add band works", {
@@ -1166,5 +1229,36 @@ test_that("getMinMaxLocation works", {
     ret <- ds$getMinMaxLocation(band = 1)
     expect_true(all(is.na(ret)))
 
+    ds$close()
+})
+
+test_that("read to nativeRaster works", {
+    gray_file <- system.file("extdata/geomatrix.tif", package="gdalraster")
+    ds <- new(GDALRaster, gray_file)
+    r1 <- ds$readToNativeRaster(0, 0, 10, 12, 20, 24)
+    r1_1 <- read_to_nativeRaster(ds, xsize = 10, ysize = 12, out_xsize = 20,
+                                 out_ysize =  24)
+    expect_true(identical(r1, r1_1))
+
+    expect_true(all(dim(r1) == c(24, 20)))
+    expect_s3_class(r1, "nativeRaster")
+    expect_true(attr(r1, "channels") == 3)
+    r2 <- ds$readToNativeRaster(0, 0, ds$getRasterXSize(), ds$getRasterYSize(),
+                                ds$getRasterXSize(), ds$getRasterYSize())
+    r2_2 <- read_to_nativeRaster(ds)
+    expect_true(identical(r2, r2_2))
+
+    expect_true(unique(dim(r2)) == 20)
+    expect_s3_class(r2, "nativeRaster")
+    expect_true(attr(r2, "channels") == 3)
+
+    ds$close()
+
+    ## we are >= 3.1.0 so we can assume vrt://...?bands=
+    ds <- new(GDALRaster, sprintf("vrt://%s?bands=1,1,1", gray_file))
+    r3 <- ds$readToNativeRaster(0, 0, 20, 20, 20, 20)
+    expect_true(attr(r3, "channels") == 3)
+    r4 <- read_to_nativeRaster(ds)
+    expect_true(attr(r4, "channels") == 3)
     ds$close()
 })

@@ -211,7 +211,7 @@ static bool CreateField_(GDALDatasetH hDS, OGRLayerH hLayer,
     OGRFieldType eFieldType = getOFT_(fld_type);
     OGRFieldSubType eFieldSubType = getOFTSubtype_(fld_subtype);
     GDALDriverH hDriver = GDALGetDatasetDriver(hDS);
-    char **papszMD = GDALGetMetadata(hDriver, nullptr);
+    CSLConstList papszDriverMD = GDALGetMetadata(hDriver, nullptr);
     bool ret = false;
 
     hFieldDefn = OGR_Fld_Create(fld_name.c_str(), eFieldType);
@@ -225,7 +225,7 @@ static bool CreateField_(GDALDatasetH hDS, OGRLayerH hLayer,
             OGR_Fld_SetPrecision(hFieldDefn, fld_precision);
 
         if (!is_nullable) {
-            if (CPLFetchBool(papszMD, GDAL_DCAP_NOTNULL_FIELDS, false))
+            if (CPLFetchBool(papszDriverMD, GDAL_DCAP_NOTNULL_FIELDS, false))
                 OGR_Fld_SetNullable(hFieldDefn, false);
             else
                 Rcpp::warning(
@@ -233,7 +233,7 @@ static bool CreateField_(GDALDatasetH hDS, OGRLayerH hLayer,
         }
 
         if (default_value != "") {
-            if (CPLFetchBool(papszMD, GDAL_DCAP_DEFAULT_FIELDS, false))
+            if (CPLFetchBool(papszDriverMD, GDAL_DCAP_DEFAULT_FIELDS, false))
                 OGR_Fld_SetDefault(hFieldDefn, default_value.c_str());
             else
                 Rcpp::warning(
@@ -242,7 +242,7 @@ static bool CreateField_(GDALDatasetH hDS, OGRLayerH hLayer,
 
 #if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 2, 0)
         if (is_unique) {
-            if (CPLFetchBool(papszMD, GDAL_DCAP_UNIQUE_FIELDS, false))
+            if (CPLFetchBool(papszDriverMD, GDAL_DCAP_UNIQUE_FIELDS, false))
                 OGR_Fld_SetUnique(hFieldDefn, true);
             else
                 Rcpp::warning(
@@ -290,14 +290,15 @@ static bool CreateGeomField_(GDALDatasetH hDS, OGRLayerH hLayer,
     }
 
     GDALDriverH hDriver = GDALGetDatasetDriver(hDS);
-    char **papszMD = GDALGetMetadata(hDriver, nullptr);
+    CSLConstList papszDriverMD = GDALGetMetadata(hDriver, nullptr);
     bool ret = false;
 
     OGRGeomFieldDefnH hGeomFieldDefn = nullptr;
     hGeomFieldDefn = OGR_GFld_Create(fld_name.c_str(), eGeomType);
     if (hGeomFieldDefn != nullptr) {
         if (!is_nullable) {
-            if (CPLFetchBool(papszMD, GDAL_DCAP_NOTNULL_GEOMFIELDS, false))
+            if (CPLFetchBool(papszDriverMD, GDAL_DCAP_NOTNULL_GEOMFIELDS,
+                             false))
                 OGR_GFld_SetNullable(hGeomFieldDefn, false);
             else
                 Rcpp::warning(
@@ -631,8 +632,8 @@ GDALVector *create_ogr(const std::string &format,
     const std::string dsn_in =
         Rcpp::as<std::string>(check_gdal_filename(dst_filename));
 
-    char **papszMetadata = GDALGetMetadata(hDriver, nullptr);
-    if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATE, FALSE))
+    CSLConstList papszDriverMD = GDALGetMetadata(hDriver, nullptr);
+    if (!CPLFetchBool(papszDriverMD, GDAL_DCAP_CREATE, FALSE))
         Rcpp::stop("driver does not support create");
 
     if (fld_name != "" && fld_type == "")
@@ -796,23 +797,19 @@ SEXP ogr_ds_field_domain_names(const std::string &dsn) {
     }
 
     GDALDriverH hDriver = GDALGetDatasetDriver(hDS);
-    char **papszMD = GDALGetMetadata(hDriver, nullptr);
-    if (!CPLFetchBool(papszMD, GDAL_DCAP_FIELD_DOMAINS, false)) {
+    CSLConstList papszDriverMD =
+        (hDriver) ? GDALGetMetadata(hDriver, nullptr) : nullptr;
+
+    if (!CPLFetchBool(papszDriverMD, GDAL_DCAP_FIELD_DOMAINS, false)) {
         Rcpp::warning("format does not support reading field domains");
         GDALReleaseDataset(hDS);
         return R_NilValue;
     }
 
-    Rcpp::CharacterVector names = Rcpp::CharacterVector::create();
-    char **papszFldDomNames = nullptr;
-    papszFldDomNames = GDALDatasetGetFieldDomainNames(hDS, nullptr);
-    int items = CSLCount(papszFldDomNames);
-    if (items > 0) {
-        for (int i = 0; i < items; ++i) {
-            names.push_back(papszFldDomNames[i]);
-        }
-    }
-    CSLDestroy(papszFldDomNames);
+    const CPLStringList aosFldDomNames(
+        GDALDatasetGetFieldDomainNames(hDS, nullptr));
+
+    Rcpp::CharacterVector names = wrap_gdal_string_list_(aosFldDomNames);
 
     GDALReleaseDataset(hDS);
     return names;
@@ -982,14 +979,15 @@ bool ogr_ds_add_field_domain(const std::string &dsn,
             }
 
             for (Rcpp::CharacterVector::iterator i = coded_values.begin();
-                    i != coded_values.end(); ++i) {
+                 i != coded_values.end(); ++i) {
 
-                char **papszTokens = CSLTokenizeString2(
-                    *i, "=", CSLT_STRIPLEADSPACES | CSLT_STRIPENDSPACES);
+                const CPLStringList aosTokens(
+                    CSLTokenizeString2(
+                        *i, "=", CSLT_STRIPLEADSPACES | CSLT_STRIPENDSPACES));
 
-                if (CSLCount(papszTokens) < 1 || CSLCount(papszTokens) > 2) {
+                int nTokens = aosTokens.size();
+                if (nTokens < 1 || nTokens > 2) {
                     GDALReleaseDataset(hDS);
-                    CSLDestroy(papszTokens);
                     if (!ogr_coded_values.empty()) {
                         for (auto &cv : ogr_coded_values) {
                             VSIFree(cv.pszCode);
@@ -1002,13 +1000,12 @@ bool ogr_ds_add_field_domain(const std::string &dsn,
                 }
 
                 OGRCodedValue cv;
-                cv.pszCode = CPLStrdup(papszTokens[0]);
-                if (CSLCount(papszTokens) == 2)
-                    cv.pszValue = CPLStrdup(papszTokens[1]);
+                cv.pszCode = CPLStrdup(aosTokens[0]);
+                if (nTokens == 2)
+                    cv.pszValue = CPLStrdup(aosTokens[1]);
                 else
                     cv.pszValue = nullptr;
                 ogr_coded_values.emplace_back(cv);
-                CSLDestroy(papszTokens);
             }
         }
         // as two-column data frame of codes, values

@@ -94,6 +94,7 @@ ds$getFilename()
 ds$setFilename(filename)
 ds$open(read_only)
 ds$isOpen()
+ds$isReadOnly()
 ds$getFileList()
 
 ds$info()
@@ -119,6 +120,7 @@ ds$setProjection(projection)
 ds$bbox()
 ds$res()
 ds$dim()
+ds$setBbox(bbox)
 
 ds$apply_geotransform(col_row)
 ds$get_pixel_line(xy)
@@ -164,6 +166,7 @@ ds$getMetadataDomainList(band)
 ds$read(band, xoff, yoff, xsize, ysize, out_xsize, out_ysize)
 ds$readBlock(band, xblockoff, yblockoff)
 ds$readChunk(band, chunk_def)
+ds$readToNativeRaster(xoff, yoff, xsize, ysize, out_xsize, out_ysize)
 
 ds$write(band, xoff, yoff, xsize, ysize, rasterData)
 ds$writeBlock(band, xblockoff, yblockoff, rasterData)
@@ -212,7 +215,8 @@ All arguments are required with this form of the constructor, but
 Alternate constructor for specifying the driver(s) allowed for dataset
 opening as a character vector of driver short names.
 All arguments are required with this form of the constructor, but
-\code{open_options} can be \code{NULL}. Returns an object of class \code{GDALRaster}.
+\code{open_options} and/or \code{allowed_drivers} can be \code{NULL}. Returns an object of class
+\code{GDALRaster}.
 }
 
 \subsection{Read/write fields}{
@@ -264,7 +268,11 @@ not required to call \code{$close()} explicitly in this case.
 No return value, called for side effects.
 
 \code{$isOpen()}\cr
-Returns logical indicating whether the associated raster dataset is open.
+Returns a logical value, \code{TRUE} if the raster dataset is open.
+
+\code{$isReadOnly()}\cr
+Returns a logical value, \code{TRUE} if the raster dataset has read-only access
+or \code{FALSE} if it is writable.
 
 \code{$getFileList()}\cr
 Returns a character vector of files believed to be part of this dataset.
@@ -361,6 +369,12 @@ format string. Equivalent to \code{ds$getProjectionRef()}.
 \code{$bbox()}\cr
 Returns a numeric vector of length four containing the bounding box
 (xmin, ymin, xmax, ymax).
+
+\code{$setBbox(bbox)}\cr
+Sets the bounding box on this dataset.
+\code{bbox} is a numeric vector of length four.
+Returns logical \code{TRUE} on success or \code{FALSE} if the bbox
+could not be set.
 
 \code{$res()}\cr
 Returns a numeric vector of length two containing the resolution
@@ -617,15 +631,16 @@ not be set.
 
 \code{$getRasterColorInterp(band)}\cr
 Returns a string describing the color interpretation for \code{band}.
-The color interpretation values and their meanings are:
-\tabular{rl}{
+The color interpretation values and their meanings, with several additions
+in GDAL 3.10:
+\tabular{ll}{
 Undefined  \tab Undefined\cr
 Gray       \tab Grayscale\cr
 Palette    \tab Paletted (see associated color table)\cr
 Red        \tab Red band of RGBA image\cr
 Green      \tab Green band of RGBA image\cr
 Blue       \tab Blue band of RGBA image\cr
-Alpha      \tab Alpha (0=transparent, 255=opaque)\cr
+Alpha      \tab Alpha (0 = transparent, 255 = opaque)\cr
 Hue        \tab Hue band of HLS image\cr
 Saturation \tab Saturation band of HLS image\cr
 Lightness  \tab Lightness band of HLS image\cr
@@ -635,7 +650,25 @@ Yellow     \tab Yellow band of CMYK image\cr
 Black      \tab Black band of CMYK image\cr
 YCbCr_Y    \tab Y Luminance\cr
 YCbCr_Cb   \tab Cb Chroma\cr
-YCbCr_Cr   \tab Cr Chroma
+YCbCr_Cr   \tab Cr Chroma\cr
+\emph{GDAL >= 3.10}: \tab \cr
+PanBand    \tab Panchromatic band (0.40 - 1.00 micrometre)\cr
+CoastalBand \tab Coastal band (0.40 - 0.45 micrometre)\cr
+RedEdgeBand \tab Red-edge band (0.69 - 0.79 micrometre)\cr
+NIRBand    \tab Near-InfraRed (NIR) band (0.75 - 1.40 micrometre)\cr
+SWIRBand   \tab Short-Wavelength InfraRed (SWIR) band (1.40 - 3.00 micrometres)\cr
+MWIRBand   \tab Mid-Wavelength InfraRed (MWIR) band (3.00 - 8.00 micrometres)\cr
+LWIRBand   \tab Long-Wavelength InfraRed (LWIR) band (8.00 - 15 micrometres)\cr
+TIRBand    \tab Thermal InfraRed (TIR) band (MWIR or LWIR) (3 - 15 micrometres)\cr
+OtherIRBand \tab Other infrared band (0.75 - 1000 micrometres)\cr
+SAR_Ka_Band \tab SAR Ka band (0.8 - 1.1 cm / 27 - 40 GHz)\cr
+SAR_K_Band  \tab SAR K band (1.1 - 1.7 cm / 18 - 27 GHz)\cr
+SAR_Ku_Band \tab SAR Ku band (1.7 - 2.4 cm / 12 - 18 GHz)\cr
+SAR_X_Band  \tab SAR X band (2.4 - 3.8 cm / 8 - 12 GHz)\cr
+SAR_C_Band  \tab SAR C band (3.8 - 7.5 cm / 4 - 8 GHz)\cr
+SAR_S_Band  \tab SAR S band (7.5 - 15 cm / 2 - 4 GHz)\cr
+SAR_L_Band  \tab SAR L band (15 - 30 cm / 1 - 2 GHz)\cr
+SAR_P_Band  \tab SAR P band (30 - 100 cm / 0.3 - 1 GHz)
 }
 
 \code{$setRasterColorInterp(band, col_interp)}\cr
@@ -808,6 +841,25 @@ argument. \code{chunk_def} can also be given as an numeric vector of length 4
 containing the 0-based pixel offsets and pixel sizes for a chunk (xoff, yoff,
 xsize, ysize). Returns a vector of pixel values with length equal to the
 chunk \code{xsize * ysize}, otherwise as described above for \code{$read()}.
+
+\code{$readToNativeRaster(xoff, yoff, xsize, ysize, out_xsize, out_ysize)}\cr
+Reads a region of raster data from \code{band}. The method takes care of
+pixel decimation / replication if the output size
+(\code{out_xsize * out_ysize}) is different than the size of the region
+being accessed (\code{xsize * ysize}).
+\code{xoff} is the pixel (column) offset to the top left corner of the
+region of the band to be accessed (zero to start from the left side).
+\code{yoff} is the line (row) offset to the top left corner of the region of
+the band to be accessed (zero to start from the top).
+\emph{Note that raster row/column offsets use 0-based indexing.}
+\code{xsize} is the width in pixels of the region to be accessed.
+\code{ysize} is the height in pixels of the region to be accessed.
+\code{out_xsize} is the width of the output array into which the desired
+region will be read (typically the same value as xsize).
+\code{out_ysize} is the height of the output array into which the desired
+region will be read (typically the same value as ysize).
+Returns an object of class \code{nativeRaster} with attributes 'dim', and
+'channels'  containing the values that were read in R's native RGB/A encoding.
 
 \code{$write(band, xoff, yoff, xsize, ysize, rasterData)}\cr
 Writes a region of raster data to \code{band}.

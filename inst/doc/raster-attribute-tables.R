@@ -67,7 +67,7 @@ plot_raster(data = ds,
             interpolate = FALSE,
             main = "Storm Lake LANDFIRE EVT")
 
-## -----------------------------------------------------------------------------
+## ----eval = requireNamespace("gt")--------------------------------------------
 displayRAT(tbl, title = "Raster Attribute Table for Storm Lake EVT")
 
 ## -----------------------------------------------------------------------------

@@ -4,6 +4,7 @@
 */
 
 #include <gdal.h>
+#include <gdal_priv.h>
 #include <cpl_port.h>
 #include <cpl_conv.h>
 #include <cpl_http.h>
@@ -30,6 +31,8 @@
 #include "gdalraster.h"
 #include "cmb_table.h"
 #include "ogr_util.h"
+#include "srs_api.h"
+#include "transform.h"
 
 //' Get GDAL version
 //'
@@ -139,7 +142,12 @@ Rcpp::DataFrame gdal_formats(const std::string &format = "") {
 
     for (int i = 0; i < nDriverCount; ++i) {
         GDALDriverH hDriver = GDALGetDriver(i);
-        char **papszMD = GDALGetMetadata(hDriver, nullptr);
+        CSLConstList papszMD =
+            (hDriver) ? GDALGetMetadata(hDriver, nullptr) : nullptr;
+
+        if (!papszMD)
+            continue;
+
         int out_idx = i;
         if (nRowsOut == 1)
             out_idx = 0;
@@ -347,16 +355,23 @@ std::string get_config_option(const std::string &key) {
 //' `set_config_option()`.
 //' @returns No return value, called for side effects.
 //'
+//' @note
+//' The configuration option `"CPL_LOG_ERRORS"` can be set to `"OFF"` to disable
+//' printing error massages to the console by GDAL. This only affects messages
+//' printed by GDAL, and does not disable errors, warnings or other messages
+//' emitted by \pkg{gdalraster}. The latter can generally be configured using a
+//' function argument or object-level setting in most cases.
+//'
 //' @seealso
 //' [get_config_option()]
 //'
 //' `vignette("gdal-config-quick-ref")`
 //'
 //' @examples
-//' set_config_option("GDAL_CACHEMAX", "10%")
-//' get_config_option("GDAL_CACHEMAX")
-//' ## unset:
-//' set_config_option("GDAL_CACHEMAX", "")
+//' set_config_option("CPL_LOG_ERRORS", "OFF")
+//' get_config_option("CPL_LOG_ERRORS")
+//' ## unset to default:
+//' set_config_option("CPL_LOG_ERRORS", "")
 // [[Rcpp::export]]
 void set_config_option(const std::string &key, const std::string &value) {
     const char *value_in = nullptr;
@@ -364,6 +379,17 @@ void set_config_option(const std::string &key, const std::string &value) {
         value_in = value.c_str();
 
     CPLSetConfigOption(key.c_str(), value_in);
+
+    if (EQUAL(key.c_str(), "CPL_LOG_ERRORS")) {
+        if (value_in && (EQUAL(value_in, "OFF") || EQUAL(value_in, "FALSE") ||
+                         EQUAL(value_in, "NO"))) {
+
+            CPLSetErrorHandler((CPLErrorHandler) gdal_silent_errors_r);
+        }
+        else {
+            CPLSetErrorHandler((CPLErrorHandler) gdal_error_handler_r);
+        }
+    }
 }
 
 
@@ -561,13 +587,17 @@ int dump_open_datasets(const std::string &outfile) {
 //' handler specific to the R environment is in use by default.
 //'
 //' Setting `handler = "logging"` will use `CPLLoggingErrorHandler()`, error
-//' handler that logs into the file defined by the `CPL_LOG` configuration
+//' handler that logs into the file defined by the `"CPL_LOG"` configuration
 //' option. Be sure that option is set when using this error handler.
 //'
 //' This only affects error reporting from GDAL.
 //'
+//' Also note that the configuration option `"CPL_LOG_ERRORS"` can be set to
+//' `"OFF"` to disable globally the printing of error massages to the console
+//' by GDAL.
+//'
 //' @seealso
-//' [pop_error_handler()]
+//' [pop_error_handler()], [set_config_option()]
 //'
 //' @examples
 //' push_error_handler("quiet")
@@ -748,6 +778,10 @@ bool http_enabled() {
 }
 
 
+// Extract non-directory portion of filename.
+// Returns a string containing the bare filename portion of the passed filename.
+// If there is no filename (passed value ends in trailing directory separator)
+// an empty string is returned.
 //' @noRd
 // [[Rcpp::export(name = ".cpl_get_filename")]]
 std::string cpl_get_filename(const Rcpp::CharacterVector &full_filename) {
@@ -758,23 +792,88 @@ std::string cpl_get_filename(const Rcpp::CharacterVector &full_filename) {
 }
 
 
+// Extract directory path portion of filename.
+// Returns a string containing the directory path portion of the passed
+// filename. If there is no path in the passed filename an empty string
+// will be returned (not NULL).
+//' @noRd
+// [[Rcpp::export(name = ".cpl_get_path")]]
+std::string cpl_get_path(const Rcpp::CharacterVector &full_filename) {
+    const std::string filename_in =
+        Rcpp::as<std::string>(check_gdal_filename(full_filename));
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
+    return std::string(CPLGetPath(filename_in.c_str()));
+#else
+    return CPLGetPathSafe(filename_in.c_str());
+#endif
+}
+
+
+// Extract directory path portion of filename.
+// Returns a string containing the directory path portion of the passed
+// filename. If there is no path in the passed filename the dot will be
+// returned. It is the only difference from CPLGetPath().
+//' @noRd
+// [[Rcpp::export(name = ".cpl_get_dirname")]]
+std::string cpl_get_dirname(const Rcpp::CharacterVector &full_filename) {
+    const std::string filename_in =
+        Rcpp::as<std::string>(check_gdal_filename(full_filename));
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
+    return std::string(CPLGetDirname(filename_in.c_str()));
+#else
+    return CPLGetDirnameSafe(filename_in.c_str());
+#endif
+}
+
+
+// Extract basename (non-directory, non-extension) portion of filename.
+// Returns a string containing the file basename portion of the passed name. If
+// there is no basename (passed value ends in trailing directory separator, or
+// filename starts with a dot) an empty string is returned.
 //' @noRd
 // [[Rcpp::export(name = ".cpl_get_basename")]]
 std::string cpl_get_basename(const Rcpp::CharacterVector &full_filename) {
     const std::string filename_in =
         Rcpp::as<std::string>(check_gdal_filename(full_filename));
 
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
     return std::string(CPLGetBasename(filename_in.c_str()));
+#else
+    return CPLGetBasenameSafe(filename_in.c_str());
+#endif
 }
 
 
+// Extract filename extension from full filename.
+// Returns a string containing the extension portion of the passed name. If
+// there is no extension (the filename has no dot) an empty string is returned.
+// The returned extension will not include the period.
 //' @noRd
 // [[Rcpp::export(name = ".cpl_get_extension")]]
 std::string cpl_get_extension(const Rcpp::CharacterVector &full_filename) {
     const std::string filename_in =
         Rcpp::as<std::string>(check_gdal_filename(full_filename));
 
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
     return std::string(CPLGetExtension(filename_in.c_str()));
+#else
+    return CPLGetExtensionSafe(filename_in.c_str());
+#endif
+}
+
+
+// Launder a string to be compatible of a filename.
+// (for the non-directory portion of a filename)
+//' @noRd
+// [[Rcpp::export(name = ".cpl_launder_for_filename")]]
+std::string cpl_launder_for_filename(const std::string &full_filename) {
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
+    return std::string(CPLLaunderForFilename(full_filename.c_str(), nullptr));
+#else
+    return CPLLaunderForFilenameSafe(full_filename.c_str(), nullptr);
+#endif
 }
 
 
@@ -805,8 +904,8 @@ GDALRaster *create(const std::string &format,
     if (hDriver == nullptr)
         Rcpp::stop("failed to get driver for the specified format");
 
-    char **papszMetadata = GDALGetMetadata(hDriver, nullptr);
-    if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATE, FALSE))
+    CSLConstList papszDriverMD = GDALGetMetadata(hDriver, nullptr);
+    if (!CPLFetchBool(papszDriverMD, GDAL_DCAP_CREATE, FALSE))
         Rcpp::stop("driver does not support create");
 
     const std::string dst_filename_in =
@@ -864,9 +963,9 @@ GDALRaster *createCopy(const std::string &format,
     if (hDriver == nullptr)
         Rcpp::stop("failed to get driver from format name");
 
-    char **papszMetadata = GDALGetMetadata(hDriver, nullptr);
-    if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) &&
-        !CPLFetchBool(papszMetadata, GDAL_DCAP_CREATE, FALSE)) {
+    CSLConstList papszDriverMD = GDALGetMetadata(hDriver, nullptr);
+    if (!CPLFetchBool(papszDriverMD, GDAL_DCAP_CREATECOPY, FALSE) &&
+        !CPLFetchBool(papszDriverMD, GDAL_DCAP_CREATE, FALSE)) {
 
         Rcpp::stop("driver does not support createCopy");
     }
@@ -1596,6 +1695,7 @@ Rcpp::DataFrame combine(const Rcpp::CharacterVector &src_files,
     void *pProgressData = nullptr;
 
     if (!quiet) {
+        pfnProgress(0, nullptr, nullptr);
         if (nrasters == 1)
             Rcpp::Rcout << "scanning raster...\n";
         else
@@ -1647,8 +1747,10 @@ Rcpp::DataFrame value_count(const GDALRaster* const &src_ds, int band = 1,
 
     Rcpp::DataFrame df_out = Rcpp::DataFrame::create();
 
-    if (!quiet)
+    if (!quiet) {
+        pfnProgress(0, nullptr, nullptr);
         Rcpp::Rcout << "scanning raster...\n";
+    }
 
     // The counter in the unordered_map is a double since it will be returned
     // as R numeric type, for greater range than int32 and R lacks a native
@@ -1991,6 +2093,236 @@ bool footprint(const Rcpp::CharacterVector &src_filename,
 
     return ret;
 
+#endif
+}
+
+
+//' Check Line of Sight between pairs of points
+//'
+//' Interface to GDALIsLineOfSightVisible() in GDAL >= 3.9
+//'
+//' see also https://github.com/OSGeo/gdal/issues/12458:
+//' GDALIsLineOfSightVisible(): points exactly on the DEM surface are never
+//' visible
+//'
+//' Called from and documented in R/gdalraster_proc.R
+//'
+//' @noRd
+// [[Rcpp::export(name = ".isLineOfSightVisible")]]
+Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
+                                         int band,
+                                         const Rcpp::RObject &ptsA,
+                                         const std::string &srsA,
+                                         const std::string &ZinterpA,
+                                         const Rcpp::RObject &ptsB,
+                                         const std::string &srsB,
+                                         const std::string &ZinterpB,
+                                         bool quiet) {
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 9, 0)
+    Rcpp::stop("isLineOfSightVisible() requires GDAL >= 3.9");
+
+#else
+
+    Rcpp::NumericMatrix ptsA_in = xy_robject_to_matrix_(ptsA);
+    Rcpp::NumericMatrix ptsB_in = xy_robject_to_matrix_(ptsB);
+
+    if (ptsA_in.nrow() == 0)
+        Rcpp::stop("'ptsA' is empty");
+
+    if (ptsB_in.nrow() == 0)
+        Rcpp::stop("'ptsB' is empty");
+
+    if ((ptsA_in.nrow() != ptsB_in.nrow()) && ptsA_in.nrow() != 1)
+        Rcpp::stop("incompatible number of points in 'ptsA' vs 'ptsB'");
+
+    if (ptsA_in.ncol() != 3)
+        Rcpp::stop("input matrix for 'ptsA' must have 3 columns (xyz)");
+
+    if (ptsB_in.ncol() != 3)
+        Rcpp::stop("input matrix for 'ptsB' must have 3 columns (xyz)");
+
+    bool zA_interp_dem_relative = false;
+    if (EQUAL(ZinterpA.c_str(), "RELATIVE_TO_DEM"))
+        zA_interp_dem_relative = true;
+
+    bool zB_interp_dem_relative = false;
+    if (EQUAL(ZinterpB.c_str(), "RELATIVE_TO_DEM"))
+        zB_interp_dem_relative = true;
+
+    if (srsA != "") {
+        if (!quiet)
+            Rcpp::Rcout << "transforming 'ptsA'...\n";
+
+        if (srs_is_vertical(srsA) && zA_interp_dem_relative)
+            Rcpp::stop("CRS is vertical but Z values are not actual heights");
+
+        ptsA_in = transform_xy(ptsA_in, srsA, ds->getProjection());
+    }
+
+    if (srsB != "") {
+        if (!quiet)
+            Rcpp::Rcout << "transforming 'ptsB'...\n";
+
+        if (srs_is_vertical(srsB) && zB_interp_dem_relative)
+            Rcpp::stop("CRS is vertical but Z values are not actual heights");
+
+        ptsB_in = transform_xy(ptsB_in, srsB, ds->getProjection());
+    }
+
+    // if a single point A
+    if (ptsA_in.nrow() == 1) {
+        if (Rcpp::NumericVector::is_na(ptsA_in(0, 0)) ||
+            Rcpp::NumericVector::is_na(ptsA_in(0, 1)) ||
+            Rcpp::NumericVector::is_na(ptsA_in(0, 2))) {
+
+            Rcpp::stop("point A contains one or more missing value(s)");
+        }
+    }
+
+    const R_xlen_t num_pts = ptsB_in.nrow();
+
+    Rcpp::NumericVector inv_gt = inv_geotransform(ds->getGeoTransform());
+    if (Rcpp::any(Rcpp::is_na(inv_gt)))
+        Rcpp::stop("failed to get inverse geotransform");
+
+    const double raster_xsize = ds->getRasterXSize();
+    const double raster_ysize = ds->getRasterYSize();
+    GDALRasterBandH hBand = ds->getBand_(band);
+    Rcpp::LogicalVector out = Rcpp::no_init(num_pts);
+    R_xlen_t pts_outside = 0;
+    GDALProgressFunc pfnProgress = GDALTermProgressR;
+
+    if (!quiet) {
+        Rcpp::Rcout << "checking line-of-sight...\n";
+        pfnProgress(0, nullptr, nullptr);
+    }
+
+    for (R_xlen_t i = 0; i < num_pts; ++i) {
+        double geo_xA = NA_REAL;
+        double geo_yA = NA_REAL;
+        double zA = NA_REAL;
+        if (ptsA_in.nrow() > 1) {
+            geo_xA = ptsA_in(i, 0);
+            geo_yA = ptsA_in(i, 1);
+            zA = ptsA_in(i, 2);
+            if (Rcpp::NumericVector::is_na(geo_xA) ||
+                Rcpp::NumericVector::is_na(geo_yA) ||
+                Rcpp::NumericVector::is_na(zA)) {
+
+                out[i] = NA_LOGICAL;
+                continue;
+            }
+        }
+        else {
+            geo_xA = ptsA_in(0, 0);
+            geo_yA = ptsA_in(0, 1);
+            zA = ptsA_in(0, 2);
+        }
+
+        double geo_xB = ptsB_in(i, 0);
+        double geo_yB = ptsB_in(i, 1);
+        double zB = ptsB_in(i, 2);
+        if (Rcpp::NumericVector::is_na(geo_xB) ||
+            Rcpp::NumericVector::is_na(geo_yB) ||
+            Rcpp::NumericVector::is_na(zB)) {
+
+            out[i] = NA_LOGICAL;
+            continue;
+        }
+
+        // convert to raster row/column
+        // allow input coordinates exactly on the bottom or right edges to
+        // match behavior in: https://github.com/OSGeo/gdal/pull/12087
+
+        // we could only do this for ptsA if ptsA_in.nrow() > 1
+        // i.e., compute and check above before the loop for the case of 1 ptA
+        double grid_xA = inv_gt[0] + inv_gt[1] * geo_xA + inv_gt[2] * geo_yA;
+        double grid_yA = inv_gt[3] + inv_gt[4] * geo_xA + inv_gt[5] * geo_yA;
+
+        if (ARE_REAL_EQUAL(grid_xA, raster_xsize))
+            grid_xA -= 0.25;
+        if (ARE_REAL_EQUAL(grid_yA, raster_ysize))
+            grid_yA -= 0.25;
+
+        if ((grid_xA < 0 || grid_xA > raster_xsize ||
+             grid_yA < 0 || grid_yA > raster_ysize)) {
+
+            pts_outside += 1;
+
+            out[i] = NA_LOGICAL;
+            continue;
+        }
+
+        double grid_xB = inv_gt[0] + inv_gt[1] * geo_xB + inv_gt[2] * geo_yB;
+        double grid_yB = inv_gt[3] + inv_gt[4] * geo_xB + inv_gt[5] * geo_yB;
+
+        if (ARE_REAL_EQUAL(grid_xB, raster_xsize))
+            grid_xB -= 0.25;
+        if (ARE_REAL_EQUAL(grid_yB, raster_ysize))
+            grid_yB -= 0.25;
+
+        if ((grid_xB < 0 || grid_xB > raster_xsize ||
+             grid_yB < 0 || grid_yB > raster_ysize)) {
+
+            pts_outside += 1;
+
+            out[i] = NA_LOGICAL;
+            continue;
+        }
+
+        const int xA = static_cast<int>(std::floor(grid_xA));
+        const int yA = static_cast<int>(std::floor(grid_yA));
+        const int xB = static_cast<int>(std::floor(grid_xB));
+        const int yB = static_cast<int>(std::floor(grid_yB));
+
+        if (zA_interp_dem_relative) {
+            Rcpp::NumericVector elev =
+                Rcpp::as<Rcpp::NumericVector>(ds->read(band, xA, yA,
+                                                       1, 1, 1, 1));
+
+            if (Rcpp::NumericVector::is_na(elev[0])) {
+                out[i] = NA_LOGICAL;
+                continue;
+            }
+            else {
+                zA += elev[0];
+            }
+        }
+
+        if (zB_interp_dem_relative) {
+            Rcpp::NumericVector elev =
+                Rcpp::as<Rcpp::NumericVector>(ds->read(band, xB, yB,
+                                                       1, 1, 1, 1));
+
+            if (Rcpp::NumericVector::is_na(elev[0])) {
+                out[i] = NA_LOGICAL;
+                continue;
+            }
+            else {
+                zB += elev[0];
+            }
+        }
+
+        if (GDALIsLineOfSightVisible(hBand, xA, yA, zA, xB, yB, zB,
+                                     nullptr, nullptr, nullptr)) {
+            out[i] = TRUE;
+        }
+        else {
+            out[i] = FALSE;
+        }
+
+        if (!quiet)
+            pfnProgress((i + 1.0) / num_pts, nullptr, nullptr);
+    }
+
+    if (!quiet && pts_outside > 0) {
+        std::string msg =
+            "point(s) were outside the raster extent, NA returned";
+        Rcpp::warning(std::to_string(pts_outside) + " " + msg);
+    }
+
+    return out;
 #endif
 }
 
@@ -3473,14 +3805,14 @@ SEXP gdal_get_driver_md(const std::string &format,
         }
     }
     else {
-        char **papszMD = nullptr;
-        papszMD = GDALGetMetadata(hDriver, nullptr);
-        int nItems = CSLCount(papszMD);
+        CSLConstList papszDriverMD = GDALGetMetadata(hDriver, nullptr);
+        int nItems = CSLCount(papszDriverMD);
         if (nItems > 0) {
             Rcpp::List md = Rcpp::List::create();
             for (int i = 0; i < nItems; ++i) {
                 char *pszKey = nullptr;
-                const char *pszValue = CPLParseNameValue(papszMD[i], &pszKey);
+                const char *pszValue =
+                    CPLParseNameValue(papszDriverMD[i], &pszKey);
                 if (pszValue)
                     md.push_back(pszValue, pszKey);
                 CPLFree(pszKey);
@@ -3518,32 +3850,36 @@ bool addFileInZip(const std::string &zip_filename, bool overwrite,
     const std::string in_filename_in =
         Rcpp::as<std::string>(check_gdal_filename(in_filename));
 
-    bool ret = false;
-    VSIStatBufL buf;
-
-    std::vector<char *> opt_zip_create;
+    std::vector<char *> opt_zip_create = {};
     if (overwrite) {
         VSIUnlink(zip_filename_in.c_str());
     } else {
-        if (VSIStatExL(zip_filename_in.c_str(), &buf, VSI_STAT_EXISTS_FLAG)
-                == 0) {
+        VSIStatBufL buf;
+        int nStatRet =
+            VSIStatExL(zip_filename_in.c_str(), &buf, VSI_STAT_EXISTS_FLAG);
+
+        if (nStatRet == 0) {
             opt_zip_create.push_back(const_cast<char *>("APPEND=TRUE"));
+            opt_zip_create.push_back(nullptr);
         }
     }
-    opt_zip_create.push_back(nullptr);
 
-    void *hZIP = CPLCreateZip(zip_filename_in.c_str(), opt_zip_create.data());
-    if (hZIP == nullptr)
-        Rcpp::stop("failed to obtain file handle for zip file");
+    std::unique_ptr<void, decltype(&CPLCloseZip)> hZIP(
+        CPLCreateZip(
+            zip_filename_in.c_str(),
+            opt_zip_create.empty() ? nullptr : opt_zip_create.data()),
+        CPLCloseZip);
 
-    std::vector<char *> opt_list = {nullptr};
+    if (!hZIP)
+        Rcpp::stop("failed to obtain file handle for the zip file");
+
+    std::vector<char *> opt_list = {};
     if (options.isNotNull()) {
         Rcpp::CharacterVector options_in(options);
-        opt_list.resize(options_in.size() + 1);
         for (R_xlen_t i = 0; i < options_in.size(); ++i) {
-            opt_list[i] = (char *) options_in[i];
+            opt_list.push_back((char *) options_in[i]);
         }
-        opt_list[options_in.size()] = nullptr;
+        opt_list.push_back(nullptr);
     }
 
     if (!quiet) {
@@ -3551,19 +3887,42 @@ bool addFileInZip(const std::string &zip_filename, bool overwrite,
         GDALTermProgressR(0, nullptr, nullptr);
     }
 
-    CPLErr err = CPLAddFileInZip(hZIP, archive_filename_in.c_str(),
-                                 in_filename_in.c_str(),
-                                 nullptr, opt_list.data(),
-                                 quiet ? nullptr : GDALTermProgressR,
-                                 nullptr);
+    CPLErr err = CPLAddFileInZip(
+        hZIP.get(), archive_filename_in.c_str(), in_filename_in.c_str(),
+        nullptr, opt_list.empty() ? nullptr : opt_list.data(),
+        quiet ? nullptr : GDALTermProgressR, nullptr);
 
     if (err == CE_None)
-        ret = true;
+        return true;
     else
-        ret = false;
-
-    CPLCloseZip(hZIP);
-    return ret;
-
+        return false;
 #endif
 }
+
+
+// [[Rcpp::export(name = ".gt_from_dim_bbox")]]
+Rcpp::NumericVector gt_from_dim_bbox_(const Rcpp::NumericVector &dim,
+                                      const Rcpp::NumericVector &bbox) {
+  if (bbox[2] <= bbox[0])
+    Rcpp::stop("invalid bbox: xmax must be greater than xmin");
+  if (bbox[3] <= bbox[1])
+    Rcpp::stop("invalid bbox: ymax must be greater than ymin");
+
+  if (dim[0] < 1)
+    Rcpp::stop("invalid dim (ncol,nrow): xsize (ncol) must be greater than 0");
+  if (dim[1] < 1)
+    Rcpp::stop("invalid dim (ncol,nrow): ysize (nrow) must be greater than 0");
+
+  // bbox: xmin, ymin, xmax, ymax
+  // dim: ncol, nrow
+  Rcpp::NumericVector gt(6);
+  gt[0] = bbox[0];                              // xmin
+  gt[1] = (bbox[2] - bbox[0]) / dim[0];         // pixel width
+  gt[2] = 0.0;                                  // no rotation
+  gt[3] = bbox[3];                              // ymax (north-up)
+  gt[4] = 0.0;                                  // no rotation
+  gt[5] = (bbox[1] - bbox[3]) / dim[1];         // pixel height (negative)
+  return gt;
+}
+
+

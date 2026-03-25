@@ -353,12 +353,15 @@ R data frame, building new tables, and setting a default RAT on a raster
 band.</p>
 <div id="format-of-gdal-rat" class="section level2">
 <h2>Format of GDAL RAT</h2>
-<p>Each column in a raster attribute table has a name, a type (integer,
-floating point or string), and a <code>GDALRATFieldUsage</code>. The
-field usage distinguishes columns with particular understood purposes
-(such as color, histogram count, class name), and columns that have
-other purposes not understood by the library (long labels, ancillary
-attributes, etc).</p>
+<p>Each column in a raster attribute table has a name, a type (Integer,
+Double, String, and with GDAL &gt;= 3.12, Boolean, DateTime, or
+WKBGeometry), and a <code>GDALRATFieldUsage</code>. The field usage
+distinguishes columns with particular understood purposes (such as
+color, histogram count, class name), and columns that have other
+purposes not understood by the library (long labels, ancillary
+attributes, etc). With GDAL &gt;= 3.12, a WKBGeometry field is meant to
+help GIS software find (zoom to) areas where specific rows are present
+in the RAT.</p>
 <p>In the general case, each row has a field indicating the minimum
 pixel value falling into that category, and a field indicating the
 maximum pixel value. In the GDAL API, these are indicated with usage
@@ -438,65 +441,63 @@ RAT, for passing to <code>GDALRaster$setDefaultRAT()</code>):</p>
 <span id="cb1-41"><a href="#cb1-41" tabindex="-1"></a>                <span class="at">na_value =</span> <span class="sc">-</span><span class="dv">9999</span>,</span>
 <span id="cb1-42"><a href="#cb1-42" tabindex="-1"></a>                <span class="at">join_df =</span> evt_df)</span>
 <span id="cb1-43"><a href="#cb1-43" tabindex="-1"></a><span class="co">#&gt; scanning raster...</span></span>
-<span id="cb1-44"><a href="#cb1-44" tabindex="-1"></a><span class="co">#&gt; 0...10...20...30...40...50...60...70...80...90...100 - done.</span></span>
-<span id="cb1-45"><a href="#cb1-45" tabindex="-1"></a></span>
-<span id="cb1-46"><a href="#cb1-46" tabindex="-1"></a><span class="fu">nrow</span>(tbl)</span>
-<span id="cb1-47"><a href="#cb1-47" tabindex="-1"></a><span class="co">#&gt; [1] 24</span></span>
-<span id="cb1-48"><a href="#cb1-48" tabindex="-1"></a><span class="fu">head</span>(tbl)</span>
-<span id="cb1-49"><a href="#cb1-49" tabindex="-1"></a><span class="co">#&gt;   VALUE COUNT                                                          EVT_NAME</span></span>
-<span id="cb1-50"><a href="#cb1-50" tabindex="-1"></a><span class="co">#&gt; 1 -9999   876                                                       Fill-NoData</span></span>
-<span id="cb1-51"><a href="#cb1-51" tabindex="-1"></a><span class="co">#&gt; 2  7011    28                          Rocky Mountain Aspen Forest and Woodland</span></span>
-<span id="cb1-52"><a href="#cb1-52" tabindex="-1"></a><span class="co">#&gt; 3  7046  4564           Northern Rocky Mountain Subalpine Woodland and Parkland</span></span>
-<span id="cb1-53"><a href="#cb1-53" tabindex="-1"></a><span class="co">#&gt; 4  7050   570                              Rocky Mountain Lodgepole Pine Forest</span></span>
-<span id="cb1-54"><a href="#cb1-54" tabindex="-1"></a><span class="co">#&gt; 5  7055   889 Rocky Mountain Subalpine Dry-Mesic Spruce-Fir Forest and Woodland</span></span>
-<span id="cb1-55"><a href="#cb1-55" tabindex="-1"></a><span class="co">#&gt; 6  7056   304 Rocky Mountain Subalpine Mesic-Wet Spruce-Fir Forest and Woodland</span></span>
-<span id="cb1-56"><a href="#cb1-56" tabindex="-1"></a><span class="co">#&gt;   EVT_LF EVT_PHYS   R   G   B</span></span>
-<span id="cb1-57"><a href="#cb1-57" tabindex="-1"></a><span class="co">#&gt; 1   &lt;NA&gt;     &lt;NA&gt; 255 255 255</span></span>
-<span id="cb1-58"><a href="#cb1-58" tabindex="-1"></a><span class="co">#&gt; 2   Tree Hardwood 192 255 138</span></span>
-<span id="cb1-59"><a href="#cb1-59" tabindex="-1"></a><span class="co">#&gt; 3   Tree  Conifer 191 255 233</span></span>
-<span id="cb1-60"><a href="#cb1-60" tabindex="-1"></a><span class="co">#&gt; 4   Tree  Conifer 163 240 219</span></span>
-<span id="cb1-61"><a href="#cb1-61" tabindex="-1"></a><span class="co">#&gt; 5   Tree  Conifer 236 252 204</span></span>
-<span id="cb1-62"><a href="#cb1-62" tabindex="-1"></a><span class="co">#&gt; 6   Tree  Conifer 236 252 204</span></span>
-<span id="cb1-63"><a href="#cb1-63" tabindex="-1"></a></span>
-<span id="cb1-64"><a href="#cb1-64" tabindex="-1"></a><span class="co"># attributes on the returned data frame and its columns define RAT metadata</span></span>
-<span id="cb1-65"><a href="#cb1-65" tabindex="-1"></a><span class="fu">attr</span>(tbl, <span class="st">&quot;GDALRATTableType&quot;</span>)</span>
-<span id="cb1-66"><a href="#cb1-66" tabindex="-1"></a><span class="co">#&gt; [1] &quot;thematic&quot;</span></span>
-<span id="cb1-67"><a href="#cb1-67" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>VALUE)     <span class="co"># GFU_MinMax for column of discrete pixel values</span></span>
-<span id="cb1-68"><a href="#cb1-68" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-69"><a href="#cb1-69" tabindex="-1"></a><span class="co">#&gt; [1] &quot;MinMax&quot;</span></span>
-<span id="cb1-70"><a href="#cb1-70" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>COUNT)     <span class="co"># pixel counts</span></span>
-<span id="cb1-71"><a href="#cb1-71" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-72"><a href="#cb1-72" tabindex="-1"></a><span class="co">#&gt; [1] &quot;PixelCount&quot;</span></span>
-<span id="cb1-73"><a href="#cb1-73" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>EVT_NAME)  <span class="co"># the class names</span></span>
-<span id="cb1-74"><a href="#cb1-74" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-75"><a href="#cb1-75" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Name&quot;</span></span>
-<span id="cb1-76"><a href="#cb1-76" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>EVT_LF)    <span class="co"># ancillary attribute</span></span>
-<span id="cb1-77"><a href="#cb1-77" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-78"><a href="#cb1-78" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
-<span id="cb1-79"><a href="#cb1-79" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>EVT_PHYS)  <span class="co"># ancillary attribute</span></span>
-<span id="cb1-80"><a href="#cb1-80" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-81"><a href="#cb1-81" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
-<span id="cb1-82"><a href="#cb1-82" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>R)         <span class="co"># red 0-255</span></span>
-<span id="cb1-83"><a href="#cb1-83" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-84"><a href="#cb1-84" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Red&quot;</span></span>
-<span id="cb1-85"><a href="#cb1-85" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>G)         <span class="co"># green 0-255</span></span>
-<span id="cb1-86"><a href="#cb1-86" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-87"><a href="#cb1-87" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Green&quot;</span></span>
-<span id="cb1-88"><a href="#cb1-88" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>B)         <span class="co"># blue 0-255</span></span>
-<span id="cb1-89"><a href="#cb1-89" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
-<span id="cb1-90"><a href="#cb1-90" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Blue&quot;</span></span>
-<span id="cb1-91"><a href="#cb1-91" tabindex="-1"></a></span>
-<span id="cb1-92"><a href="#cb1-92" tabindex="-1"></a><span class="co"># set as default RAT on the EVT raster</span></span>
-<span id="cb1-93"><a href="#cb1-93" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">setDefaultRAT</span>(<span class="at">band=</span><span class="dv">1</span>, tbl)</span>
-<span id="cb1-94"><a href="#cb1-94" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb1-95"><a href="#cb1-95" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">flushCache</span>()</span>
-<span id="cb1-96"><a href="#cb1-96" tabindex="-1"></a></span>
-<span id="cb1-97"><a href="#cb1-97" tabindex="-1"></a><span class="co"># it can now be read from the raster dataset</span></span>
-<span id="cb1-98"><a href="#cb1-98" tabindex="-1"></a><span class="fu">rm</span>(tbl)</span>
-<span id="cb1-99"><a href="#cb1-99" tabindex="-1"></a>tbl <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">getDefaultRAT</span>(<span class="at">band=</span><span class="dv">1</span>)</span>
-<span id="cb1-100"><a href="#cb1-100" tabindex="-1"></a><span class="co">#&gt; 0...10...20...30...40...50...60...70...80...90...100 - done.</span></span>
-<span id="cb1-101"><a href="#cb1-101" tabindex="-1"></a><span class="fu">nrow</span>(tbl)</span>
-<span id="cb1-102"><a href="#cb1-102" tabindex="-1"></a><span class="co">#&gt; [1] 24</span></span></code></pre></div>
+<span id="cb1-44"><a href="#cb1-44" tabindex="-1"></a></span>
+<span id="cb1-45"><a href="#cb1-45" tabindex="-1"></a><span class="fu">nrow</span>(tbl)</span>
+<span id="cb1-46"><a href="#cb1-46" tabindex="-1"></a><span class="co">#&gt; [1] 24</span></span>
+<span id="cb1-47"><a href="#cb1-47" tabindex="-1"></a><span class="fu">head</span>(tbl)</span>
+<span id="cb1-48"><a href="#cb1-48" tabindex="-1"></a><span class="co">#&gt;   VALUE COUNT                                                          EVT_NAME</span></span>
+<span id="cb1-49"><a href="#cb1-49" tabindex="-1"></a><span class="co">#&gt; 1 -9999   876                                                       Fill-NoData</span></span>
+<span id="cb1-50"><a href="#cb1-50" tabindex="-1"></a><span class="co">#&gt; 2  7011    28                          Rocky Mountain Aspen Forest and Woodland</span></span>
+<span id="cb1-51"><a href="#cb1-51" tabindex="-1"></a><span class="co">#&gt; 3  7046  4564           Northern Rocky Mountain Subalpine Woodland and Parkland</span></span>
+<span id="cb1-52"><a href="#cb1-52" tabindex="-1"></a><span class="co">#&gt; 4  7050   570                              Rocky Mountain Lodgepole Pine Forest</span></span>
+<span id="cb1-53"><a href="#cb1-53" tabindex="-1"></a><span class="co">#&gt; 5  7055   889 Rocky Mountain Subalpine Dry-Mesic Spruce-Fir Forest and Woodland</span></span>
+<span id="cb1-54"><a href="#cb1-54" tabindex="-1"></a><span class="co">#&gt; 6  7056   304 Rocky Mountain Subalpine Mesic-Wet Spruce-Fir Forest and Woodland</span></span>
+<span id="cb1-55"><a href="#cb1-55" tabindex="-1"></a><span class="co">#&gt;   EVT_LF EVT_PHYS   R   G   B</span></span>
+<span id="cb1-56"><a href="#cb1-56" tabindex="-1"></a><span class="co">#&gt; 1   &lt;NA&gt;     &lt;NA&gt; 255 255 255</span></span>
+<span id="cb1-57"><a href="#cb1-57" tabindex="-1"></a><span class="co">#&gt; 2   Tree Hardwood 192 255 138</span></span>
+<span id="cb1-58"><a href="#cb1-58" tabindex="-1"></a><span class="co">#&gt; 3   Tree  Conifer 191 255 233</span></span>
+<span id="cb1-59"><a href="#cb1-59" tabindex="-1"></a><span class="co">#&gt; 4   Tree  Conifer 163 240 219</span></span>
+<span id="cb1-60"><a href="#cb1-60" tabindex="-1"></a><span class="co">#&gt; 5   Tree  Conifer 236 252 204</span></span>
+<span id="cb1-61"><a href="#cb1-61" tabindex="-1"></a><span class="co">#&gt; 6   Tree  Conifer 236 252 204</span></span>
+<span id="cb1-62"><a href="#cb1-62" tabindex="-1"></a></span>
+<span id="cb1-63"><a href="#cb1-63" tabindex="-1"></a><span class="co"># attributes on the returned data frame and its columns define RAT metadata</span></span>
+<span id="cb1-64"><a href="#cb1-64" tabindex="-1"></a><span class="fu">attr</span>(tbl, <span class="st">&quot;GDALRATTableType&quot;</span>)</span>
+<span id="cb1-65"><a href="#cb1-65" tabindex="-1"></a><span class="co">#&gt; [1] &quot;thematic&quot;</span></span>
+<span id="cb1-66"><a href="#cb1-66" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>VALUE)     <span class="co"># GFU_MinMax for column of discrete pixel values</span></span>
+<span id="cb1-67"><a href="#cb1-67" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-68"><a href="#cb1-68" tabindex="-1"></a><span class="co">#&gt; [1] &quot;MinMax&quot;</span></span>
+<span id="cb1-69"><a href="#cb1-69" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>COUNT)     <span class="co"># pixel counts</span></span>
+<span id="cb1-70"><a href="#cb1-70" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-71"><a href="#cb1-71" tabindex="-1"></a><span class="co">#&gt; [1] &quot;PixelCount&quot;</span></span>
+<span id="cb1-72"><a href="#cb1-72" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>EVT_NAME)  <span class="co"># the class names</span></span>
+<span id="cb1-73"><a href="#cb1-73" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-74"><a href="#cb1-74" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Name&quot;</span></span>
+<span id="cb1-75"><a href="#cb1-75" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>EVT_LF)    <span class="co"># ancillary attribute</span></span>
+<span id="cb1-76"><a href="#cb1-76" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-77"><a href="#cb1-77" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
+<span id="cb1-78"><a href="#cb1-78" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>EVT_PHYS)  <span class="co"># ancillary attribute</span></span>
+<span id="cb1-79"><a href="#cb1-79" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-80"><a href="#cb1-80" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Generic&quot;</span></span>
+<span id="cb1-81"><a href="#cb1-81" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>R)         <span class="co"># red 0-255</span></span>
+<span id="cb1-82"><a href="#cb1-82" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-83"><a href="#cb1-83" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Red&quot;</span></span>
+<span id="cb1-84"><a href="#cb1-84" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>G)         <span class="co"># green 0-255</span></span>
+<span id="cb1-85"><a href="#cb1-85" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-86"><a href="#cb1-86" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Green&quot;</span></span>
+<span id="cb1-87"><a href="#cb1-87" tabindex="-1"></a><span class="fu">attributes</span>(tbl<span class="sc">$</span>B)         <span class="co"># blue 0-255</span></span>
+<span id="cb1-88"><a href="#cb1-88" tabindex="-1"></a><span class="co">#&gt; $GFU</span></span>
+<span id="cb1-89"><a href="#cb1-89" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Blue&quot;</span></span>
+<span id="cb1-90"><a href="#cb1-90" tabindex="-1"></a></span>
+<span id="cb1-91"><a href="#cb1-91" tabindex="-1"></a><span class="co"># set as default RAT on the EVT raster</span></span>
+<span id="cb1-92"><a href="#cb1-92" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">setDefaultRAT</span>(<span class="at">band=</span><span class="dv">1</span>, tbl)</span>
+<span id="cb1-93"><a href="#cb1-93" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb1-94"><a href="#cb1-94" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">flushCache</span>()</span>
+<span id="cb1-95"><a href="#cb1-95" tabindex="-1"></a></span>
+<span id="cb1-96"><a href="#cb1-96" tabindex="-1"></a><span class="co"># it can now be read from the raster dataset</span></span>
+<span id="cb1-97"><a href="#cb1-97" tabindex="-1"></a><span class="fu">rm</span>(tbl)</span>
+<span id="cb1-98"><a href="#cb1-98" tabindex="-1"></a>tbl <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">getDefaultRAT</span>(<span class="at">band=</span><span class="dv">1</span>)</span>
+<span id="cb1-99"><a href="#cb1-99" tabindex="-1"></a><span class="fu">nrow</span>(tbl)</span>
+<span id="cb1-100"><a href="#cb1-100" tabindex="-1"></a><span class="co">#&gt; [1] 24</span></span></code></pre></div>
 </div>
 <div id="display-attribute-tables" class="section level2">
 <h2>Display attribute tables</h2>
@@ -518,20 +519,20 @@ RAT, for passing to <code>GDALRaster$setDefaultRAT()</code>):</p>
 <p>The function <code>displayRAT()</code> generates a nicely formatted
 table for display. Colors are shown if the RAT contains RGB columns:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">displayRAT</span>(tbl, <span class="at">title =</span> <span class="st">&quot;Raster Attribute Table for Storm Lake EVT&quot;</span>)</span></code></pre></div>
-<div id="mymwoutjzy" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#mymwoutjzy table {
+<div id="sodjolboyv" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#sodjolboyv table {
 font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 -webkit-font-smoothing: antialiased;
 -moz-osx-font-smoothing: grayscale;
 }
-#mymwoutjzy thead, #mymwoutjzy tbody, #mymwoutjzy tfoot, #mymwoutjzy tr, #mymwoutjzy td, #mymwoutjzy th {
+#sodjolboyv thead, #sodjolboyv tbody, #sodjolboyv tfoot, #sodjolboyv tr, #sodjolboyv td, #sodjolboyv th {
 border-style: none;
 }
-#mymwoutjzy p {
+#sodjolboyv p {
 margin: 0;
 padding: 0;
 }
-#mymwoutjzy .gt_table {
+#sodjolboyv .gt_table {
 display: table;
 border-collapse: collapse;
 line-height: normal;
@@ -556,11 +557,11 @@ border-left-style: none;
 border-left-width: 2px;
 border-left-color: #D3D3D3;
 }
-#mymwoutjzy .gt_caption {
+#sodjolboyv .gt_caption {
 padding-top: 4px;
 padding-bottom: 4px;
 }
-#mymwoutjzy .gt_title {
+#sodjolboyv .gt_title {
 color: #333333;
 font-size: 125%;
 font-weight: initial;
@@ -571,7 +572,7 @@ padding-right: 5px;
 border-bottom-color: #FFFFFF;
 border-bottom-width: 0;
 }
-#mymwoutjzy .gt_subtitle {
+#sodjolboyv .gt_subtitle {
 color: #333333;
 font-size: 85%;
 font-weight: initial;
@@ -582,7 +583,7 @@ padding-right: 5px;
 border-top-color: #FFFFFF;
 border-top-width: 0;
 }
-#mymwoutjzy .gt_heading {
+#sodjolboyv .gt_heading {
 background-color: #FFFFFF;
 text-align: center;
 border-bottom-color: #FFFFFF;
@@ -593,12 +594,12 @@ border-right-style: none;
 border-right-width: 1px;
 border-right-color: #D3D3D3;
 }
-#mymwoutjzy .gt_bottom_border {
+#sodjolboyv .gt_bottom_border {
 border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#mymwoutjzy .gt_col_headings {
+#sodjolboyv .gt_col_headings {
 border-top-style: solid;
 border-top-width: 2px;
 border-top-color: #D3D3D3;
@@ -612,7 +613,7 @@ border-right-style: none;
 border-right-width: 1px;
 border-right-color: #D3D3D3;
 }
-#mymwoutjzy .gt_col_heading {
+#sodjolboyv .gt_col_heading {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -631,7 +632,7 @@ padding-left: 5px;
 padding-right: 5px;
 overflow-x: hidden;
 }
-#mymwoutjzy .gt_column_spanner_outer {
+#sodjolboyv .gt_column_spanner_outer {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -642,13 +643,13 @@ padding-bottom: 0;
 padding-left: 4px;
 padding-right: 4px;
 }
-#mymwoutjzy .gt_column_spanner_outer:first-child {
+#sodjolboyv .gt_column_spanner_outer:first-child {
 padding-left: 0;
 }
-#mymwoutjzy .gt_column_spanner_outer:last-child {
+#sodjolboyv .gt_column_spanner_outer:last-child {
 padding-right: 0;
 }
-#mymwoutjzy .gt_column_spanner {
+#sodjolboyv .gt_column_spanner {
 border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
@@ -659,10 +660,10 @@ overflow-x: hidden;
 display: inline-block;
 width: 100%;
 }
-#mymwoutjzy .gt_spanner_row {
+#sodjolboyv .gt_spanner_row {
 border-bottom-style: hidden;
 }
-#mymwoutjzy .gt_group_heading {
+#sodjolboyv .gt_group_heading {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -687,7 +688,7 @@ border-right-color: #D3D3D3;
 vertical-align: middle;
 text-align: left;
 }
-#mymwoutjzy .gt_empty_group_heading {
+#sodjolboyv .gt_empty_group_heading {
 padding: 0.5px;
 color: #333333;
 background-color: #FFFFFF;
@@ -701,13 +702,13 @@ border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 vertical-align: middle;
 }
-#mymwoutjzy .gt_from_md > :first-child {
+#sodjolboyv .gt_from_md > :first-child {
 margin-top: 0;
 }
-#mymwoutjzy .gt_from_md > :last-child {
+#sodjolboyv .gt_from_md > :last-child {
 margin-bottom: 0;
 }
-#mymwoutjzy .gt_row {
+#sodjolboyv .gt_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -725,7 +726,7 @@ border-right-color: #D3D3D3;
 vertical-align: middle;
 overflow-x: hidden;
 }
-#mymwoutjzy .gt_stub {
+#sodjolboyv .gt_stub {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -737,7 +738,7 @@ border-right-color: #D3D3D3;
 padding-left: 5px;
 padding-right: 5px;
 }
-#mymwoutjzy .gt_stub_row_group {
+#sodjolboyv .gt_stub_row_group {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -750,13 +751,13 @@ padding-left: 5px;
 padding-right: 5px;
 vertical-align: top;
 }
-#mymwoutjzy .gt_row_group_first td {
+#sodjolboyv .gt_row_group_first td {
 border-top-width: 2px;
 }
-#mymwoutjzy .gt_row_group_first th {
+#sodjolboyv .gt_row_group_first th {
 border-top-width: 2px;
 }
-#mymwoutjzy .gt_summary_row {
+#sodjolboyv .gt_summary_row {
 color: #333333;
 background-color: #FFFFFF;
 text-transform: inherit;
@@ -765,14 +766,14 @@ padding-bottom: 8px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#mymwoutjzy .gt_first_summary_row {
+#sodjolboyv .gt_first_summary_row {
 border-top-style: solid;
 border-top-color: #D3D3D3;
 }
-#mymwoutjzy .gt_first_summary_row.thick {
+#sodjolboyv .gt_first_summary_row.thick {
 border-top-width: 2px;
 }
-#mymwoutjzy .gt_last_summary_row {
+#sodjolboyv .gt_last_summary_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -781,7 +782,7 @@ border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#mymwoutjzy .gt_grand_summary_row {
+#sodjolboyv .gt_grand_summary_row {
 color: #333333;
 background-color: #FFFFFF;
 text-transform: inherit;
@@ -790,7 +791,7 @@ padding-bottom: 8px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#mymwoutjzy .gt_first_grand_summary_row {
+#sodjolboyv .gt_first_grand_summary_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -799,7 +800,7 @@ border-top-style: double;
 border-top-width: 6px;
 border-top-color: #D3D3D3;
 }
-#mymwoutjzy .gt_last_grand_summary_row_top {
+#sodjolboyv .gt_last_grand_summary_row_top {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -808,10 +809,10 @@ border-bottom-style: double;
 border-bottom-width: 6px;
 border-bottom-color: #D3D3D3;
 }
-#mymwoutjzy .gt_striped {
+#sodjolboyv .gt_striped {
 background-color: rgba(128, 128, 128, 0.05);
 }
-#mymwoutjzy .gt_table_body {
+#sodjolboyv .gt_table_body {
 border-top-style: solid;
 border-top-width: 2px;
 border-top-color: #D3D3D3;
@@ -819,7 +820,7 @@ border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#mymwoutjzy .gt_footnotes {
+#sodjolboyv .gt_footnotes {
 color: #333333;
 background-color: #FFFFFF;
 border-bottom-style: none;
@@ -832,7 +833,7 @@ border-right-style: none;
 border-right-width: 2px;
 border-right-color: #D3D3D3;
 }
-#mymwoutjzy .gt_footnote {
+#sodjolboyv .gt_footnote {
 margin: 0px;
 font-size: 90%;
 padding-top: 4px;
@@ -840,7 +841,7 @@ padding-bottom: 4px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#mymwoutjzy .gt_sourcenotes {
+#sodjolboyv .gt_sourcenotes {
 color: #333333;
 background-color: #FFFFFF;
 border-bottom-style: none;
@@ -853,64 +854,64 @@ border-right-style: none;
 border-right-width: 2px;
 border-right-color: #D3D3D3;
 }
-#mymwoutjzy .gt_sourcenote {
+#sodjolboyv .gt_sourcenote {
 font-size: 90%;
 padding-top: 4px;
 padding-bottom: 4px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#mymwoutjzy .gt_left {
+#sodjolboyv .gt_left {
 text-align: left;
 }
-#mymwoutjzy .gt_center {
+#sodjolboyv .gt_center {
 text-align: center;
 }
-#mymwoutjzy .gt_right {
+#sodjolboyv .gt_right {
 text-align: right;
 font-variant-numeric: tabular-nums;
 }
-#mymwoutjzy .gt_font_normal {
+#sodjolboyv .gt_font_normal {
 font-weight: normal;
 }
-#mymwoutjzy .gt_font_bold {
+#sodjolboyv .gt_font_bold {
 font-weight: bold;
 }
-#mymwoutjzy .gt_font_italic {
+#sodjolboyv .gt_font_italic {
 font-style: italic;
 }
-#mymwoutjzy .gt_super {
+#sodjolboyv .gt_super {
 font-size: 65%;
 }
-#mymwoutjzy .gt_footnote_marks {
+#sodjolboyv .gt_footnote_marks {
 font-size: 75%;
 vertical-align: 0.4em;
 position: initial;
 }
-#mymwoutjzy .gt_asterisk {
+#sodjolboyv .gt_asterisk {
 font-size: 100%;
 vertical-align: 0;
 }
-#mymwoutjzy .gt_indent_1 {
+#sodjolboyv .gt_indent_1 {
 text-indent: 5px;
 }
-#mymwoutjzy .gt_indent_2 {
+#sodjolboyv .gt_indent_2 {
 text-indent: 10px;
 }
-#mymwoutjzy .gt_indent_3 {
+#sodjolboyv .gt_indent_3 {
 text-indent: 15px;
 }
-#mymwoutjzy .gt_indent_4 {
+#sodjolboyv .gt_indent_4 {
 text-indent: 20px;
 }
-#mymwoutjzy .gt_indent_5 {
+#sodjolboyv .gt_indent_5 {
 text-indent: 25px;
 }
-#mymwoutjzy .katex-display {
+#sodjolboyv .katex-display {
 display: inline-flex !important;
 margin-bottom: 0.75em !important;
 }
-#mymwoutjzy div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#sodjolboyv div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
 height: 0px !important;
 }
 </style>
@@ -1193,7 +1194,7 @@ Attribute Table QGIS Plugin</a> (QGIS &lt; 3.30)</p></li>
 <div id="data-sources" class="section level2">
 <h2>Data sources</h2>
 <p>The example dataset is Existing Vegetation Type (EVT) from the
-LANDFIRE Program (LF 2020 version, <a href="https://landfire.gov/" class="uri">https://landfire.gov/</a>). Map units are based on <a href="https://www.natureserve.org/products/terrestrial-ecological-systems-united-states">NatureServe
+LANDFIRE Program (LF 2020 version, <a href="https://landfire.gov/" class="uri">https://landfire.gov/</a>). Map units are based on <a href="https://www.natureserve.org/publications/ecological-systems-united-states">NatureServe
 Ecological Systems</a>.</p>
 </div>
 

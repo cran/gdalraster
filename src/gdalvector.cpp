@@ -138,8 +138,8 @@ void GDALVector::open(bool read_only) {
     }
     else if (STARTS_WITH_CI(m_layer_name.c_str(), "SELECT ")) {
         m_is_sql = true;
-        if (EQUAL(pszDialect, "SQLite") && !has_spatialite())
-            Rcpp::warning("SpatiaLite is not available");
+        // if (EQUAL(pszDialect, "SQLite") && !has_spatialite())
+        //     Rcpp::warning("SpatiaLite is not available");
         m_hLayer = GDALDatasetExecuteSQL(m_hDataset, m_layer_name.c_str(),
                                          hGeom_filter, pszDialect);
     }
@@ -183,6 +183,15 @@ bool GDALVector::isOpen() const {
         return true;
 }
 
+bool GDALVector::isReadOnly() const {
+    checkAccess_(GA_ReadOnly);
+
+    if (m_eAccess == GA_ReadOnly)
+        return true;
+    else
+        return false;
+}
+
 std::string GDALVector::getDsn() const {
     return m_dsn;
 }
@@ -190,21 +199,11 @@ std::string GDALVector::getDsn() const {
 Rcpp::CharacterVector GDALVector::getFileList() const {
     checkAccess_(GA_ReadOnly);
 
-    char **papszFiles = GDALGetFileList(m_hDataset);
-
-    int nItems = CSLCount(papszFiles);
-    if (nItems > 0) {
-        Rcpp::CharacterVector files(nItems);
-        for (int i = 0; i < nItems; ++i) {
-            files(i) = papszFiles[i];
-        }
-        CSLDestroy(papszFiles);
-        return files;
-    }
-    else {
-        CSLDestroy(papszFiles);
+    const CPLStringList files(GDALGetFileList(m_hDataset));
+    if (!files.empty())
+        return wrap_gdal_string_list_(files);
+    else
         return "";
-    }
 }
 
 void GDALVector::info() const {
@@ -817,9 +816,7 @@ void GDALVector::setIgnoredFields(const Rcpp::RObject &fields) {
     checkAccess_(GA_ReadOnly);
 
     if (!OGR_L_TestCapability(m_hLayer, OLCIgnoreFields)) {
-         if (!quiet)
-            Rcpp::Rcout << "layer does not have IgnoreFields capability\n";
-        return;
+        Rcpp::stop("layer does not have IgnoreFields capability");
     }
 
     if (fields.isNULL() || !Rcpp::is<Rcpp::CharacterVector>(fields))
@@ -850,8 +847,7 @@ void GDALVector::setSelectedFields(const Rcpp::RObject &fields) {
     checkAccess_(GA_ReadOnly);
 
     if (!OGR_L_TestCapability(m_hLayer, OLCIgnoreFields)) {
-        Rcpp::Rcout << "layer does not have IgnoreFields capability\n";
-        return;
+        Rcpp::stop("layer does not have IgnoreFields capability");
     }
 
     if (fields.isNULL() || !Rcpp::is<Rcpp::CharacterVector>(fields))
@@ -881,7 +877,7 @@ void GDALVector::setSelectedFields(const Rcpp::RObject &fields) {
     if (unmatched_fields_in.size() == fields_in.size()) {
         Rcpp::stop("none of the input field names could be resolved");
     }
-    else if (unmatched_fields_in.size() > 0) {
+    else if (!quiet && unmatched_fields_in.size() > 0) {
         Rcpp::Rcout << "some input field names could not be resolved:\n";
         Rcpp::Rcout << unmatched_fields_in << "\n";
     }
@@ -897,7 +893,7 @@ void GDALVector::setSelectedFields(const Rcpp::RObject &fields) {
     OGR_L_SetIgnoredFields(m_hLayer, nullptr);
     OGRErr err = OGR_L_SetIgnoredFields(m_hLayer, oFields.data());
     if (err != OGRERR_NONE) {
-        Rcpp::Rcout << "not all field names could be resolved\n";
+        Rcpp::stop("not all field names could be resolved");
     }
     else {
         m_ignored_fields = Rcpp::clone(ignore_fields);
@@ -1927,8 +1923,10 @@ Rcpp::LogicalVector GDALVector::batchCreateFeature(
     Rcpp::LogicalVector out = Rcpp::no_init(num_rows);
 
     GDALProgressFunc pfnProgress = nullptr;
-    if (!quiet && num_rows > 1)
+    if (!quiet && num_rows > 1) {
         pfnProgress = GDALTermProgressR;
+        pfnProgress(0, nullptr, nullptr);
+    }
 
     for (R_xlen_t i = 0; i < num_rows; ++i) {
         OGRFeatureH hFeat = OGRFeatureFromList_(feature_set, i, fld_maps[0],
@@ -2114,8 +2112,7 @@ bool GDALVector::rollbackTransaction() {
 Rcpp::CharacterVector GDALVector::getMetadata() const {
     checkAccess_(GA_ReadOnly);
 
-    char **papszMD = nullptr;
-    papszMD = GDALGetMetadata(m_hLayer, nullptr);
+    CSLConstList papszMD = GDALGetMetadata(m_hLayer, nullptr);
 
     int nItems = CSLCount(papszMD);
     if (nItems > 0) {
@@ -2133,15 +2130,14 @@ Rcpp::CharacterVector GDALVector::getMetadata() const {
 bool GDALVector::setMetadata(const Rcpp::CharacterVector &metadata) {
     checkAccess_(GA_ReadOnly);
 
-    std::vector<const char *> metadata_in(metadata.size() + 1);
+    CPLStringList metadata_in;
     if (metadata.size() > 0) {
         for (R_xlen_t i = 0; i < metadata.size(); ++i) {
-            metadata_in[i] = (const char *) (metadata[i]);
+            metadata_in.AddString((const char *) metadata[i]);
         }
     }
-    metadata_in[metadata.size()] = nullptr;
 
-    OGRErr err = GDALSetMetadata(m_hLayer, metadata_in.data(), nullptr);
+    OGRErr err = GDALSetMetadata(m_hLayer, metadata_in.List(), nullptr);
 
     if (err != CE_None) {
         return false;
@@ -2488,7 +2484,8 @@ void GDALVector::setDsn_(const std::string &dsn) {
             GDALSetDescription(m_hDataset, m_dsn.c_str());
         }
         else {
-            Rcpp::Rcout << "the DSN cannot be set on this object\n";
+            if (!quiet)
+                Rcpp::Rcout << "the DSN cannot be set on this object\n";
             return;
         }
     }
@@ -2497,7 +2494,8 @@ void GDALVector::setDsn_(const std::string &dsn) {
             m_dsn = Rcpp::as<std::string>(check_gdal_filename(dsn));
         }
         else {
-            Rcpp::Rcout << "the DSN cannot be set on this object\n";
+            if (!quiet)
+                Rcpp::Rcout << "the DSN cannot be set on this object\n";
             return;
         }
     }
@@ -3171,9 +3169,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
         if (set_fid) {
             if (OGR_F_SetFID(hFeat, fid) != OGRERR_NONE) {
                 OGR_F_Destroy(hFeat);
-                Rcpp::Rcout << "failed to set FID: " << Rcpp::wrap(fid) <<
-                    " (row index " << row_idx << ")\n";
-
+                if (!quiet) {
+                    Rcpp::Rcout << "failed to set FID: " << Rcpp::wrap(fid) <<
+                        " (row index " << row_idx << ")\n";
+                }
                 return nullptr;
             }
         }
@@ -3214,10 +3213,11 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
             }
             else {
                 OGR_F_Destroy(hFeat);
-                Rcpp::Rcout <<
-                    "`NA` or `NULL` for non-nullable field with column index: "
-                    << col_idx << " (row index " << row_idx << ")\n";
-
+                if (!quiet) {
+                    Rcpp::Rcout << "`NA` or `NULL` for non-nullable field " <<
+                    "with column index: " << col_idx << " (row index " <<
+                    row_idx << ")\n";
+                }
                 return nullptr;
             }
         }
@@ -3245,9 +3245,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                         }
                         else {
                             OGR_F_Destroy(hFeat);
-                            Rcpp::Rcout << msg_not_nullable << " (row index "
-                                << row_idx << ")\n";
-
+                            if (!quiet) {
+                                Rcpp::Rcout << msg_not_nullable <<
+                                    " (row index " << row_idx << ")\n";
+                            }
                             return nullptr;
                         }
                     }
@@ -3276,9 +3277,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3294,9 +3296,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3317,9 +3320,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3339,9 +3343,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3368,9 +3373,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3405,9 +3411,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3421,10 +3428,11 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 }
                 else {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout <<
-                        "value for OFTTime field requires format 'HH:MM:SS'"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout <<
+                            "value for OFTTime field requires format 'HH:MM:SS'"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
             }
@@ -3450,10 +3458,11 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 }
                 else {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout <<
-                        "OFTIntegerList field requires a compatible data type"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout <<
+                            "OFTIntegerList field requires compatible data type"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
 
@@ -3465,9 +3474,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3492,10 +3502,11 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 }
                 else {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout <<
-                        "OFTInteger64List field requires a 'numeric' vector"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout <<
+                            "OFTInteger64List field requires a 'numeric' vector"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
 
@@ -3505,9 +3516,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3539,10 +3551,11 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 }
                 else {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout <<
-                        "OFTRealList field requires a 'numeric' vector"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout <<
+                            "OFTRealList field requires a 'numeric' vector"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
 
@@ -3554,9 +3567,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3583,10 +3597,11 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 }
                 else {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout <<
-                        "OFTStringList field requires a 'character' vector"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout <<
+                            "OFTStringList field requires a 'character' vector"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
 
@@ -3598,9 +3613,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3625,9 +3641,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 }
                 else {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout << "OFTBinary field requires a 'raw' vector"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout << "OFTBinary field requires a 'raw' vector"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
 
@@ -3637,9 +3654,10 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     }
                     else {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << msg_not_nullable << " (row index "
-                            << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << msg_not_nullable << " (row index "
+                                << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
@@ -3717,19 +3735,21 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 err = OGR_F_SetGeomField(hFeat, gfld_idx, nullptr);
                 if (err != OGRERR_NONE) {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout << "failed to set geometry field as NULL"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout << "failed to set geometry field as NULL"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
                 continue;
             }
             else {
                 OGR_F_Destroy(hFeat);
-                Rcpp::Rcout <<
-                    "geometry must be `raw` (WKB) or `character` (WKT)"
-                    << " (row index " << row_idx << ")\n";
-
+                if (!quiet) {
+                    Rcpp::Rcout <<
+                        "geometry must be `raw` (WKB) or `character` (WKT)"
+                        << " (row index " << row_idx << ")\n";
+                }
                 return nullptr;
             }
             // code below will also check for raw(0) and character NA
@@ -3752,31 +3772,35 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                 err = OGR_F_SetGeomFieldDirectly(hFeat, gfld_idx, hGeom);
                 if (err != OGRERR_NONE) {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout << "failed to set geometry field"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout << "failed to set geometry field"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
             }
             else if (err == OGRERR_NOT_ENOUGH_DATA) {
                 OGR_F_Destroy(hFeat);
-                Rcpp::Rcout << "OGRERR_NOT_ENOUGH_DATA, failed to create geom"
-                    << " (row index " << row_idx << ")\n";
-
+                if (!quiet) {
+                    Rcpp::Rcout << "OGRERR_NOT_ENOUGH_DATA, create geom failed"
+                        << " (row index " << row_idx << ")\n";
+                }
                 return nullptr;
             }
             else if (err == OGRERR_UNSUPPORTED_GEOMETRY_TYPE) {
                 OGR_F_Destroy(hFeat);
-                Rcpp::Rcout << "OGRERR_UNSUPPORTED_GEOMETRY_TYPE"
-                    << " (row index " << row_idx << ")\n";
-
+                if (!quiet) {
+                    Rcpp::Rcout << "OGRERR_UNSUPPORTED_GEOMETRY_TYPE"
+                        << " (row index " << row_idx << ")\n";
+                }
                 return nullptr;
             }
             else if (err == OGRERR_CORRUPT_DATA) {
                 OGR_F_Destroy(hFeat);
-                Rcpp::Rcout << "OGRERR_CORRUPT_DATA, failed to create geom"
-                    << " (row index " << row_idx << ")\n";
-
+                if (!quiet) {
+                    Rcpp::Rcout << "OGRERR_CORRUPT_DATA, create geom failed"
+                        << " (row index " << row_idx << ")\n";
+                }
                 return nullptr;
             }
         }
@@ -3796,41 +3820,46 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
                     err = OGR_F_SetGeomFieldDirectly(hFeat, gfld_idx, hGeom);
                     if (err != OGRERR_NONE) {
                         OGR_F_Destroy(hFeat);
-                        Rcpp::Rcout << "failed to set geometry field"
-                            << " (row index " << row_idx << ")\n";
-
+                        if (!quiet) {
+                            Rcpp::Rcout << "failed to set geometry field"
+                                << " (row index " << row_idx << ")\n";
+                        }
                         return nullptr;
                     }
                 }
                 else if (err == OGRERR_NOT_ENOUGH_DATA) {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout <<
-                        "OGRERR_NOT_ENOUGH_DATA, failed to create geom"
+                    if (!quiet) {
+                        Rcpp::Rcout <<
+                            "OGRERR_NOT_ENOUGH_DATA, create geom failed"
                             << " (row index " << row_idx << ")\n";
-
-                        return nullptr;
+                    }
+                    return nullptr;
                 }
                 else if (err == OGRERR_NOT_ENOUGH_DATA) {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout  << "OGRERR_UNSUPPORTED_GEOMETRY_TYPE"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout  << "OGRERR_UNSUPPORTED_GEOMETRY_TYPE"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
                 else if (err == OGRERR_CORRUPT_DATA) {
                     OGR_F_Destroy(hFeat);
-                    Rcpp::Rcout  << "OGRERR_CORRUPT_DATA, failed to create geom"
-                        << " (row index " << row_idx << ")\n";
-
+                    if (!quiet) {
+                        Rcpp::Rcout  << "OGRERR_CORRUPT_DATA, create geom fail"
+                            << " (row index " << row_idx << ")\n";
+                    }
                     return nullptr;
                 }
             }
             else {
                 OGR_F_Destroy(hFeat);
-                Rcpp::Rcout <<
-                    "WKT geometry must be a length-1 character vector"
-                    << " (row index " << row_idx << ")\n";
-
+                if (!quiet) {
+                    Rcpp::Rcout <<
+                        "WKT geometry must be a length-1 character vector"
+                        << " (row index " << row_idx << ")\n";
+                }
                 return nullptr;
             }
         }
@@ -3939,6 +3968,8 @@ RCPP_MODULE(mod_GDALVector) {
         "Return the DSN")
     .const_method("isOpen", &GDALVector::isOpen,
         "Is the dataset open?")
+    .const_method("isReadOnly", &GDALVector::isReadOnly,
+        "Does the vector dataset have read-only access")
     .method("open", &GDALVector::open,
         "(Re-)open the dataset on the existing DSN and layer")
     .const_method("getFileList", &GDALVector::getFileList,

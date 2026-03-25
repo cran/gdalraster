@@ -24,9 +24,14 @@ test_that(".check_gdal_filename works", {
 
 test_that("get/set_config_option work", {
     co <- get_config_option("GDAL_CACHEMAX")
-    set_config_option("GDAL_CACHEMAX", "64")
-    expect_equal(get_config_option("GDAL_CACHEMAX"), "64")
+    set_config_option("GDAL_CACHEMAX", "10%")
+    expect_equal(get_config_option("GDAL_CACHEMAX"), "10%")
     set_config_option("GDAL_CACHEMAX", co)
+
+    set_config_option("CPL_LOG_ERRORS", "OFF")
+    expect_equal(get_config_option("CPL_LOG_ERRORS"), "OFF")
+    set_config_option("CPL_LOG_ERRORS", "")
+    expect_equal(get_config_option("CPL_LOG_ERRORS"), "")
 })
 
 test_that("get_cache_used returns integer64", {
@@ -74,6 +79,30 @@ test_that("http_enabled returns logical", {
 
 test_that(".cpl_http_cleanup runs without error", {
     expect_no_error(.cpl_http_cleanup())
+})
+
+test_that("wrappers for CPL path manipulation functions work", {
+    f <- "/vsizip//vsicurl/https://raw.githubusercontent.com/OSGeo/gdal/master/autotest/ogr/data/shp/poly.zip"
+
+    expect_equal(.cpl_get_filename(f),  "poly.zip")
+
+    expect_equal(.cpl_get_path(f),
+                 "/vsizip//vsicurl/https://raw.githubusercontent.com/OSGeo/gdal/master/autotest/ogr/data/shp")
+
+    expect_equal(.cpl_get_filename(f) |> .cpl_get_path(),  "")
+
+    expect_equal(.cpl_get_dirname(f),
+                 "/vsizip//vsicurl/https://raw.githubusercontent.com/OSGeo/gdal/master/autotest/ogr/data/shp")
+
+    expect_equal(.cpl_get_filename(f) |> .cpl_get_dirname(),  ".")
+
+    expect_equal(.cpl_get_basename(f), "poly")
+    expect_equal(.cpl_get_extension(f), "zip")
+
+    expect_true(.cpl_get_filename(f) |> .cpl_launder_for_filename() ==
+                .cpl_get_filename(f))
+
+    expect_false(.cpl_launder_for_filename(f) == f)
 })
 
 test_that("createCopy writes correct output", {
@@ -464,8 +493,8 @@ test_that("identifyDriver works", {
     expect_equal(identifyDriver(src, file_list = "ynp_fires_1984_2022.gpkg"), "GPKG")
 
     # PostGISRaster vs. PostgreSQL
-    skip_if(nrow(gdal_formats("PostgreSQL")) == 0 ||
-            nrow(gdal_formats("PostGISRaster")) == 0)
+    skip_if((nrow(gdal_formats("PostgreSQL")) == 1 && is.na(gdal_formats("PostgreSQL")$short_name)) ||
+            (nrow(gdal_formats("PostGISRaster")) == 1 && is.na(gdal_formats("PostGISRaster")$short_name)))
 
     dsn <- "PG:dbname='testdb', host='127.0.0.1' port='5444' user='user' password='pwd'"
     expect_equal(identifyDriver(dsn), "PostGISRaster")
@@ -496,4 +525,173 @@ test_that("gdal_get_driver_md works", {
     expect_equal(mdi, "YES")
 
     expect_true(is.null(gdal_get_driver_md("GTiff", "invalid")))
+})
+
+test_that("is_los_visible works", {
+    skip_if(gdal_version_num() < gdal_compute_version(3, 9, 0))
+
+    dem <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    pts_b_dsn <- system.file("extdata/storml_los_pts_b.geojson", package="gdalraster")
+
+    # one-to-many, matrix input
+    ptA <- c(324625.0, 5104724.0, 1.7)
+    ptsB <-c(324803.0, 5104517.0, 10,
+             325286.0, 5102923.0, 10,
+             323847.0, 5104538.0, 10)
+    ptsB <- matrix(ptsB, nrow = 3, ncol = 3, byrow = TRUE)
+
+    expected <- c(TRUE, TRUE, FALSE)
+
+    res <- is_los_visible(dem, ptA, ptsB)
+    expect_equal(res, expected)
+
+    # one-to-many, ptsB as data frame
+    res <- is_los_visible(dem, ptA, as.data.frame(ptsB))
+    expect_equal(res, expected)
+
+    # one-to-many, ptA using actual height not relative to DEM
+    ptA_actual <- c(324625.0, 5104724.0, 2496.7)
+    res <- is_los_visible(dem, ptA_actual, ptsB, ZinterpA = "ACTUAL")
+    expect_equal(res, expected)
+
+    # one-to-many, ptA and ptsB using actual height not relative to DEM
+    ptsB_actual <-c(324803.0, 5104517.0, 2505,
+                    325286.0, 5102923.0, 2853,
+                    323847.0, 5104538.0, 2627)
+    ptsB_actual <- matrix(ptsB_actual, nrow = 3, ncol = 3, byrow = TRUE)
+    res <- is_los_visible(dem, ptA_actual, ptsB_actual, ZinterpA = "ACTUAL",
+                          ZinterpB = "ACTUAL")
+    expect_equal(res, expected)
+
+    # one-to-many, ptsB from layer as WKB and reproject
+    lyr <- new(GDALVector, pts_b_dsn)
+    on.exit(lyr$close(), add = TRUE)
+    feat <- lyr$fetch(-1)
+    res <- is_los_visible(dem, ptA, feat$geom, srsB = lyr$getSpatialRef(),
+                          ZinterpB = "ACTUAL")
+    expect_equal(res, expected)
+
+    # one-to-many, ptsB as WKT and reproject
+    res <- is_los_visible(dem, ptA, g_wk2wk(feat$geom),
+                          srsB = lyr$getSpatialRef(), ZinterpB = "ACTUAL")
+    expect_equal(res, expected)
+
+    # pairwise, ptA location is fixed with varying height
+    ptsA <- c(324625.0, 5104724.0, 1,
+              324625.0, 5104724.0, 10,
+              324625.0, 5104724.0, 100)
+    ptsA <- matrix(ptsA, nrow = 3, ncol = 3, byrow = TRUE)
+
+    expected <- c(TRUE, TRUE, FALSE)
+
+    res <- is_los_visible(dem, ptsA, ptsB)
+    expect_equal(res, expected)
+
+    ptsA <- c(324625.0, 5104724.0, 1,
+              324625.0, 5104724.0, 10,
+              324625.0, 5104724.0, 1000)
+    ptsA <- matrix(ptsA, nrow = 3, ncol = 3, byrow = TRUE)
+
+    expected <- c(TRUE, TRUE, TRUE)
+
+    res <- is_los_visible(dem, ptsA, ptsB)
+    expect_equal(res, expected)
+
+    # pairwise, ptsA as WKB
+    ptsA_wkb <- g_create("POINT", ptsA)
+    res <- is_los_visible(dem, ptsA_wkb, ptsB)
+    expect_equal(res, expected)
+
+    # pairwise, ptsA as WKT
+    res <- is_los_visible(dem, g_wk2wk(ptsA_wkb), ptsB)
+    expect_equal(res, expected)
+
+    # pairwise, DEM given as a dataset object, ptsA as WKB and reproject
+    ds <- new(GDALRaster, dem)
+    on.exit(ds$close(), add = TRUE)
+    ptsA_wkb_wgs84 <- g_transform(ptsA_wkb, ds$getSpatialRef(), "WGS84")
+    res <- is_los_visible(ds, ptsA_wkb_wgs84, ptsB, srsA = "WGS84")
+    expect_equal(res, expected)
+
+    # pairwise, ptsB with actual height, vertical CRS and reproject
+    expect_true(srs_is_vertical("EPSG:4326+5773"))
+    ptsB_wkb_wgs84_egm96 <- g_transform(feat$geom, lyr$getSpatialRef(),
+                                        "EPSG:4326+5773")
+    res <- is_los_visible(ds, ptsA_wkb, ptsB_wkb_wgs84_egm96,
+                          srsB = "EPSG:4326+5773", ZinterpB = "ACTUAL")
+    expect_equal(res, expected)
+
+    # pairwise, ptsB with relative height, vertical CRS and reproject
+    # error
+    ptsB_wkb <- g_create("POINT", ptsB)
+    ptsB_wkb_wgs84_egm96 <- g_transform(ptsB_wkb, lyr$getSpatialRef(),
+                                        "EPSG:4326+5773")
+    expect_error(is_los_visible(ds, ptsA_wkb, ptsB_wkb_wgs84_egm96,
+                                srsB = "EPSG:4326+5773"))
+
+    # input validation
+    expect_no_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                    srsA = NULL, srsB = NULL,
+                    ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                    quiet = FALSE))
+    expect_error(is_los_visible(NULL, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, NULL, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, NULL, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = c(1, 2, 3),
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = 4326, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = 4326,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "invalid", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = FALSE, ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = FALSE))
+    expect_no_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                    srsA = NULL, srsB = NULL,
+                    ZinterpA = NULL, ZinterpB = "RELATIVE_TO_DEM",
+                    quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "invalid",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = FALSE,
+                 quiet = FALSE))
+    expect_no_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                    srsA = NULL, srsB = NULL,
+                    ZinterpA = "RELATIVE_TO_DEM", ZinterpB = NULL,
+                    quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "invalid",
+                 quiet = FALSE))
+    expect_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                 srsA = NULL, srsB = NULL,
+                 ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                 quiet = "invalid"))
+    expect_no_error(is_los_visible(ds, ptsA, ptsB, band = 1,
+                    srsA = NULL, srsB = NULL,
+                    ZinterpA = "RELATIVE_TO_DEM", ZinterpB = "RELATIVE_TO_DEM",
+                    quiet = NULL))
 })

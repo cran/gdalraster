@@ -26,11 +26,12 @@
 #' that pixels of that value (or range) should be displayed, names of classes,
 #' or various other information.
 #'
-#' Each column in a raster attribute table has a name, a type (integer,
-#' double, or string), and a `GDALRATFieldUsage`. The usage
-#' distinguishes columns with particular understood purposes (such as color,
-#' histogram count, class name), and columns that have other purposes not
-#' understood by the library (long labels, ancillary attributes, etc).
+#' Each column in a raster attribute table has a name, a type (Integer,
+#' Double, String, and with GDAL >= 3.12, Boolean, DateTime, or WKBGeometry),
+#' and a `GDALRATFieldUsage`. The usage distinguishes columns with particular
+#' understood purposes (such as color, histogram count, class name), and
+#' columns that have other purposes not understood by the library (long labels,
+#' ancillary attributes, etc).
 #'
 #' In the general case, each row has a field indicating the minimum pixel
 #' value falling into that category, and a field indicating the maximum pixel
@@ -185,9 +186,12 @@
 #' ds$close()
 #' \dontshow{deleteDataset(f)}
 #'
-#' # Display
-#' evt_gt <- displayRAT(tbl2, title = "Storm Lake EVT Raster Attribute Table")
-#' class(evt_gt)  # an object of class "gt_tbl" from package gt
+#' ## Display
+#' # requires suggested package "gt"
+#' if (requireNamespace("gt", quietly = TRUE)) {
+#'   evt_gt <- displayRAT(tbl2, title = "Storm Lake EVT Raster Attribute Table")
+#'   class(evt_gt)  # an object of class "gt_tbl" from package gt
+#' }
 #' # To show the table:
 #' # evt_gt
 #' # or simply call `displayRAT()` as above but without assignment
@@ -325,10 +329,10 @@ buildRAT <- function(raster,
 displayRAT <- function(tbl, title = "Raster Attribute Table") {
 
     if (!requireNamespace("gt", quietly = TRUE))
-        stop("displayRAT() requires package 'gt'", call.=FALSE)
+        stop("displayRAT() requires package 'gt'", call. = FALSE)
 
     if (!is.data.frame(tbl))
-        stop("'tbl' must be a data frame", call.=FALSE)
+        stop("'tbl' must be a data frame", call. = FALSE)
 
     if (is.null(attr(tbl, "GDALRATTableType"))) {
         message("input data frame is missing attribute 'GDALRATTableType'")

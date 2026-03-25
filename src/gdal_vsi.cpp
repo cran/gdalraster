@@ -179,7 +179,7 @@ void vsi_curl_clear_cache(bool partial = false,
 //' `recursive = TRUE`.
 //'
 //' @seealso
-//' [vsi_mkdir()], [vsi_rmdir()], [vsi_stat()], [vsi_sync()]
+//' [vsi_glob()], [vsi_mkdir()], [vsi_rmdir()], [vsi_stat()], [vsi_sync()]
 //'
 //' @examples
 //' # regular file system for illustration
@@ -252,6 +252,99 @@ Rcpp::CharacterVector vsi_read_dir(const Rcpp::CharacterVector &path,
         CSLDestroy(papszNames);
         return Rcpp::CharacterVector::create();
     }
+}
+
+
+//' Get file and directory names matching a pattern that may contain wildcards
+//'
+//' `vsi_glob()` returns a character vector of file and directory names matching
+//' a pattern that can contain wildcards. This function has similar behavior to
+//' the POSIX `glob()` function. Wrapper of `VSIGlob()` in the GDAL Common
+//' Portability Library. Requires GDAL >= 3.11.
+//'
+//' @details
+//' The following wildcards are supported
+//'   * `*`: match any string
+//'   * `?`: match any single character
+//'   * `[`: match character class or range, with `!` immediately after `[` to
+//'   indicate negation
+//'
+//' Refer to to the `glob()` man page for more details
+//' (\url{https://man7.org/linux/man-pages/man7/glob.7.html}).
+//' It also supports the `**` recursive wildcard, behaving similarly to Python
+//' `glob.glob()` with `recursive = True`. Be careful of the amount of memory
+//' and time required when using the recursive wildcard on directories with a
+//' large amount of files and subdirectories.
+//'
+//' Examples, given a file hierarchy:
+//'   * `one.tif`
+//'   * `my_subdir/two.tif`
+//'   * `my_subdir/subsubdir/three.tif`
+//' 
+//' ```
+//' vsi_glob("one.tif")
+//'   # returns ("one.tif")
+//' vsi_glob("*.tif")
+//'   # returns ("one.tif")
+//' vsi_glob("on?.tif")
+//'   # returns ("one.tif")
+//' vsi_glob("on[a-z].tif")
+//'   # returns ("one.tif")
+//' vsi_glob("on[ef].tif")
+//'   # returns ("one.tif")
+//' vsi_glob("on[!e].tif")
+//'   # returns empty vector character()
+//' vsi_glob("my_subdir/*.tif")
+//'   # returns ("my_subdir/two.tif")
+//' vsi_glob("**/*.tif") returns
+//'   # returns ("one.tif", "my_subdir/two.tif", "my_subdir/subsubdir/three.tif")
+//' ```
+//'
+//' In the current implementation, matching is done based on the assumption that
+//' a character fits into a single byte, which will not work properly on
+//' non-ASCII UTF-8 filenames.
+//'
+//' @param pattern Character string. The relative or absolute path of a
+//' directory to read, potentially containing wildcards, assumed to be UTF-8
+//' encoded (see Details).
+//' @param show_progress Logical scalar. If `TRUE`, a progress bar will be
+//' displayed. Default is `FALSE`.
+//' @returns A character vector containing the matching names of files and
+//' directories.
+//'
+//' @note
+//' GDAL's `VSIGlob()` works with any virtual file systems supported by GDAL,
+//' including network file systems such as /vsis3/, /vsigs/, /vsiaz/, etc. But
+//' note that for those, the pattern is not passed to the remote server, and
+//' thus a large amount of filenames can be transferred from the remote server
+//' to the host where the filtering is done.
+//'
+//' @seealso
+//' [vsi_read_dir()]
+//'
+//' @examplesIf gdal_version_num() >= gdal_compute_version(3, 11, 0)
+//' # Requires GDAL >= 3.11
+//' data_dir <- system.file("extdata", package="gdalraster")
+//' vsi_glob(file.path(data_dir, "ynp*"))
+// [[Rcpp::export()]]
+Rcpp::CharacterVector vsi_glob(const Rcpp::CharacterVector &pattern,
+                               bool show_progress = false) {
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
+    Rcpp::stop("vsi_glob() requires GDAL >= 3.11");
+
+#else
+    const std::string pattern_in =
+        Rcpp::as<std::string>(check_gdal_filename(pattern));
+    
+    const CPLStringList aosNames(
+        VSIGlob(pattern_in.c_str(),
+                nullptr,
+                show_progress ? GDALTermProgressR : nullptr,
+                nullptr));
+
+    return wrap_gdal_string_list_(aosNames);
+#endif
 }
 
 
@@ -707,6 +800,7 @@ SEXP vsi_stat(const Rcpp::CharacterVector &filename,
     return R_NilValue;
 }
 
+
 //' @rdname vsi_stat
 // [[Rcpp::export]]
 Rcpp::LogicalVector vsi_stat_exists(const Rcpp::CharacterVector &filenames) {
@@ -746,6 +840,7 @@ Rcpp::CharacterVector vsi_stat_type(const Rcpp::CharacterVector &filenames) {
 
     return ret;
 }
+
 
 //' @rdname vsi_stat
 // [[Rcpp::export]]
@@ -823,20 +918,11 @@ int vsi_rename(const Rcpp::CharacterVector &oldpath,
 //' vsi_get_fs_prefixes()
 // [[Rcpp::export()]]
 Rcpp::CharacterVector vsi_get_fs_prefixes() {
-    char **papszPrefixes = VSIGetFileSystemsPrefixes();
-    int nItems = CSLCount(papszPrefixes);
-    if (nItems > 0) {
-        Rcpp::CharacterVector prefixes(nItems);
-        for (int i=0; i < nItems; ++i) {
-            prefixes(i) = papszPrefixes[i];
-        }
-        CSLDestroy(papszPrefixes);
-        return prefixes;
-    }
-    else {
-        CSLDestroy(papszPrefixes);
+    const CPLStringList aosPrefixes(VSIGetFileSystemsPrefixes());
+    if (!aosPrefixes.empty())
+        return wrap_gdal_string_list_(aosPrefixes);
+    else
         return "";
-    }
 }
 
 
@@ -945,6 +1031,7 @@ bool vsi_supports_rnd_write(const Rcpp::CharacterVector &filename,
 #endif
 }
 
+
 //' Return free disk space available on the filesystem
 //'
 //' `vsi_get_disk_free_space()` returns the free disk space available on the
@@ -970,6 +1057,7 @@ Rcpp::NumericVector vsi_get_disk_free_space(const Rcpp::CharacterVector &path) {
     ret[0] = VSIGetDiskFreeSpace(path_in.c_str());
     return Rcpp::wrap(ret);
 }
+
 
 //' Set a path specific option for a given path prefix
 //'
@@ -1027,6 +1115,7 @@ void vsi_set_path_option(const Rcpp::CharacterVector &path_prefix,
 #endif
 }
 
+
 //' Clear path specific configuration options
 //'
 //' `vsi_clear_path_options()` clears path specific options previously set
@@ -1061,6 +1150,7 @@ void vsi_clear_path_options(const Rcpp::CharacterVector &path_prefix) {
 
 #endif
 }
+
 
 //' Get metadata on files
 //'
@@ -1113,31 +1203,29 @@ SEXP vsi_get_file_metadata(const Rcpp::CharacterVector &filename,
     const std::string filename_in =
         Rcpp::as<std::string>(check_gdal_filename(filename));
 
-    char **papszStringList = nullptr;
-    papszStringList = VSIGetFileMetadata(filename_in.c_str(), domain.c_str(),
-                                         nullptr);
+    const CPLStringList md(
+        VSIGetFileMetadata(filename_in.c_str(), domain.c_str(), nullptr));
 
-    if (papszStringList == nullptr) {
+    if (md.empty()) {
         return R_NilValue;
     }
     else {
-        int nItems = CSLCount(papszStringList);
-        Rcpp::List md = Rcpp::List::create();
+        int nItems = md.size();
+        Rcpp::List out = Rcpp::List::create();
         for (int i = 0; i < nItems; ++i) {
             char *pszName = nullptr;
             Rcpp::CharacterVector value(1);
-            const char *pszValue = CPLParseNameValue(papszStringList[i],
-                                                     &pszName);
+            const char *pszValue = CPLParseNameValue(md[i], &pszName);
             if (pszName && pszValue) {
                 value[0] = pszValue;
-                md.push_back(value, pszName);
+                out.push_back(value, pszName);
             }
             CPLFree(pszName);
         }
-        CSLDestroy(papszStringList);
-        return md;
+        return out;
     }
 }
+
 
 //' Returns the actual URL of a supplied VSI filename
 //'
@@ -1177,6 +1265,7 @@ SEXP vsi_get_actual_url(const Rcpp::CharacterVector &filename) {
     else
         return R_NilValue;
 }
+
 
 //' Returns a signed URL for a supplied VSI filename
 //'
@@ -1257,6 +1346,7 @@ SEXP vsi_get_signed_url(const Rcpp::CharacterVector &filename,
     }
 }
 
+
 //' Returns if the file/filesystem is "local".
 //'
 //' `vsi_is_local()` returns whether the file/filesystem is "local".
@@ -1288,5 +1378,36 @@ bool vsi_is_local(const Rcpp::CharacterVector &filename) {
         Rcpp::as<std::string>(check_gdal_filename(filename));
 
     return VSIIsLocal(filename_in.c_str());
+#endif
+}
+
+
+//' Return VSI compatible paths from URIs / URLs
+//'
+//' `vsi_uri_to_vsi_path()` substitutes URIs / URLs starting with `s3://`,
+//' `gs://`, etc. by their VSI prefix equivalents. If no known substitution is
+//' found, the input string is returned unmodified.
+//' Wrapper of `VSIURIToVSIPath()` in the GDAL API. Requires GDAL >= 3.12.
+//'
+//' @param uris Character vector of input URI strings.
+//' @returns Character vector of VSI paths.
+//'
+//' @examplesIf gdal_version_num() >= gdal_compute_version(3, 12, 0)
+//' # Requires GDAL >= 3.12
+//' vsi_uri_to_vsi_path("gs://cmip6/")
+// [[Rcpp::export()]]
+Rcpp::CharacterVector vsi_uri_to_vsi_path(const Rcpp::CharacterVector &uris) {
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 12, 0)
+    Rcpp::stop("vsi_uri_to_vsi_path() requires GDAL >= 3.12");
+
+#else
+    const R_xlen_t nCount = uris.size();
+    Rcpp::CharacterVector vsi_paths = Rcpp::no_init(nCount);
+    for (R_xlen_t i = 0; i < nCount; ++i) {
+        const Rcpp::String &uri = uris[i];
+        vsi_paths[i] = VSIURIToVSIPath(uri);
+    }
+
+    return vsi_paths;
 #endif
 }

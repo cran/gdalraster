@@ -373,7 +373,7 @@ accessed in R using the <code>$</code> operator:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>ds</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#&gt; C++ object of class GDALRaster</span></span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#&gt;  Driver : GeoTIFF (GTiff)</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt;  DSN    : /tmp/RtmpgTiiFv/Rinst102852f765a07/gdalraster/extdata/storml_tcc.tif</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt;  DSN    : /tmp/Rtmp6vhS21/Rinst5210132d04a9f/gdalraster/extdata/storml_tcc.tif</span></span>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co">#&gt;  Dim    : 143, 107, 1</span></span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co">#&gt;  CRS    : NAD83 / UTM zone 12N (EPSG:26912)</span></span>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co">#&gt;  Res    : 30.000000, 30.000000</span></span>
@@ -383,7 +383,7 @@ accessed in R using the <code>$</code> operator:</p>
 <span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co">#&gt;  $ infoOptions  : chr(0) </span></span>
 <span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co">#&gt;  $ quiet        : logi FALSE</span></span>
 <span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co">#&gt;  $ readByteAsRaw: logi FALSE</span></span>
-<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt;  and 91 methods, of which 77 are  possibly relevant:</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt;  and 95 methods, of which 81 are  possibly relevant:</span></span>
 <span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co">#&gt;    addBand, apply_geotransform, bbox, buildOverviews, clearColorTable,</span></span>
 <span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="co">#&gt;    clearStatistics, close, deleteNoDataValue, dim, fillRaster, finalize,</span></span>
 <span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="co">#&gt;    flushCache, getActualBlockSize, getBlockSize, getChecksum, getColorTable,</span></span>
@@ -395,11 +395,12 @@ accessed in R using the <code>$</code> operator:</p>
 <span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt;    getProjection, getProjectionRef, getRasterColorInterp, getRasterCount,</span></span>
 <span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt;    getRasterXSize, getRasterYSize, getScale, getSpatialRef, getStatistics,</span></span>
 <span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt;    getUnitType, get_block_indexing, get_pixel_line, info, infoAsJSON,</span></span>
-<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt;    initialize, isOpen, make_chunk_index, open, pixel_extract, read, readBlock,</span></span>
-<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt;    readChunk, res, setColorTable, setDefaultRAT, setDescription, setFilename,</span></span>
-<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt;    setGeoTransform, setMetadata, setMetadataItem, setNoDataValue, setOffset,</span></span>
-<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt;    setProjection, setRasterColorInterp, setScale, setUnitType,</span></span>
-<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt;    show#envRefClass, write, writeBlock, writeChunk</span></span></code></pre></div>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt;    initialize, isOpen, isReadOnly, make_chunk_index, open, pixel_extract,</span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt;    preserveRObject_, read, readBlock, readChunk, readToNativeRaster, res,</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt;    setBbox, setColorTable, setDefaultRAT, setDescription, setFilename,</span></span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt;    setGeoTransform, setMetadata, setMetadataItem, setNoDataValue, setOffset,</span></span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt;    setProjection, setRasterColorInterp, setScale, setUnitType,</span></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="co">#&gt;    show#envRefClass, write, writeBlock, writeChunk</span></span></code></pre></div>
 </div>
 <div id="getting-dataset-information" class="section level2">
 <h2>Getting dataset information</h2>
@@ -482,24 +483,23 @@ specifying a <code>band</code> number as the first argument:</p>
 <span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a></span>
 <span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co"># min, max, mean, sd of pixel values in the band</span></span>
 <span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getStatistics</span>(<span class="at">band =</span> <span class="dv">1</span>, <span class="at">approx_ok =</span> <span class="cn">FALSE</span>, <span class="at">force =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a><span class="co">#&gt; 0...10...20...30...40...50...60...70...80...90...100 - done.</span></span>
-<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co">#&gt; [1]  0.00000 71.00000 23.69950 23.17744</span></span>
-<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a></span>
-<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a><span class="co"># does this band have overviews? (aka &quot;pyramids&quot;)</span></span>
-<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getOverviewCount</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
-<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a><span class="co">#&gt; [1] 0</span></span>
-<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a></span>
-<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a><span class="co"># does this band have a color table?</span></span>
-<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>col_tbl <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">getColorTable</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
-<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(col_tbl))</span>
-<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>  <span class="fu">head</span>(col_tbl)</span>
-<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a><span class="co">#&gt;      value red green blue alpha</span></span>
-<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a><span class="co">#&gt; [1,]     0 255   255  255   255</span></span>
-<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a><span class="co">#&gt; [2,]     1 252   254  252   255</span></span>
-<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a><span class="co">#&gt; [3,]     2 250   253  250   255</span></span>
-<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a><span class="co">#&gt; [4,]     3 248   252  247   255</span></span>
-<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a><span class="co">#&gt; [5,]     4 245   251  245   255</span></span>
-<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a><span class="co">#&gt; [6,]     5 243   250  242   255</span></span></code></pre></div>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a><span class="co">#&gt; [1]  0.00000 71.00000 23.69950 23.17744</span></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a></span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co"># does this band have overviews? (aka &quot;pyramids&quot;)</span></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getOverviewCount</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a><span class="co">#&gt; [1] 0</span></span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a></span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a><span class="co"># does this band have a color table?</span></span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>col_tbl <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">getColorTable</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(col_tbl))</span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a>  <span class="fu">head</span>(col_tbl)</span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a><span class="co">#&gt;      value red green blue alpha</span></span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a><span class="co">#&gt; [1,]     0 255   255  255   255</span></span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a><span class="co">#&gt; [2,]     1 252   254  252   255</span></span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a><span class="co">#&gt; [3,]     2 250   253  250   255</span></span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a><span class="co">#&gt; [4,]     3 248   252  247   255</span></span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a><span class="co">#&gt; [5,]     4 245   251  245   255</span></span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a><span class="co">#&gt; [6,]     5 243   250  242   255</span></span></code></pre></div>
 </div>
 <div id="reading-raster-data" class="section level2">
 <h2>Reading raster data</h2>
@@ -616,28 +616,26 @@ LZW-compressed GeoTiff:</p>
 <span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>                 <span class="at">src_filename =</span> lcp_file,</span>
 <span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>                 <span class="at">options =</span> <span class="st">&quot;COMPRESS=LZW&quot;</span>,</span>
 <span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>                 <span class="at">return_obj =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co">#&gt; 0...10...20...30...40...50...60...70...80...90...100 - done.</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="co"># band = 0 for dataset-level metadata:</span></span>
-<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getMetadata</span>(<span class="at">band =</span> <span class="dv">0</span>, <span class="at">domain =</span> <span class="st">&quot;IMAGE_STRUCTURE&quot;</span>)</span>
-<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co">#&gt; [1] &quot;COMPRESSION=LZW&quot;  &quot;INTERLEAVE=PIXEL&quot;</span></span>
-<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a></span>
-<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a><span class="co"># set nodata value for all bands</span></span>
-<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a><span class="cf">for</span> (band <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>ds<span class="sc">$</span><span class="fu">getRasterCount</span>())</span>
-<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>  ds<span class="sc">$</span><span class="fu">setNoDataValue</span>(band, <span class="sc">-</span><span class="dv">9999</span>)</span>
-<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a></span>
-<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="co"># band 2 of an LCP file is slope degrees</span></span>
-<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getStatistics</span>(<span class="at">band =</span> <span class="dv">2</span>, <span class="at">approx_ok =</span> <span class="cn">FALSE</span>, <span class="at">force =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a><span class="co">#&gt; 0...10...20...30...40...50...60...70...80...90...100 - done.</span></span>
-<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a><span class="co">#&gt; [1]  0.00000 54.00000 22.93012 12.51330</span></span>
-<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">close</span>()</span>
-<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a></span>
-<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a><span class="fu">vsi_stat</span>(lcp_file, <span class="st">&quot;size&quot;</span>)</span>
-<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="co">#&gt; integer64</span></span>
-<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="co">#&gt; [1] 252132</span></span>
-<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="fu">vsi_stat</span>(tif_file, <span class="st">&quot;size&quot;</span>)</span>
-<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="co">#&gt; integer64</span></span>
-<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a><span class="co">#&gt; [1] 113942</span></span></code></pre></div>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co"># band = 0 for dataset-level metadata:</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getMetadata</span>(<span class="at">band =</span> <span class="dv">0</span>, <span class="at">domain =</span> <span class="st">&quot;IMAGE_STRUCTURE&quot;</span>)</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="co">#&gt; [1] &quot;COMPRESSION=LZW&quot;  &quot;INTERLEAVE=PIXEL&quot;</span></span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a><span class="co"># set nodata value for all bands</span></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a><span class="cf">for</span> (band <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>ds<span class="sc">$</span><span class="fu">getRasterCount</span>())</span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>  ds<span class="sc">$</span><span class="fu">setNoDataValue</span>(band, <span class="sc">-</span><span class="dv">9999</span>)</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="co"># band 2 of an LCP file is slope degrees</span></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getStatistics</span>(<span class="at">band =</span> <span class="dv">2</span>, <span class="at">approx_ok =</span> <span class="cn">FALSE</span>, <span class="at">force =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="co">#&gt; [1]  0.00000 54.00000 22.93012 12.51330</span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">close</span>()</span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a></span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a><span class="fu">vsi_stat</span>(lcp_file, <span class="st">&quot;size&quot;</span>)</span>
+<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a><span class="co">#&gt; integer64</span></span>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a><span class="co">#&gt; [1] 252132</span></span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="fu">vsi_stat</span>(tif_file, <span class="st">&quot;size&quot;</span>)</span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="co">#&gt; integer64</span></span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="co">#&gt; [1] 113942</span></span></code></pre></div>
 <p>Note that the <code>createCopy()</code> method with
 <code>return_obj = TRUE</code> returns a writable dataset, and that it
 must be closed properly to complete writing and flushing the dataset to

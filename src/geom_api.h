@@ -1,9 +1,8 @@
-/* GEOS wrapper functions operating on WKT geometries
-   Called via GDAL ogr headers, requires GDAL built against GEOS.
+/* GEOS wrapper functions operating on WKB geometries via GDAL ogr headers
    For spatial predicate definitions: https://en.wikipedia.org/wiki/DE-9IM
 
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2025 gdalraster authors
+   Copyright (c) 2023-2026 gdalraster authors
 */
 
 #ifndef GEOM_API_H_
@@ -11,7 +10,7 @@
 
 #include <Rcpp.h>
 
-#include <ogr_geometry.h>
+#include <ogr_api.h>
 
 #include <string>
 #include <vector>
@@ -19,9 +18,9 @@
 std::vector<int> getGEOSVersion();
 bool has_geos();  // GDAL built against GEOS is required at gdalraster 1.10
 
-OGRGeometryH createGeomFromWkb(const Rcpp::RawVector &wkb);
-bool exportGeomToWkb(OGRGeometryH hGeom, unsigned char *wkb, bool as_iso,
-                     const std::string &byte_order);
+OGRGeometryH createGeomFromWkb_(const Rcpp::RawVector &wkb);
+bool exportGeomToWkb_(OGRGeometryH hGeom, unsigned char *wkb, bool as_iso,
+                      const std::string &byte_order);
 
 Rcpp::String g_wkb2wkt(const Rcpp::RObject &geom, bool as_iso);
 
@@ -42,8 +41,17 @@ Rcpp::RawVector g_add_geom(const Rcpp::RawVector &sub_geom,
                            bool as_iso, const std::string &byte_order);
 
 int g_geom_count(const Rcpp::RObject &geom, bool quiet);
-SEXP g_get_geom(const Rcpp::RawVector &container, int sub_geom_idx,
+SEXP g_get_geom(const Rcpp::RObject &container, int sub_geom_idx,
                 bool as_iso, const std::string &byte_order);
+
+Rcpp::RawVector g_build_collection(const Rcpp::List &geoms,
+                                   const std::string &coll_type,
+                                   bool as_iso,
+                                   const std::string &byte_order);
+
+SEXP g_build_polygon_from_edges(const Rcpp::RObject &lines,
+                                bool auto_close, double tolerance,
+                                bool as_iso, const std::string &byte_order);
 
 Rcpp::LogicalVector g_is_valid(const Rcpp::RObject &geom, bool quiet);
 SEXP g_make_valid(const Rcpp::RObject &geom, const std::string &method,
@@ -71,8 +79,8 @@ Rcpp::String g_summary(const Rcpp::RObject &geom, bool quiet);
 Rcpp::NumericVector g_envelope(const Rcpp::RObject &geom, bool as_3d,
                                bool quiet);
 
-Rcpp::LogicalVector g_intersects(const Rcpp::RObject &this_geom,
-                                 const Rcpp::RObject &other_geom,
+Rcpp::LogicalVector g_intersects(const Rcpp::List &this_geom,
+                                 const Rcpp::List &other_geom,
                                  bool quiet);
 
 Rcpp::LogicalVector g_equals(const Rcpp::RObject &this_geom,

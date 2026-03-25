@@ -5,7 +5,8 @@
 
 #include "rcpp_util.h"
 
-#include <Rcpp.h>
+#include <cpl_port.h>
+#include <cpl_string.h>
 
 #include <algorithm>
 #include <cctype>
@@ -130,13 +131,50 @@ std::string str_tolower_(const std::string &s) {
     return s_out;
 }
 
+// return a new character vector with leading "-" or "--" removed from each
+// element of the input vector
+// for handling character vectors of GDAL CLI arguments
+Rcpp::CharacterVector remove_leading_dashes_(const Rcpp::CharacterVector &x) {
+    Rcpp::CharacterVector out(x.size());
+    for (R_xlen_t i = 0; i < x.size(); ++i) {
+        Rcpp::String s(x[i]);
+        s.replace_first("--", "");
+        if (EQUALN(s.get_cstring(), "-", 1))
+            s.replace_first("-", "");
+        out[i] = s;
+    }
+    return out;
+}
+
 // does character vector contain string element
-bool contains_str_(const Rcpp::CharacterVector &v, const Rcpp::String &s) {
-    auto it = std::find(v.cbegin(), v.cend(), s);
-    if (it == v.cend())
-        return false;
-    else
-        return true;
+bool contains_str_(const Rcpp::CharacterVector &v, const Rcpp::String &s,
+                   bool match_if_substr) {
+
+    bool ret = false;
+
+    if (match_if_substr) {
+        auto has_substr = [&s](const Rcpp::String &vec_element) {
+            std::string vec_element_str(vec_element);
+            return vec_element_str.find(s) != std::string::npos;
+        };
+
+        auto it = std::find_if(v.cbegin(), v.cend(), has_substr);
+
+        if (it == v.cend())
+            ret = false;
+        else
+            ret = true;
+    }
+    else {
+        auto it = std::find(v.cbegin(), v.cend(), s);
+
+        if (it == v.cend())
+            ret = false;
+        else
+            ret = true;
+    }
+
+    return ret;
 }
 
 // does std::string contain a space character
@@ -169,4 +207,62 @@ bool is_gdalraster_obj_(const Rcpp::RObject &x) {
     }
 
     return false;
+}
+
+// wrap a GDAL CPLStringList as R character vector
+// (since CPLStringList .begin() and .end() require GDAL >= 3.9)
+Rcpp::CharacterVector wrap_gdal_string_list_(const CPLStringList &string_list) {
+    int nCount = string_list.size();
+    Rcpp::CharacterVector out = Rcpp::no_init(nCount);
+    for (int i = 0; i < nCount; ++i) {
+        out[i] = string_list[i];
+    }
+    return out;
+}
+
+//' Get pointer address of R data as a character string
+//'
+//' @param x Vector of type numeric, integer, raw or complex.
+//' @returns Character string pointer address with format suitable as
+//' DATAPOINTER for a GDAL MEM dataset.
+//' @noRd
+// [[Rcpp::export(name = ".get_data_ptr")]]
+std::string get_data_ptr(const Rcpp::RObject &x) {
+    if (x.isNULL())
+        Rcpp::stop("'x' must be a vector of numeric, integer, raw or complex");
+
+    char buf[32] = {'\0'};
+    if (Rcpp::is<Rcpp::IntegerVector>(x)) {
+        Rcpp::IntegerVector v = Rcpp::as<Rcpp::IntegerVector>(x);
+        if (v.size() == 0)
+            Rcpp::stop("'x' is empty");
+        int n = CPLPrintPointer(buf, v.begin(), sizeof(buf));
+        buf[n] = 0;
+    }
+    else if (Rcpp::is<Rcpp::NumericVector>(x)) {
+        Rcpp::NumericVector v = Rcpp::as<Rcpp::NumericVector>(x);
+        if (v.size() == 0)
+            Rcpp::stop("'x' is empty");
+        int n = CPLPrintPointer(buf, v.begin(), sizeof(buf));
+        buf[n] = 0;
+    }
+    else if (Rcpp::is<Rcpp::RawVector>(x)) {
+        Rcpp::RawVector v = Rcpp::as<Rcpp::RawVector>(x);
+        if (v.size() == 0)
+            Rcpp::stop("'x' is empty");
+        int n = CPLPrintPointer(buf, v.begin(), sizeof(buf));
+        buf[n] = 0;
+    }
+    else if (Rcpp::is<Rcpp::ComplexVector>(x)) {
+        Rcpp::ComplexVector v = Rcpp::as<Rcpp::ComplexVector>(x);
+        if (v.size() == 0)
+            Rcpp::stop("'x' is empty");
+        int n = CPLPrintPointer(buf, v.begin(), sizeof(buf));
+        buf[n] = 0;
+    }
+    else {
+        Rcpp::stop("'x' must be a vector of double, integer, raw or complex");
+    }
+
+    return std::string(buf);
 }

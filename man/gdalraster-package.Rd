@@ -33,7 +33,8 @@
   \code{\link[=rasterFromRaster]{rasterFromRaster()}},
   \code{\link[=translate]{translate()}},
   \code{\link[=getCreationOptions]{getCreationOptions()}},
-  \code{\link[=validateCreationOptions]{validateCreationOptions()}}
+  \code{\link[=validateCreationOptions]{validateCreationOptions()}},
+  \code{\link[=vector_to_MEM]{vector_to_MEM()}}
 
   \item virtual raster:
   \code{\link[=autoCreateWarpedVRT]{autoCreateWarpedVRT()}},
@@ -43,6 +44,7 @@
   \item algorithms/utilities: \code{\link[=dem_proc]{dem_proc()}},
   \code{\link[=fillNodata]{fillNodata()}},
   \code{\link[=footprint]{footprint()}},
+  \code{\link[=is_los_visible]{is_los_visible()}},
   \code{\link[=make_chunk_index]{make_chunk_index()}},
   \code{\link[=polygonize]{polygonize()}},
   \code{\link[=rasterize]{rasterize()}},
@@ -147,6 +149,7 @@
   \code{\link[=vsi_get_file_metadata]{vsi_get_file_metadata()}},
   \code{\link[=vsi_get_fs_options]{vsi_get_fs_options()}},
   \code{\link[=vsi_get_fs_prefixes]{vsi_get_fs_prefixes()}},
+  \code{\link[=vsi_glob]{vsi_glob()}},
   \code{\link[=vsi_is_local]{vsi_is_local()}},
   \code{\link[=vsi_mkdir]{vsi_mkdir()}},
   \code{\link[=vsi_read_dir]{vsi_read_dir()}},
@@ -158,7 +161,8 @@
   \code{\link[=vsi_supports_seq_write]{vsi_supports_seq_write()}},
   \code{\link[=vsi_sync]{vsi_sync()}},
   \code{\link[=vsi_unlink]{vsi_unlink()}},
-  \code{\link[=vsi_unlink_batch]{vsi_unlink_batch()}}
+  \code{\link[=vsi_unlink_batch]{vsi_unlink_batch()}},
+  \code{\link[=vsi_uri_to_vsi_path]{vsi_uri_to_vsi_path()}}
 
   \item GDAL configuration:
   \code{\link[=gdal_version]{gdal_version}},
@@ -212,9 +216,9 @@
   GDAL is by: Frank Warmerdam, Even Rouault and others\cr
   (see \url{https://github.com/OSGeo/gdal/graphs/contributors})
 
-  R interface/additional functionality: Chris Toney
+  Package author and maintainer: Chris Toney <jctoney at gmail.com>
 
-  Maintainer: Chris Toney <jctoney at gmail.com>
+  Package author: Michael D. Sumner
 }
 \seealso{
   GDAL Raster Data Model:\cr

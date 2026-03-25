@@ -77,6 +77,7 @@ test_that("class basic interface works", {
     expect_true(is(lyr, "Rcpp_GDALVector"))
     expect_output(show(lyr), "MULTIPOLYGON")
 
+    expect_true(lyr$isReadOnly())
     expect_equal(lyr$getDriverShortName(), "GPKG")
     expect_equal(lyr$getDriverLongName(), "GeoPackage")
     expect_length(lyr$getFileList(), 1)
@@ -93,6 +94,7 @@ test_that("class basic interface works", {
     expect_false(cap$RandomWrite)
     # re-open with write access
     lyr$open(read_only = FALSE)
+    expect_false(lyr$isReadOnly())
     expect_true(lyr$testCapability()$SequentialWrite)
     expect_true(lyr$testCapability()$RandomWrite)
 
@@ -328,11 +330,11 @@ test_that("set ignored/selected fields works", {
     dsn_json <- system.file("extdata/test.geojson", package="gdalraster")
     lyr <- new(GDALVector, dsn_json)
     expect_true(("int2" %in% lyr$getFieldNames()))
-    expect_output(lyr$setIgnoredFields("int2"),
-                  "layer does not have IgnoreFields capability")
+    expect_error(lyr$setIgnoredFields("int2"),
+                 "layer does not have IgnoreFields capability")
     expect_length(lyr$getIgnoredFields(), 0)
-    expect_output(lyr$setSelectedFields("int2"),
-                  "layer does not have IgnoreFields capability")
+    expect_error(lyr$setSelectedFields("int2"),
+                 "layer does not have IgnoreFields capability")
     expect_length(lyr$getIgnoredFields(), 0)
     lyr$close()
 

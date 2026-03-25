@@ -23,12 +23,13 @@ and the "b" does not need to be included in \code{access}.
 }}
 
 \item{options}{Optional character vector of \code{NAME=VALUE} pairs specifying
-filesystem-dependent options (GDAL >= 3.3, see Details).}
+filesystem-dependent options. These are the options provided by
+\code{VSIFOpenEx2L()} in the GDAL API (GDAL >= 3.3, see Details).}
 }
 \value{
 An object of class \code{VSIFile} which contains a pointer to a
-\code{VSIVirtualHandle}, and methods that operate on the file as described in
-Details.
+\code{VSIVirtualHandle}. Class methods are described in Details, along with a set
+of writable fields for per-object settings.
 }
 \description{
 \code{VSIFile} provides bindings to the GDAL VSIVirtualHandle API. Encapsulates a
@@ -41,7 +42,7 @@ virtualization of disk I/O so that non-file data sources can be made to
 appear as files.
 
 \code{VSIFile} is a C++ class exposed directly to \R (via \code{RCPP_EXPOSED_CLASS}).
-Methods of the class are accessed using the \code{$} operator.
+Fields and methods of the class are accessed using the \code{$} operator.
 }
 \note{
 File offsets are given as \R \code{numeric} (i.e., \code{double} type), optionally
@@ -73,6 +74,9 @@ vf <- new(VSIFile, filename)
 vf <- new(VSIFile, filename, access)
 # specifying access and options (both required):
 vf <- new(VSIFile, filename, access, options)
+
+## Read/write fields (per-object settings)
+vf$reportVSIFErrorAsEof
 
 ## Methods
 vf$seek(offset, origin)
@@ -113,7 +117,7 @@ Alternate constructor for passing \code{access} as a character string, and
 required, GDAL >= 3.3 required for \code{options} support).
 
 The \code{options} argument is highly file system dependent. Supported options
-as of GDAL 3.9 include:
+as of GDAL 3.10 include:
 \itemize{
 \item MIME headers such as Content-Type and Content-Encoding are supported for
 the /vsis3/, /vsigs/, /vsiaz/, /vsiadls/ file systems.
@@ -125,6 +129,39 @@ FILE_FLAG_WRITE_THROUGH flag to the \code{CreateFile()} function. In that mode,
 the data are written to the system cache but are flushed to disk without
 delay.
 }
+
+Options specific to /vsis3/, /vsigs/, /vsioss/ and /vsiaz/:
+\itemize{
+\item CACHE=YES/NO (GDAL >= 3.10) whether file metadata and content that is read
+from the network should be kept cached in memory, after file handle closing.
+Default is YES, unless the filename is set in CPL_VSIL_CURL_NON_CACHED.
+\item CHUNK_SIZE=val in MiB (GDAL >= 3.10) for "w" mode. Size of a block. Default
+is 50 MiB. For /vsis3/, /vsigz/, /vsioss/, it can be up to 5000 MiB.
+For /vsiaz/, only taken into account when BLOB_TYPE=BLOCK. It can be up to
+4000 MiB.
+}
+
+Options specific to /vsiaz/ in "w" mode:
+\itemize{
+\item BLOB_TYPE=APPEND/BLOCK (GDAL >= 3.10) type of blob. Defaults to APPEND.
+Append blocks are limited to 195 GiB (however if the file size is below
+4 MiB, a block blob will be created in a single PUT operation).
+}
+
+See the GDAL documentation for \code{VSIFOpenEx2L()} for the most current set of
+available options (\url{https://gdal.org/en/stable/api/cpl.html}).
+}
+
+\subsection{Read/write fields (per-object settings)}{
+
+\code{$reportVSIFErrorAsEof}\cr
+A logical value, \code{TRUE} (the default) to report a VSI error condition,
+as indicated by \code{VSIFErrorL()} in GDAL >= 3.10, as \code{TRUE} in a call to the
+\code{$eof()} method (see below). Since GDAL 3.10, some virtual file systems
+that used to report errors through \code{VSIFEofL} now do so through \code{VSIFErrorL}.
+Code testing \code{$eof()} to potentially end read loops should also test
+for an error condition, which this setting enables by default.
+Ignored if GDAL < 3.10.
 }
 
 \subsection{Methods}{
