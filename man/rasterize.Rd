@@ -80,8 +80,8 @@ xmin / resx, ymin / resy, xmax / resx and ymax / resy are integer values.}
 pixels (xsize, ysize). Note that \code{ts} cannot be used with \code{tr}.}
 
 \item{dtName}{Character name of output raster data type, e.g., \code{Byte},
-\code{Int16}, \code{UInt16}, \code{Int32}, \code{UInt32}, \code{Float32}, \code{Float64}.
-Defaults to \code{Float64}.}
+\code{UInt8} (GDAL >= 3.13), \code{Int16}, \code{UInt16}, \code{Int32}, \code{UInt32}, \code{Float32},
+\code{Float64}. Defaults to \code{Float64}.}
 
 \item{dstnodata}{Numeric scalar. Assign a nodata value to output bands.}
 
@@ -144,11 +144,14 @@ rasterize(src_dsn = dsn,
           init = -9999,
           co = c("TILED=YES", "COMPRESS=LZW"))
 
-ds <- new(GDALRaster, out_file)
-pal <- scales::viridis_pal(end = 0.8, direction = -1)(6)
-ramp <- scales::colour_ramp(pal)
-plot_raster(ds, legend = TRUE, col_map_fn = ramp, na_col = "#d9d9d9",
-            main = "YNP Fires 1984-2022 - Most Recent Burn Year")
+(ds <- new(GDALRaster, out_file))
+
+if (requireNamespace("scales")) {
+  pal <- scales::viridis_pal(end = 0.8, direction = -1)(6)
+  ramp <- scales::colour_ramp(pal)
+  plot_raster(ds, legend = TRUE, col_map_fn = ramp, na_col = "#d9d9d9",
+              main = "YNP Fires 1984-2022 - Most Recent Burn Year")
+}
 
 ds$close()
 \dontshow{deleteDataset(out_file)}

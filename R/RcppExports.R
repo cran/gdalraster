@@ -19,7 +19,7 @@
 #' imaginary component.
 #'
 #' `dt_is_integer()` returns `TRUE` if the passed type is integer (one of
-#' Byte, Int16, UInt16, Int32, UInt32, CInt16, CInt32).
+#' Byte, UInt8 (GDAL >= 3.13), Int16, UInt16, Int32, UInt32, CInt16, CInt32).
 #'
 #' `dt_is_floating()` returns `TRUE` if the passed type is floating (one of
 #' Float32, Float16, Float64, CFloat16, CFloat32, CFloat64).
@@ -39,8 +39,8 @@
 #' given `value` (returns a data type name as character string).
 #'
 #' @param dt Character string containing a GDAL data type name (e.g.,
-#' `"Byte"`, `"Int16"`, `"UInt16"`, `"Int32"`, `"UInt32"`, `"Float32"`,
-#' `"Float64"`, etc.)
+#' `"Byte"`, `"UInt8"` (GDAL >= 3.13), `"Int16"`, `"UInt16"`, `"Int32"`,
+#' `"UInt32"`, `"Float32"`, `"Float64"`, etc.)
 #' @param as_bytes Logical value, `TRUE` to return data type size in bytes
 #' (the default), `FALSE` to return the size in bits.
 #' @param dt_other Character string containing a GDAL data type name.
@@ -1541,9 +1541,7 @@ gdal_get_driver_md <- function(format, mdi_name = "") {
 #' `mdim_info()` is an interface to the \command{gdalmdiminfo} command-line
 #' utility (see \url{https://gdal.org/en/stable/programs/gdalmdiminfo.html}).
 #' This function lists various information about a GDAL supported
-#' multidimensional raster dataset as JSON output. It follows the JSON schema
-#' [gdalmdiminfo_output.schema.json](https://github.com/OSGeo/gdal/blob/release/3.11/apps/data/gdalmdiminfo_output.schema.json).
-#' Requires GDAL >= 3.2.
+#' multidimensional raster dataset as JSON output. Requires GDAL >= 3.2.
 #'
 #' @param dsn Character string giving the data source name of the
 #' multidimensional raster (e.g., file, VSI path).
@@ -1938,7 +1936,7 @@ vsi_read_dir <- function(path, max_files = 0L, recursive = FALSE, all_files = FA
 #'   * `one.tif`
 #'   * `my_subdir/two.tif`
 #'   * `my_subdir/subsubdir/three.tif`
-#' 
+#'
 #' ```
 #' vsi_glob("one.tif")
 #'   # returns ("one.tif")
@@ -2785,6 +2783,11 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_invalid_reason <- function(geom, quiet = FALSE) {
+    .Call(`_gdalraster_g_invalid_reason`, geom, quiet)
+}
+
+#' @noRd
 .g_make_valid <- function(geom, method = "LINEWORK", keep_collapsed = FALSE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_make_valid`, geom, method, keep_collapsed, as_iso, byte_order, quiet)
 }
@@ -2907,6 +2910,11 @@ has_geos <- function() {
 #' @noRd
 .g_delaunay_triangulation <- function(geom, constrained = FALSE, tolerance = 0.0, only_edges = FALSE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_delaunay_triangulation`, geom, constrained, tolerance, only_edges, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_segmentize <- function(geom, max_length, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_segmentize`, geom, max_length, as_iso, byte_order, quiet)
 }
 
 #' @noRd
@@ -3166,6 +3174,18 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
 #' @noRd
 .ogr_execute_sql <- function(dsn, sql, spatial_filter = "", dialect = "") {
     invisible(.Call(`_gdalraster_ogr_execute_sql`, dsn, sql, spatial_filter, dialect))
+}
+
+#' @noRd
+.progress_bar_cleanup <- function() {
+    invisible(.Call(`_gdalraster_progress_bar_cleanup`))
+}
+
+#' Rasterize one polygon
+#'
+#' @noRd
+.rasterize_polygon <- function(rasterXsize, rasterYsize, part_sizes, polygonX, polygonY, fnRasterIO, burn_value, attr_value = NA_character_) {
+    .Call(`_gdalraster_rasterize_polygon`, rasterXsize, rasterYsize, part_sizes, polygonX, polygonY, fnRasterIO, burn_value, attr_value)
 }
 
 #' Get pointer address of R data as a character string

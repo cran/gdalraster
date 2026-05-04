@@ -1,6 +1,6 @@
 Package: gdalraster
 Title: Bindings to 'GDAL'
-Version: 2.5.0
+Version: 2.6.0
 Authors@R: c(
     person("Chris", "Toney", email = "jctoney@gmail.com",
             role = c("aut", "cre"), comment = c(ORCID = "0000-0001-5734-6510")),
@@ -53,15 +53,15 @@ Depends: R (>= 4.2.0)
 Imports: bit64, cli, graphics, grDevices, methods, nanoarrow, Rcpp (>=
         1.0.7), stats, tools, utils, wk, xml2, yyjsonr
 LinkingTo: cli, nanoarrow, Rcpp, RcppInt64
-Suggests: gt, knitr, rmarkdown, scales, testthat (>= 3.0.0), vctrs (>=
-        0.3.0)
+Suggests: glue (>= 1.6.0), gt, knitr, ltc, rmarkdown, scales, testthat
+        (>= 3.0.0), vctrs (>= 0.3.0)
 NeedsCompilation: yes
 SystemRequirements: C++17, GDAL (>= 3.1.0, built against GEOS)
 Encoding: UTF-8
-RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-Packaged: 2026-03-25 03:28:24 UTC; ctoney
+Config/roxygen2/version: 8.0.0
+Packaged: 2026-05-03 22:59:43 UTC; ctoney
 Author: Chris Toney [aut, cre] (ORCID: <https://orcid.org/0000-0001-5734-6510>),
   Michael D. Sumner [aut] (ORCID:
     <https://orcid.org/0000-0002-2471-7511>),
@@ -75,4 +75,4 @@ Author: Chris Toney [aut, cre] (ORCID: <https://orcid.org/0000-0001-5734-6510>),
   Peter Dimov [ctb, cph] (Boost combine hashes method in src/cmb_table.h)
 Maintainer: Chris Toney <jctoney@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-03-25 06:10:52 UTC
+Date/Publication: 2026-05-04 05:30:08 UTC

@@ -194,7 +194,7 @@ and all other dependent libraries that are needed to compile
 **gdalraster**. Note that CRAN release periodic revisions to RTools that
 often include updates to the libraries as new versions become available.
 [Release
-6768](https://cran.r-project.org/bin/windows/Rtools/rtools45/rtools.html)
+6768](https://cran.r-project.org/bin/windows/Rtools/rtools45/news.html)
 of RTools 4.5 contains GDAL 3.12.1, GEOS 3.14.1 and PROJ 9.7.1.
 
 With RTools installed:
@@ -223,15 +223,9 @@ from R-universe instead.
 
 ### Docker
 
-The `r-gdalraster` build at
-<https://github.com/mdsumner/gdal-builds/pkgs/container/gdal-builds> is
-based on the GDAL [`ubuntu-full-latest`
-image](https://github.com/OSGeo/gdal/tree/master/docker#full-ghcrioosgeogdalubuntu-full-latest-aliased-to-osgeogdal),
-and adds the current released version of R along with development
-version of **gdalraster** and its dependencies (thanks to Michael
-Sumner):
+See <https://github.com/hypertidy/gdal-r-ci> (thanks to Michael Sumner):
 
-    docker pull ghcr.io/mdsumner/gdal-builds:r-gdalraster
+    docker pull ghcr.io/hypertidy/gdal-r-full:latest
 
 ## Documentation
 

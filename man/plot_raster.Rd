@@ -151,13 +151,14 @@ The default is transparent (\code{"#00000000"}, the return value of
 \details{
 By default, contrast enhancement by stretch to min/max is applied when
 the input data are single-band grayscale with any raster data type, or
-three-band RGB with raster data type larger than Byte. The minimum/maximum
-of the input data are used by default (i.e., no outlier removal). No stretch
-is applied by default when the input is an RGB byte raster. These defaults
-can be overridden by specifying either the \code{minmax_def} argument
-(user-defined min/max per band), or the \code{minmax_pct_cut} argument (ignore
-outlier pixels based on a percentile range per band). These settings (and
-the \code{normalize} argument) are ignored if a color table is used.
+three-band RGB with raster data type larger than Byte (=UInt8 in
+GDAL >= 3.13). The minimum/maximum of the input data are used by default
+(i.e., no outlier removal). No stretch is applied by default when the input
+is an RGB byte raster. These defaults can be overridden by specifying either
+the \code{minmax_def} argument (user-defined min/max per band), or the
+\code{minmax_pct_cut} argument (ignore outlier pixels based on a percentile range
+per band). These settings (and the \code{normalize} argument) are ignored if a
+color table is used.
 }
 \note{
 \code{plot_raster()} uses the function \code{graphics::rasterImage()} for plotting
@@ -230,18 +231,20 @@ plot_raster(ds, col_tbl = vat, interpolate = FALSE,
 ds$close()
 
 ## Apply a pixel function
-f <- system.file("extdata/complex.tif", package="gdalraster")
-ds <- new(GDALRaster, f)
-ds$getDataTypeName(band = 1)  # complex floating point
+if (requireNamespace("scales")) {
+  f <- system.file("extdata/complex.tif", package="gdalraster")
+  ds <- new(GDALRaster, f)
+  ds$getDataTypeName(band = 1)  # complex floating point
 
-plot_raster(ds,
-            pixel_fn = Arg,
-            col_map_fn = scales::pal_viridis(option = "plasma")(6),
-            interpolate = FALSE,
-            legend = TRUE,
-            main = "Arg(complex.tif)")
+  plot_raster(ds,
+              pixel_fn = Arg,
+              col_map_fn = scales::pal_viridis(option = "plasma")(6),
+              interpolate = FALSE,
+              legend = TRUE,
+              main = "Arg(complex.tif)")
 
-ds$close()
+  ds$close()
+}
 }
 \seealso{
 \code{\link[=GDALRaster]{GDALRaster$read()}}, \code{\link[=read_ds]{read_ds()}}, \code{\link[=set_config_option]{set_config_option()}}

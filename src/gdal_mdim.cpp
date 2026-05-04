@@ -3,17 +3,18 @@
    Copyright (c) 2023-2025 gdalraster authors
 */
 
-#include <Rcpp.h>
-
 #include <gdal.h>
 #include <cpl_conv.h>
 #include <gdal_utils.h>
+
+#include <Rcpp.h>
 
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "gdalraster.h"
+#include "rcpp_util.h"
 
 
 // Return a view of an MDArray as a "classic" GDALDataset (i.e., 2D)
@@ -157,9 +158,7 @@ GDALRaster *mdim_as_classic(
 //' `mdim_info()` is an interface to the \command{gdalmdiminfo} command-line
 //' utility (see \url{https://gdal.org/en/stable/programs/gdalmdiminfo.html}).
 //' This function lists various information about a GDAL supported
-//' multidimensional raster dataset as JSON output. It follows the JSON schema
-//' [gdalmdiminfo_output.schema.json](https://github.com/OSGeo/gdal/blob/release/3.11/apps/data/gdalmdiminfo_output.schema.json).
-//' Requires GDAL >= 3.2.
+//' multidimensional raster dataset as JSON output. Requires GDAL >= 3.2.
 //'
 //' @param dsn Character string giving the data source name of the
 //' multidimensional raster (e.g., file, VSI path).
@@ -262,7 +261,8 @@ std::string mdim_info(
 
     std::string limit_str;
     if (limit > 0 && !detailed) {
-        Rcpp::Rcout << "'limit' only taken into account if 'detailed = TRUE'\n";
+        cli_alert_warning_(
+            "{.arg limit} only taken into account if {.code detailed = TRUE}");
     }
     else if (limit > 0) {
         limit_str = std::to_string(limit);

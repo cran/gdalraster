@@ -371,36 +371,36 @@ additional parameters, etc.</p>
 and its associated raster band objects. Methods of the class are
 accessed in R using the <code>$</code> operator:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>ds</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#&gt; C++ object of class GDALRaster</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#&gt;  Driver : GeoTIFF (GTiff)</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt;  DSN    : /tmp/Rtmp6vhS21/Rinst5210132d04a9f/gdalraster/extdata/storml_tcc.tif</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co">#&gt;  Dim    : 143, 107, 1</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co">#&gt;  CRS    : NAD83 / UTM zone 12N (EPSG:26912)</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co">#&gt;  Res    : 30.000000, 30.000000</span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co">#&gt;  Bbox   : 323476.100000, 5101872.000000, 327766.100000, 5105082.000000</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#&gt; C++ object of class &lt;GDALRaster&gt;</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#&gt; • Driver: GeoTIFF (GTiff)</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt; • DSN: &quot;/tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/storml_tcc.tif&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co">#&gt; • Dimensions: 143, 107, 1</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co">#&gt; • CRS: NAD83 / UTM zone 12N (EPSG:26912)</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co">#&gt; • Pixel resolution: 30.000000, 30.000000</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co">#&gt; • Bbox: 323476.100000, 5101872.000000, 327766.100000, 5105082.000000</span></span>
 <span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="fu">str</span>(ds)</span>
 <span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co">#&gt; Reference class &#39;Rcpp_GDALRaster&#39; [package &quot;gdalraster&quot;] with 3 fields</span></span>
 <span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co">#&gt;  $ infoOptions  : chr(0) </span></span>
 <span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co">#&gt;  $ quiet        : logi FALSE</span></span>
 <span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co">#&gt;  $ readByteAsRaw: logi FALSE</span></span>
-<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt;  and 95 methods, of which 81 are  possibly relevant:</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt;  and 96 methods, of which 82 are  possibly relevant:</span></span>
 <span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co">#&gt;    addBand, apply_geotransform, bbox, buildOverviews, clearColorTable,</span></span>
 <span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="co">#&gt;    clearStatistics, close, deleteNoDataValue, dim, fillRaster, finalize,</span></span>
 <span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="co">#&gt;    flushCache, getActualBlockSize, getBlockSize, getChecksum, getColorTable,</span></span>
 <span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="co">#&gt;    getDataTypeName, getDefaultHistogram, getDefaultRAT, getDescription,</span></span>
 <span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="co">#&gt;    getDriverLongName, getDriverShortName, getFileList, getFilename,</span></span>
-<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="co">#&gt;    getGeoTransform, getHistogram, getMaskBand, getMaskFlags, getMetadata,</span></span>
-<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co">#&gt;    getMetadataDomainList, getMetadataItem, getMinMax, getMinMaxLocation,</span></span>
-<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#&gt;    getNoDataValue, getOffset, getOverviewCount, getPaletteInterp,</span></span>
-<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt;    getProjection, getProjectionRef, getRasterColorInterp, getRasterCount,</span></span>
-<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt;    getRasterXSize, getRasterYSize, getScale, getSpatialRef, getStatistics,</span></span>
-<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt;    getUnitType, get_block_indexing, get_pixel_line, info, infoAsJSON,</span></span>
-<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt;    initialize, isOpen, isReadOnly, make_chunk_index, open, pixel_extract,</span></span>
-<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt;    preserveRObject_, read, readBlock, readChunk, readToNativeRaster, res,</span></span>
-<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt;    setBbox, setColorTable, setDefaultRAT, setDescription, setFilename,</span></span>
-<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt;    setGeoTransform, setMetadata, setMetadataItem, setNoDataValue, setOffset,</span></span>
-<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt;    setProjection, setRasterColorInterp, setScale, setUnitType,</span></span>
-<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="co">#&gt;    show#envRefClass, write, writeBlock, writeChunk</span></span></code></pre></div>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="co">#&gt;    getGeoTransform, getHistogram, getInterBandCovMatrix, getMaskBand,</span></span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co">#&gt;    getMaskFlags, getMetadata, getMetadataDomainList, getMetadataItem,</span></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#&gt;    getMinMax, getMinMaxLocation, getNoDataValue, getOffset, getOverviewCount,</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt;    getPaletteInterp, getProjection, getProjectionRef, getRasterColorInterp,</span></span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt;    getRasterCount, getRasterXSize, getRasterYSize, getScale, getSpatialRef,</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt;    getStatistics, getUnitType, get_block_indexing, get_pixel_line, info,</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt;    infoAsJSON, initialize, isOpen, isReadOnly, make_chunk_index, open,</span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt;    pixel_extract, preserveRObject_, read, readBlock, readChunk,</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt;    readToNativeRaster, res, setBbox, setColorTable, setDefaultRAT,</span></span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt;    setDescription, setFilename, setGeoTransform, setMetadata, setMetadataItem,</span></span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt;    setNoDataValue, setOffset, setProjection, setRasterColorInterp, setScale,</span></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="co">#&gt;    setUnitType, show#envRefClass, write, writeBlock, writeChunk</span></span></code></pre></div>
 </div>
 <div id="getting-dataset-information" class="section level2">
 <h2>Getting dataset information</h2>
@@ -483,23 +483,26 @@ specifying a <code>band</code> number as the first argument:</p>
 <span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a></span>
 <span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co"># min, max, mean, sd of pixel values in the band</span></span>
 <span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getStatistics</span>(<span class="at">band =</span> <span class="dv">1</span>, <span class="at">approx_ok =</span> <span class="cn">FALSE</span>, <span class="at">force =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a><span class="co">#&gt; [1]  0.00000 71.00000 23.69950 23.17744</span></span>
-<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a></span>
-<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co"># does this band have overviews? (aka &quot;pyramids&quot;)</span></span>
-<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getOverviewCount</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
-<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a><span class="co">#&gt; [1] 0</span></span>
-<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a></span>
-<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a><span class="co"># does this band have a color table?</span></span>
-<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>col_tbl <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">getColorTable</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
-<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(col_tbl))</span>
-<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a>  <span class="fu">head</span>(col_tbl)</span>
-<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a><span class="co">#&gt;      value red green blue alpha</span></span>
-<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a><span class="co">#&gt; [1,]     0 255   255  255   255</span></span>
-<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a><span class="co">#&gt; [2,]     1 252   254  252   255</span></span>
-<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a><span class="co">#&gt; [3,]     2 250   253  250   255</span></span>
-<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a><span class="co">#&gt; [4,]     3 248   252  247   255</span></span>
-<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a><span class="co">#&gt; [5,]     4 245   251  245   255</span></span>
-<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a><span class="co">#&gt; [6,]     5 243   250  242   255</span></span></code></pre></div>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a><span class="co">#&gt;  ■■■■■■■■■■■■■■■■                  50% |  ETA:  0s</span></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co">#&gt; ✔ Done (15ms)</span></span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a><span class="co">#&gt; [1]  0.00000 71.00000 23.69950 23.17744</span></span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a></span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a><span class="co"># does this band have overviews? (aka &quot;pyramids&quot;)</span></span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>ds<span class="sc">$</span><span class="fu">getOverviewCount</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a><span class="co">#&gt; [1] 0</span></span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a></span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a><span class="co"># does this band have a color table?</span></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>col_tbl <span class="ot">&lt;-</span> ds<span class="sc">$</span><span class="fu">getColorTable</span>(<span class="at">band =</span> <span class="dv">1</span>)</span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(col_tbl))</span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>  <span class="fu">head</span>(col_tbl)</span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a><span class="co">#&gt;      value red green blue alpha</span></span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a><span class="co">#&gt; [1,]     0 255   255  255   255</span></span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a><span class="co">#&gt; [2,]     1 252   254  252   255</span></span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a><span class="co">#&gt; [3,]     2 250   253  250   255</span></span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a><span class="co">#&gt; [4,]     3 248   252  247   255</span></span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a><span class="co">#&gt; [5,]     4 245   251  245   255</span></span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a><span class="co">#&gt; [6,]     5 243   250  242   255</span></span></code></pre></div>
 </div>
 <div id="reading-raster-data" class="section level2">
 <h2>Reading raster data</h2>

@@ -950,7 +950,7 @@ test_that("geometry properties are correct", {
     expect_equal(g_geom_count("GEOMETRYCOLLECTION EMPTY"), 0)
 
     # g_summary requires GDAL >= 3.7
-    skip_if(gdal_version_num() < 3070000 )
+    skip_if(gdal_version_num() < gdal_compute_version(3, 7, 0))
 
     g <- "MULTIPOLYGON (((10 0,0 0,5 5,10 0)),((10 10,5 5,0 10,10 10)))"
     expected_value <-
@@ -962,6 +962,12 @@ test_that("geometry properties are correct", {
     expect_vector(g_summary(wkb_list), character(), size = 3)
 
     expect_true(is.na(g_summary(raw(0))))
+
+    # g_invalid_reason requires GDAL >= 3.13
+    skip_if(gdal_version_num() < gdal_compute_version(3, 13, 0))
+
+    expect_false(is.na(g_invalid_reason("LINESTRING(0 0)")))
+    expect_true(is.na(g_invalid_reason("LINESTRING(0 0, 1 1)")))
 })
 
 test_that("geometry binary predicates/ops return correct values", {
@@ -1188,6 +1194,33 @@ test_that("unary ops return correct values", {
         expect_equal(g_dt, g_expect)
     }
 
+    # g_segmentize
+    g1 <- "LINESTRING (0 0,0 10)"
+    g_seg <- g_segmentize(g1, max_length = 5, as_wkb = FALSE)
+    g_expect <- "LINESTRING (0 0,0 5,0 10)"
+    expect_equal(g_seg, g_expect)
+    # wkb input
+    g_seg <- g_segmentize(g_wk2wk(g1), max_length = 5, as_wkb = FALSE)
+    expect_equal(g_seg, g_expect)
+    # same but testing defaults in case optional arguments are nulled out
+    g_seg <- g_segmentize(g_wk2wk(g1), max_length = 5, as_wkb = FALSE,
+                          as_iso = NULL, byte_order = NULL, quiet = NULL)
+    expect_equal(g_seg, g_expect)
+    # empty raw vector
+    expect_true(is.null(g_segmentize(raw(0), max_length = 5)))
+    # vector/list input
+    g_expect <- c(g_expect, g_expect, NA)
+    # character vector of wkt input
+    expect_warning(g_seg <- g_segmentize(c(g1, g1, NA), max_length = 5,
+                                         as_wkb = FALSE)) |>
+        expect_warning()  # for as_wkb = FALSE
+    expect_equal(g_seg, g_expect)
+    # list of wkb input
+    expect_warning(g_seg <- g_segmentize(g_wk2wk(c(g1, g1, NA)), max_length = 5,
+                                         as_wkb = FALSE)) |>
+        expect_warning()  # for as_wkb = FALSE
+    expect_equal(g_seg, g_expect)
+
     # g_simplify
     g1 <- "LINESTRING(0 0,1 0,10 0)"
     g_simp <- g_simplify(g1, tolerance = 5, as_wkb = FALSE)
@@ -1404,10 +1437,20 @@ test_that("make_valid works", {
                                          quiet = NULL))
     expect_true(g_equals(g_wk2wk(wkb1), wkt1))
 
-    # invalid - error
+    # invalid - error if GDAL < 3.13
+    # GDAL >= 3.13:
+    # Certain geometries cannot be read using GEOS, for example if Polygon
+    # rings are not closed or do not contain enough vertices. If a geometry
+    # cannot be read by GEOS, NULL will be returned. Starting with GDAL 3.13,
+    # GDAL will attempt to modify these geometries such that they can be read
+    # and repaired by GEOS.
     wkt2 <- "LINESTRING (0 0)"
-    expect_warning(wkb2 <- g_make_valid(wkt2))
-    expect_true(is.null(wkb2))
+    if (gdal_version_num() < gdal_compute_version(3, 13, 0)) {
+        expect_warning(wkb2 <- g_make_valid(wkt2))
+        expect_true(is.null(wkb2))
+    } else {
+        expect_equal(g_make_valid(wkt2, as_wkb = FALSE), "POINT (0 0)")
+    }
 
     # invalid to valid
     wkt3 <- "POLYGON ((0 0,10 10,0 10,10 0,0 0))"
@@ -1428,7 +1471,11 @@ test_that("make_valid works", {
     expect_warning(wkb_list <- g_make_valid(wkt_vec, method = "STRUCTURE",
                                             quiet = TRUE))
     expect_equal(length(wkb_list), length(wkt_vec))
-    expect_true(is.null(wkb_list[[2]]))
+    if (gdal_version_num() < gdal_compute_version(3, 13, 0)) {
+        expect_true(is.null(wkb_list[[2]]))
+    } else {
+        expect_false(is.null(wkb_list[[2]]))
+    }
     expect_true(is.null(wkb_list[[5]]))
     expect_true(g_equals(g_wk2wk(wkb_list[[4]]), expected_wkt4))
 
@@ -1438,7 +1485,11 @@ test_that("make_valid works", {
                                             method = "STRUCTURE",
                                             quiet = TRUE))
     expect_equal(length(wkb_list), length(wkt_vec))
-    expect_true(is.null(wkb_list[[2]]))
+    if (gdal_version_num() < gdal_compute_version(3, 13, 0)) {
+        expect_true(is.null(wkb_list[[2]]))
+    } else {
+        expect_false(is.null(wkb_list[[2]]))
+    }
     expect_true(is.null(wkb_list[[5]]))
     expect_true(g_equals(g_wk2wk(wkb_list[[4]]), expected_wkt4))
 })
@@ -1449,7 +1500,7 @@ test_that("normalize works", {
     g <- "POLYGON ((0 1,1 1,1 0,0 0,0 1))"
     expect_no_error(g_normalize(g))
     expect_no_error(g_normalize(g, as_wkb = NULL, as_iso = NULL,
-                              byte_order = NULL, quiet = NULL))
+                                byte_order = NULL, quiet = NULL))
     g_norm <- g_normalize(g, as_wkb = FALSE)
     g_expect <- "POLYGON ((0 0,0 1,1 1,1 0,0 0))"
     expect_equal(g_norm, g_expect)
