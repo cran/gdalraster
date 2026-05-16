@@ -1,6 +1,6 @@
 Package: gdalraster
 Title: Bindings to 'GDAL'
-Version: 2.6.0
+Version: 2.6.1
 Authors@R: c(
     person("Chris", "Toney", email = "jctoney@gmail.com",
             role = c("aut", "cre"), comment = c(ORCID = "0000-0001-5734-6510")),
@@ -61,7 +61,7 @@ Encoding: UTF-8
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
-Packaged: 2026-05-03 22:59:43 UTC; ctoney
+Packaged: 2026-05-16 00:40:47 UTC; ctoney
 Author: Chris Toney [aut, cre] (ORCID: <https://orcid.org/0000-0001-5734-6510>),
   Michael D. Sumner [aut] (ORCID:
     <https://orcid.org/0000-0002-2471-7511>),
@@ -75,4 +75,4 @@ Author: Chris Toney [aut, cre] (ORCID: <https://orcid.org/0000-0001-5734-6510>),
   Peter Dimov [ctb, cph] (Boost combine hashes method in src/cmb_table.h)
 Maintainer: Chris Toney <jctoney@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-05-04 05:30:08 UTC
+Date/Publication: 2026-05-16 11:50:02 UTC

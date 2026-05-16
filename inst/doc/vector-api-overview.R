@@ -23,6 +23,15 @@ vsi_read_dir(zf)
 # VSI path to the GPKG file
 (zf_gpkg <- file.path(zf, "ynp_features.gpkg"))
 
+## ----include = FALSE----------------------------------------------------------
+# workaround for GDAL < 3.11.4:
+#   https://github.com/OSGeo/gdal/issues/12934
+#   GPKG driver: fix random crash in GetNextArrowArrayAsynchronous()
+ogr_arrow_opt <- get_config_option("OGR2OGR_USE_ARROW_API")
+set_config_option("OGR2OGR_USE_ARROW_API", "NO")
+gpkg_stream_base_opt <- get_config_option("OGR_GPKG_STREAM_BASE_IMPL")
+set_config_option("OGR_GPKG_STREAM_BASE_IMPL", "YES")
+
 ## -----------------------------------------------------------------------------
 if (gdal_version_num() >= gdal_compute_version(3, 7, 0)) {
   cat("SOZip metadata for ynp_features.gpkg:\n")
@@ -500,4 +509,6 @@ lyr_out$close()
 unlink(json_file)
 vsi_unlink(mtbs_dsn)
 vsi_rmdir("/vsimem/tmp/")
+set_config_option("OGR2OGR_USE_ARROW_API", ogr_arrow_opt)
+set_config_option("OGR_GPKG_STREAM_BASE_IMPL", gpkg_stream_base_opt)
 

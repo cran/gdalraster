@@ -775,7 +775,7 @@ etc.</p>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># add the VSI prefix </span></span>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>(zf <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="st">&quot;/vsizip&quot;</span>, f))</span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co">#&gt; [1] &quot;/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip&quot;</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co">#&gt; [1] &quot;/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip&quot;</span></span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a></span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="co"># list files in the zip archive</span></span>
 <span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="fu">vsi_read_dir</span>(zf)</span>
@@ -785,7 +785,7 @@ etc.</p>
 <span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a></span>
 <span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="co"># VSI path to the GPKG file</span></span>
 <span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>(zf_gpkg <span class="ot">&lt;-</span> <span class="fu">file.path</span>(zf, <span class="st">&quot;ynp_features.gpkg&quot;</span>))</span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="co">#&gt; [1] &quot;/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&quot;</span></span></code></pre></div>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="co">#&gt; [1] &quot;/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&quot;</span></span></code></pre></div>
 <p>It is possible to chain multiple file system handlers. The <a href="https://gdal.org/en/stable/user/virtual_file_systems.html#vsicurl-http-https-ftp-files-random-access">/vsicurl/</a>
 prefix specifies a file system handler that allows on-the-fly random
 reading of files available through web protocols, without prior download
@@ -852,8 +852,8 @@ data.</p>
 <span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
 <span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="co">#&gt; $subdataset_names</span></span>
-<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="co">#&gt; [1] &quot;GPKG:/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg:operational_roads&quot;  </span></span>
-<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="co">#&gt; [2] &quot;GPKG:/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg:forest_canopy_cover&quot;</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="co">#&gt; [1] &quot;GPKG:/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg:operational_roads&quot;  </span></span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="co">#&gt; [2] &quot;GPKG:/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg:forest_canopy_cover&quot;</span></span>
 <span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a><span class="co">#&gt; $supports_vector</span></span>
 <span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
@@ -880,7 +880,7 @@ the <a href="https://gdal.org/en/stable/programs/ogrinfo.html"><code>ogrinfo</co
 command-line utility included with GDAL.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># list the layers in a data source</span></span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">ogrinfo</span>(zf_gpkg)</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#&gt; INFO: Open of `/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&#39;</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#&gt; INFO: Open of `/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&#39;</span></span>
 <span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt;       using driver `GPKG&#39; successful.</span></span>
 <span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt; 1: ynp_bnd (Polygon)</span></span>
 <span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 2: roads (Line String)</span></span>
@@ -888,7 +888,7 @@ command-line utility included with GDAL.</p>
 <span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a></span>
 <span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co"># detailed information about a specific layer</span></span>
 <span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="fu">ogrinfo</span>(zf_gpkg, <span class="st">&quot;ynp_bnd&quot;</span>, <span class="at">cl_arg =</span> <span class="fu">c</span>(<span class="st">&quot;-geom=SUMMARY&quot;</span>, <span class="st">&quot;-wkt_format&quot;</span>, <span class="st">&quot;WKT2&quot;</span>))</span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co">#&gt; INFO: Open of `/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&#39;</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co">#&gt; INFO: Open of `/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&#39;</span></span>
 <span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co">#&gt;       using driver `GPKG&#39; successful.</span></span>
 <span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; Layer name: ynp_bnd</span></span>
@@ -1099,7 +1099,7 @@ boundary layer and retrieve information about it.</p>
 <span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt; C++ object of class &lt;GDALVector&gt;</span></span>
 <span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt;   • Driver: GeoPackage (GPKG)</span></span>
 <span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt;   • DSN:</span></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt;   &quot;/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&quot;</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt;   &quot;/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&quot;</span></span>
 <span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#&gt;   • Layer: ynp_bnd</span></span>
 <span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#&gt;   • CRS: NAD83 (EPSG:4269)</span></span>
 <span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co">#&gt;   • Geometry: POLYGON</span></span>
@@ -1240,7 +1240,7 @@ returned by <code>$fetch()</code> carries the
 <span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co">#&gt; C++ object of class &lt;GDALVector&gt;</span></span>
 <span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#&gt;   • Driver: GeoPackage (GPKG)</span></span>
 <span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co">#&gt;   • DSN:</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt;   &quot;/vsizip//tmp/RtmpkmutUi/Rinst2da516a98ffb2/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&quot;</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt;   &quot;/vsizip//tmp/RtmpSFGX5A/Rinst16f1263353520/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg&quot;</span></span>
 <span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt;   • Layer: SELECT rdname, opentopubl, geom FROM roads WHERE opentopubl = &#39;Yes&#39;</span></span>
 <span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt;   • CRS: NAD83 (EPSG:4269)</span></span>
 <span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt;   • Geometry: LINESTRING</span></span>
@@ -1536,10 +1536,10 @@ interest.</p>
 <span id="cb19-38"><a href="#cb19-38" tabindex="-1"></a><span class="co">#&gt; [1] Information</span></span>
 <span id="cb19-39"><a href="#cb19-39" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb19-40"><a href="#cb19-40" tabindex="-1"></a><span class="co">#&gt; $createdate</span></span>
-<span id="cb19-41"><a href="#cb19-41" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-03</span></span>
+<span id="cb19-41"><a href="#cb19-41" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-15</span></span>
 <span id="cb19-42"><a href="#cb19-42" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb19-43"><a href="#cb19-43" tabindex="-1"></a><span class="co">#&gt; $editdate</span></span>
-<span id="cb19-44"><a href="#cb19-44" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-03</span></span>
+<span id="cb19-44"><a href="#cb19-44" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-15</span></span>
 <span id="cb19-45"><a href="#cb19-45" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb19-46"><a href="#cb19-46" tabindex="-1"></a><span class="co">#&gt; $geom</span></span>
 <span id="cb19-47"><a href="#cb19-47" tabindex="-1"></a><span class="co">#&gt; [1] WKB POINT: raw 01 01 00 00 ...</span></span>
@@ -1618,7 +1618,7 @@ corresponding JSON member.</li>
 <span id="cb20-51"><a href="#cb20-51" tabindex="-1"></a><span class="co">#&gt; [1] 2016-02-03</span></span>
 <span id="cb20-52"><a href="#cb20-52" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb20-53"><a href="#cb20-53" tabindex="-1"></a><span class="co">#&gt; $editdate</span></span>
-<span id="cb20-54"><a href="#cb20-54" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-03</span></span>
+<span id="cb20-54"><a href="#cb20-54" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-15</span></span>
 <span id="cb20-55"><a href="#cb20-55" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb20-56"><a href="#cb20-56" tabindex="-1"></a><span class="co">#&gt; $geom</span></span>
 <span id="cb20-57"><a href="#cb20-57" tabindex="-1"></a><span class="co">#&gt; [1] WKB POINT: raw 01 01 00 00 ...</span></span></code></pre></div>
@@ -1649,10 +1649,10 @@ class attribute.</p>
 <span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a><span class="co">#&gt; [1] Information</span></span>
 <span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a><span class="co">#&gt; $createdate</span></span>
-<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-03</span></span>
+<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-15</span></span>
 <span id="cb21-21"><a href="#cb21-21" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb21-22"><a href="#cb21-22" tabindex="-1"></a><span class="co">#&gt; $editdate</span></span>
-<span id="cb21-23"><a href="#cb21-23" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-03</span></span>
+<span id="cb21-23"><a href="#cb21-23" tabindex="-1"></a><span class="co">#&gt; [1] 2026-05-15</span></span>
 <span id="cb21-24"><a href="#cb21-24" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb21-25"><a href="#cb21-25" tabindex="-1"></a><span class="co">#&gt; $geom</span></span>
 <span id="cb21-26"><a href="#cb21-26" tabindex="-1"></a><span class="co">#&gt; [1] WKB POINT: raw 01 01 00 00 ...</span></span>
@@ -1721,11 +1721,11 @@ grouping in a transaction, measuring time elapsed.</p>
 <span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a><span class="co"># write the batch (no transaction)</span></span>
 <span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a><span class="fu">system.time</span>(res <span class="ot">&lt;-</span> lyr<span class="sc">$</span><span class="fu">batchCreateFeature</span>(d))</span>
 <span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a><span class="co">#&gt;  ■                                  0% |  ETA:  1m</span></span>
-<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a><span class="co">#&gt;  ■■■■■■■■■■■■■■■■■■■■■■■■■■        85% |  ETA:  0s</span></span>
-<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a><span class="co">#&gt; ✔ Done (2.9s)</span></span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a><span class="co">#&gt;  ■■■■■■■■■■■■■■■■■■■■■■■■■■■■      91% |  ETA:  0s</span></span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a><span class="co">#&gt; ✔ Done (2.8s)</span></span>
 <span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a><span class="co">#&gt;    user  system elapsed </span></span>
-<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a><span class="co">#&gt;   2.947   0.009   2.957</span></span>
+<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a><span class="co">#&gt;   2.775   0.010   2.787</span></span>
 <span id="cb23-20"><a href="#cb23-20" tabindex="-1"></a></span>
 <span id="cb23-21"><a href="#cb23-21" tabindex="-1"></a>(<span class="fu">all</span>(res))</span>
 <span id="cb23-22"><a href="#cb23-22" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
@@ -1752,7 +1752,7 @@ and the layer is checked for the expected output.</p>
 <span id="cb24-16"><a href="#cb24-16" tabindex="-1"></a>    lyr<span class="sc">$</span><span class="fu">rollbackTransaction</span>()</span>
 <span id="cb24-17"><a href="#cb24-17" tabindex="-1"></a>})</span>
 <span id="cb24-18"><a href="#cb24-18" tabindex="-1"></a><span class="co">#&gt;    user  system elapsed </span></span>
-<span id="cb24-19"><a href="#cb24-19" tabindex="-1"></a><span class="co">#&gt;   1.198   0.007   1.205</span></span>
+<span id="cb24-19"><a href="#cb24-19" tabindex="-1"></a><span class="co">#&gt;   1.173   0.008   1.182</span></span>
 <span id="cb24-20"><a href="#cb24-20" tabindex="-1"></a></span>
 <span id="cb24-21"><a href="#cb24-21" tabindex="-1"></a>(<span class="fu">all</span>(res2))</span>
 <span id="cb24-22"><a href="#cb24-22" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
@@ -1765,22 +1765,22 @@ and the layer is checked for the expected output.</p>
 <span id="cb24-29"><a href="#cb24-29" tabindex="-1"></a><span class="fu">head</span>(d_out)</span>
 <span id="cb24-30"><a href="#cb24-30" tabindex="-1"></a><span class="co">#&gt; OGR feature set</span></span>
 <span id="cb24-31"><a href="#cb24-31" tabindex="-1"></a><span class="co">#&gt;   FID               pt_desc         create_time                           geom</span></span>
-<span id="cb24-32"><a href="#cb24-32" tabindex="-1"></a><span class="co">#&gt; 1   1 random points batch 1 2026-05-03 22:59:35 WKB POINT: raw 01 01 00 00 ...</span></span>
-<span id="cb24-33"><a href="#cb24-33" tabindex="-1"></a><span class="co">#&gt; 2   2 random points batch 1 2026-05-03 22:59:35 WKB POINT: raw 01 01 00 00 ...</span></span>
-<span id="cb24-34"><a href="#cb24-34" tabindex="-1"></a><span class="co">#&gt; 3   3 random points batch 1 2026-05-03 22:59:35 WKB POINT: raw 01 01 00 00 ...</span></span>
-<span id="cb24-35"><a href="#cb24-35" tabindex="-1"></a><span class="co">#&gt; 4   4 random points batch 1 2026-05-03 22:59:35 WKB POINT: raw 01 01 00 00 ...</span></span>
-<span id="cb24-36"><a href="#cb24-36" tabindex="-1"></a><span class="co">#&gt; 5   5 random points batch 1 2026-05-03 22:59:35 WKB POINT: raw 01 01 00 00 ...</span></span>
-<span id="cb24-37"><a href="#cb24-37" tabindex="-1"></a><span class="co">#&gt; 6   6 random points batch 1 2026-05-03 22:59:35 WKB POINT: raw 01 01 00 00 ...</span></span>
+<span id="cb24-32"><a href="#cb24-32" tabindex="-1"></a><span class="co">#&gt; 1   1 random points batch 1 2026-05-16 00:40:40 WKB POINT: raw 01 01 00 00 ...</span></span>
+<span id="cb24-33"><a href="#cb24-33" tabindex="-1"></a><span class="co">#&gt; 2   2 random points batch 1 2026-05-16 00:40:40 WKB POINT: raw 01 01 00 00 ...</span></span>
+<span id="cb24-34"><a href="#cb24-34" tabindex="-1"></a><span class="co">#&gt; 3   3 random points batch 1 2026-05-16 00:40:40 WKB POINT: raw 01 01 00 00 ...</span></span>
+<span id="cb24-35"><a href="#cb24-35" tabindex="-1"></a><span class="co">#&gt; 4   4 random points batch 1 2026-05-16 00:40:40 WKB POINT: raw 01 01 00 00 ...</span></span>
+<span id="cb24-36"><a href="#cb24-36" tabindex="-1"></a><span class="co">#&gt; 5   5 random points batch 1 2026-05-16 00:40:40 WKB POINT: raw 01 01 00 00 ...</span></span>
+<span id="cb24-37"><a href="#cb24-37" tabindex="-1"></a><span class="co">#&gt; 6   6 random points batch 1 2026-05-16 00:40:40 WKB POINT: raw 01 01 00 00 ...</span></span>
 <span id="cb24-38"><a href="#cb24-38" tabindex="-1"></a></span>
 <span id="cb24-39"><a href="#cb24-39" tabindex="-1"></a><span class="fu">tail</span>(d_out)</span>
 <span id="cb24-40"><a href="#cb24-40" tabindex="-1"></a><span class="co">#&gt; OGR feature set</span></span>
 <span id="cb24-41"><a href="#cb24-41" tabindex="-1"></a><span class="co">#&gt;           FID               pt_desc         create_time</span></span>
-<span id="cb24-42"><a href="#cb24-42" tabindex="-1"></a><span class="co">#&gt; 199995 199995 random points batch 2 2026-05-03 22:59:39</span></span>
-<span id="cb24-43"><a href="#cb24-43" tabindex="-1"></a><span class="co">#&gt; 199996 199996 random points batch 2 2026-05-03 22:59:39</span></span>
-<span id="cb24-44"><a href="#cb24-44" tabindex="-1"></a><span class="co">#&gt; 199997 199997 random points batch 2 2026-05-03 22:59:39</span></span>
-<span id="cb24-45"><a href="#cb24-45" tabindex="-1"></a><span class="co">#&gt; 199998 199998 random points batch 2 2026-05-03 22:59:39</span></span>
-<span id="cb24-46"><a href="#cb24-46" tabindex="-1"></a><span class="co">#&gt; 199999 199999 random points batch 2 2026-05-03 22:59:39</span></span>
-<span id="cb24-47"><a href="#cb24-47" tabindex="-1"></a><span class="co">#&gt; 200000 200000 random points batch 2 2026-05-03 22:59:39</span></span>
+<span id="cb24-42"><a href="#cb24-42" tabindex="-1"></a><span class="co">#&gt; 199995 199995 random points batch 2 2026-05-16 00:40:43</span></span>
+<span id="cb24-43"><a href="#cb24-43" tabindex="-1"></a><span class="co">#&gt; 199996 199996 random points batch 2 2026-05-16 00:40:43</span></span>
+<span id="cb24-44"><a href="#cb24-44" tabindex="-1"></a><span class="co">#&gt; 199997 199997 random points batch 2 2026-05-16 00:40:43</span></span>
+<span id="cb24-45"><a href="#cb24-45" tabindex="-1"></a><span class="co">#&gt; 199998 199998 random points batch 2 2026-05-16 00:40:43</span></span>
+<span id="cb24-46"><a href="#cb24-46" tabindex="-1"></a><span class="co">#&gt; 199999 199999 random points batch 2 2026-05-16 00:40:43</span></span>
+<span id="cb24-47"><a href="#cb24-47" tabindex="-1"></a><span class="co">#&gt; 200000 200000 random points batch 2 2026-05-16 00:40:43</span></span>
 <span id="cb24-48"><a href="#cb24-48" tabindex="-1"></a><span class="co">#&gt;                                  geom</span></span>
 <span id="cb24-49"><a href="#cb24-49" tabindex="-1"></a><span class="co">#&gt; 199995 WKB POINT: raw 01 01 00 00 ...</span></span>
 <span id="cb24-50"><a href="#cb24-50" tabindex="-1"></a><span class="co">#&gt; 199996 WKB POINT: raw 01 01 00 00 ...</span></span>

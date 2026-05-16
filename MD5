@@ -1,7 +1,7 @@
-9f9fe459d5606c1ee275058f36942fc5 *DESCRIPTION
+ab3d54e18bbec868c33e8d12960d0a23 *DESCRIPTION
 87a0b64a501dbc003bb201ad7927657a *LICENSE
 0d0afaa490923ccedb57b79b9ad77cbc *NAMESPACE
-fb78742bb56f99dd79d9fb218b9b482b *NEWS.md
+596b31d02eed20e76f47652f695fe755 *NEWS.md
 dd81e16ce8239b4696e5e9eecf161fa8 *R/RcppExports.R
 04e185189e5b10b0ee691f3e5ae0d888 *R/cmb_table.R
 8f16b3bd2af573e67eaf2524b5700e8b *R/dem_derivatives.R
@@ -21,7 +21,7 @@ cc56df79113e051ee9abd581b3ef4c7e *R/gdalraster_proc.R
 e23a89e5afc2ad7e3d3d3c2273df08e9 *R/ogr_define.R
 33b0b10b3b8cfdd7bd0844e844dde6e8 *R/ogr_manage.R
 4be299a5dc027b71aac082ca38b62495 *R/ogr_proc.R
-5c2f92d576299c1476cbb5b058656e41 *R/ogr_reproject.R
+c97a27b9bc49692b81c5db451c9b7547 *R/ogr_reproject.R
 59c8e067df31db78067a75db8c42b463 *R/proj.R
 fe51586e3a8c1849d7500fc03cf77108 *R/running_stats.R
 c4786672a670cc9a8c5916c1e60bbb6b *R/s3_methods.R
@@ -31,8 +31,8 @@ ea729195f5d8edc3edc2784b0d50de48 *R/vsifile.R
 1b1ba3259253b93a218bc4cc79f1c47c *README.md
 f877f2a4ecd7083b5db71bbbad81f866 *build/vignette.rds
 35ea8e4e5688db06a2c4cb4549301d53 *cleanup
-287c0941e043281250b51e9f55a9b5b3 *configure
-384aaf73fc8e6d0a1ce7bc9c466a60cc *configure.ac
+068cc4dd606a28c2fca9586b1b5aa74b *configure
+26b68ef4433c533592863f535f5b24c1 *configure.ac
 7e96d30485869805533a659a93be8b36 *inst/CITATION
 c1a08c3932b28cfaab5f9f90b61c671b *inst/COPYRIGHTS
 bd5513179f29d2ea56fc766bb976c783 *inst/doc/gdal-config-quick-ref.R
@@ -40,13 +40,13 @@ a998f4bc7a248c014d7e85e243f1993a *inst/doc/gdal-config-quick-ref.Rmd
 6e55b23f848eda58bd832e268ce90a41 *inst/doc/gdal-config-quick-ref.html
 47fe193875de3164629a72f4deb72fa3 *inst/doc/raster-api-tutorial.R
 93525d561141950037bfc7cf64fe9b19 *inst/doc/raster-api-tutorial.Rmd
-5d6e49c39d5e172e1660e89ebe243192 *inst/doc/raster-api-tutorial.html
+c012cd686fdb157ea02418525c2dd628 *inst/doc/raster-api-tutorial.html
 68990316ba045a611a7802047f2e6a3f *inst/doc/raster-attribute-tables.R
 7ccf99aed9d5fa5dcfc4892e6b95b85e *inst/doc/raster-attribute-tables.Rmd
-72c37dee0f20f6d5844f1262ea84c79c *inst/doc/raster-attribute-tables.html
-0d1e050cbaa3d7c91636c5a695e4bb76 *inst/doc/vector-api-overview.R
-a1501a97defd8573407b17bea5f9446e *inst/doc/vector-api-overview.Rmd
-cf3dcf35c1f5c9b4afa7a125fd2153db *inst/doc/vector-api-overview.html
+9b735013cc6e3111a084b1f4bc762408 *inst/doc/raster-attribute-tables.html
+55c6312675ad23d3fffc3211b58ea849 *inst/doc/vector-api-overview.R
+6f0fd04747ebde8f87d8efbafc79edf4 *inst/doc/vector-api-overview.Rmd
+326995275b99b953c3730b3b95f236f8 *inst/doc/vector-api-overview.html
 c38c1c3f7b25210940c64456b5398475 *inst/extdata/LF20_EVC_220.csv
 abc15bb8a951ce3c07220eb60ac11f03 *inst/extdata/LF20_EVH_220.csv
 6d00acfa3565002e472c90684dbfda4e *inst/extdata/LF20_EVT_220.csv
@@ -162,7 +162,7 @@ d7003bb912ecc92b092c88b08ea46f44 *man/is_los_visible.Rd
 b104fd9a4153153e8551a1d0b3efc762 *man/ogr_define.Rd
 03af8b1ad0002c9e636fed77aa70be14 *man/ogr_manage.Rd
 01f59ddefc305f34b9215fdb70a52f9d *man/ogr_proc.Rd
-8601ff8e0320ca9f979e3528abe24b15 *man/ogr_reproject.Rd
+21bd92e20c97d86c5a4c5178b285cb0c *man/ogr_reproject.Rd
 3562855e79456767694800ce66858d72 *man/ogrinfo.Rd
 761dc1c3c0b6f12adaed9d767a26e325 *man/pixel_extract.Rd
 8d05424a0d55c5047a938b3d89e524b8 *man/plot.OGRFeature.Rd
@@ -248,7 +248,7 @@ df714e6479b6b538ddf6d0184c264d77 *src/geom_api.h
 bcbd9d512a1b6a492fbb4973dfa735ec *src/rcpp_util.h
 9d67effd54fa05a411903d126358904b *src/running_stats.cpp
 c9fc6de28e801832acab6ac402930d5a *src/running_stats.h
-8147f646b3816ae1101a25dd9e33d313 *src/srs_api.cpp
+3b4221f6b2307963f08c1b889d740cff *src/srs_api.cpp
 29fe7449e611281ba12c5197e7b585f1 *src/srs_api.h
 c131e92b9bcf9eb4fd405992ee10d1f7 *src/transform.cpp
 4ca5a6f8096c47e86839a97c49122999 *src/transform.h
@@ -266,7 +266,7 @@ f47d87e3f32698e16db328e37e92150b *tests/testthat/test-display.R
 ffef01759586328f03eae9b510bf004e *tests/testthat/test-gdal_cli.R
 3bd3a9565c5770d6c994fc985d0a0df7 *tests/testthat/test-gdal_create.R
 81453ac5ed7a9ede90e1b6d32f443447 *tests/testthat/test-gdal_dt.R
-b959c0725e3e8fc94dc752377343790a *tests/testthat/test-gdal_exp.R
+c6673476560679c6d305113aebc894bd *tests/testthat/test-gdal_exp.R
 078b40af598368006ef876e3199ae186 *tests/testthat/test-gdal_helpers.R
 94a84acc560d6711579f8b184abf40d3 *tests/testthat/test-gdal_mdim.R
 002e9c4c5e19f3a201dbea393dde311c *tests/testthat/test-gdal_rat.R
@@ -277,7 +277,7 @@ c0b8229bdb09560ab410a57447248228 *tests/testthat/test-gdal_vsi.R
 f9285d5deefb7b9b8068f66e636c6c56 *tests/testthat/test-grid-helpers.R
 be2c288fed80e7fc38d79933997120d8 *tests/testthat/test-ogr_manage.R
 f2aefc157aa7dd66e8e21a29a7061cac *tests/testthat/test-ogr_proc.R
-3bcadfb95550c0c757a6c61611d99886 *tests/testthat/test-ogr_reproject.R
+c53a4cabb9306dc3f3069d131b75f975 *tests/testthat/test-ogr_reproject.R
 52ac72694e679639da647d3ea7968224 *tests/testthat/test-proj.R
 8379e8368cc53350d01b75d15f1e2c31 *tests/testthat/test-r_rasterize.R
 773df4049a6990b9f1bd81d861ebdaab *tests/testthat/test-s3_methods.R
@@ -287,4 +287,4 @@ a998f4bc7a248c014d7e85e243f1993a *vignettes/gdal-config-quick-ref.Rmd
 3ffdbc4316f41b94a6e1814cf1171d4b *vignettes/qgis_rat_classify.png
 93525d561141950037bfc7cf64fe9b19 *vignettes/raster-api-tutorial.Rmd
 7ccf99aed9d5fa5dcfc4892e6b95b85e *vignettes/raster-attribute-tables.Rmd
-a1501a97defd8573407b17bea5f9446e *vignettes/vector-api-overview.Rmd
+6f0fd04747ebde8f87d8efbafc79edf4 *vignettes/vector-api-overview.Rmd
