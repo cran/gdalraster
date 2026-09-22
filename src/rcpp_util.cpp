@@ -222,13 +222,24 @@ Rcpp::CharacterVector wrap_gdal_string_list_(const CPLStringList &string_list) {
     return out;
 }
 
-//' Get pointer address of R data as a character string
+//' Get pointer address of an R vector as a character string
 //'
-//' @param x Vector of type numeric, integer, raw or complex.
+//' `get_data_ptr()` returns a character string representation of the address
+//' of the first value in the C array underlying a given R vector of `raw`,
+//' `integer`, `double` or `complex`. The returned string is suitable for use
+//' as a DATAPOINTER for a GDAL MEM dataset
+//' (\url{https://gdal.org/en/stable/drivers/raster/mem.html}).
+//' @param x Vector of type `double`, `integer`, `raw` or `complex`.
 //' @returns Character string pointer address with format suitable as
 //' DATAPOINTER for a GDAL MEM dataset.
-//' @noRd
-// [[Rcpp::export(name = ".get_data_ptr")]]
+//'
+//' @seealso
+//' [rvector_to_MEM()]
+//'
+//' @examples
+//' v <- sample(0:255, 20, replace = TRUE)
+//' get_data_ptr(v)
+// [[Rcpp::export()]]
 std::string get_data_ptr(const Rcpp::RObject &x) {
     if (x.isNULL())
         Rcpp::stop("'x' must be a vector of numeric, integer, raw or complex");
@@ -337,4 +348,21 @@ void cli_cat_line_() {
     Rcpp::Environment pkg = Rcpp::Environment::namespace_env("cli");
     Rcpp::Function fn = pkg["cat_line"];
     fn();
+}
+
+// expose equal_within_ulps_() in R for unit tests
+//' @noRd
+// [[Rcpp::export(name = ".equal_within_ulps")]]
+bool equal_within_ulps_r_(double x, double y, int n = 4) {
+    if (n < 0)
+        Rcpp::stop("`n` must be >= 0");
+
+    return equal_within_ulps_(x, y, n);
+}
+
+// wrapper for nanoarrow::as_nanoarrow_array_stream() on a data frame
+SEXP as_nanoarrow_array_stream_(const Rcpp::DataFrame &df) {
+    Rcpp::Environment pkg = Rcpp::Environment::namespace_env("nanoarrow");
+    Rcpp::Function fn = pkg["as_nanoarrow_array_stream"];
+    return fn(df);
 }

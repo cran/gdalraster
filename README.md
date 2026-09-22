@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# gdalraster
+# gdalraster <a href="https://firelab.github.io/gdalraster/"><img src="man/figures/logo.svg" align="right" height="139" alt="gdalraster website" /></a>
 
 <!-- badges: start -->
 
@@ -58,11 +58,11 @@ The package supports:
   ([`mdim_as_classic()`](https://firelab.github.io/gdalraster/reference/mdim_as_classic.html),
   [`mdim_info()`](https://firelab.github.io/gdalraster/reference/mdim_info.html),
   [`mdim_translate()`](https://firelab.github.io/gdalraster/reference/mdim_translate.html))
-- coordinate transformation
-- spatial reference systems
+- spatial reference systems and coordinate transformation (PROJ via GDAL
+  headers)
 - [geometry
   API](https://firelab.github.io/gdalraster/reference/index.html#geometry)
-  operating on raw vectors of WKB or WKT strings
+  operating on raw vectors of WKB or WKT strings (GEOS via GDAL headers)
 - [vector
   utilities](https://firelab.github.io/gdalraster/reference/index.html#vector-utilities)
 - GDAL facilities for [vector
@@ -246,3 +246,7 @@ See <https://github.com/hypertidy/gdal-r-ci> (thanks to Michael Sumner):
   Ref](https://firelab.github.io/gdalraster/articles/gdal-config-quick-ref.html)
 - [Vector Read
   Benchmarks](https://firelab.github.io/gdalraster/articles/vector-read-benchmarks.html)
+
+------------------------------------------------------------------------
+
+<sub>Logo designed by Sylvain Beorchia</sub>

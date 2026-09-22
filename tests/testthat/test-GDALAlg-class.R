@@ -486,7 +486,11 @@ test_that("`setVectorArgsFromObject` and `outputLayerNameForOpen` work", {
     expect_equal(toupper(lyr_out$getName()), "SQL_TEST")
     expect_equal(lyr_out$getFeatureCount(), 1)
     feat <- lyr_out$getNextFeature()
-    expect_equal(toupper(g_name(feat$geom)), "POLYGON")
+
+    if (gdal_version_num() < gdal_compute_version(3, 14, 0))
+        expect_equal(toupper(g_name(feat$geom)), "POLYGON")
+    else
+        expect_equal(toupper(g_name(feat$geom)), "MULTIPOLYGON")
 
     alg$release()
     lyr_out$close()
@@ -715,11 +719,15 @@ test_that("setArg works", {
         ds_list[[i]]$close()
     alg$release()
 
-    ## INTEGER_LIST (--size in "raster create")
+    ## INTEGER_LIST GDAL < 3.14 (--size in "raster create")
+    ## STRING_LIST GDAL >= 3.14 (--size in "raster create")
     ## STRING_LIST (--src-nodata and --dst-nodata in "raster reproject")
     args <- c("--output", "", "--format", "MEM")
     alg <- gdal_alg("raster create", args)
-    expect_true(alg$setArg("size", c(2, 1)))
+    if (gdal_version_num() < gdal_compute_version(3, 14, 0))
+        expect_true(alg$setArg("size", c(2, 1)))
+    else
+        expect_true(alg$setArg("size", as.character(c(2, 1))))
     expect_true(alg$setArg("band-count", 2))
     expect_true(alg$setArg("datatype", "Float32"))
     expect_true(alg$run())

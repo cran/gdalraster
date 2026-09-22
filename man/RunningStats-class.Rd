@@ -6,18 +6,6 @@
 \alias{Rcpp_RunningStats-class}
 \alias{RunningStats}
 \title{Class to calculate mean and variance in one pass}
-\arguments{
-\item{na_rm}{Logical scalar. \code{TRUE} to remove \code{NA} from the input data (the
-default) or \code{FALSE} to retain \code{NA}.}
-}
-\value{
-An object of class \code{RunningStats}. A \code{RunningStats} object
-maintains the current minimum, maximum, mean, variance, sum and count of
-values that have been read from the stream. It can be updated repeatedly
-with new values (i.e., chunks of data read from the input stream), but its
-memory footprint is negligible. Class methods for updating with new values,
-and retrieving the current values of statistics, are described in Details.
-}
 \description{
 \code{RunningStats} computes summary statistics on a data stream efficiently.
 Mean and variance are calculated with Welford's online algorithm
@@ -27,8 +15,15 @@ stored in memory, so this class can be used to compute statistics for very
 large data streams.
 
 \code{RunningStats} is a C++ class exposed directly to \R (via
-\code{RCPP_EXPOSED_CLASS}). Methods of the class are accessed using the \code{$}
-operator.
+\code{RCPP_EXPOSED_CLASS}). Fields and methods and of the class are accessed
+using the \code{$} operator.
+
+An object of class \code{RunningStats} maintains the current minimum, maximum,
+mean, variance, sum and count of values that have been read from the stream.
+It can be updated repeatedly with new values (i.e., chunks of data read from
+the input stream), but its memory footprint is negligible. Class methods for
+updating with new values, and retrieving the current values of statistics,
+are described in Details.
 }
 \note{
 The intended use is computing summary statistics for specific subsets or
@@ -48,6 +43,9 @@ computes statistics for a whole raster band.
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## Constructor
 rs <- new(RunningStats, na_rm)
 
+## Read/write fields (per-object settings)
+rs$returnCountAsInteger64
+
 ## Methods
 rs$update(newvalues)
 rs$get_count()
@@ -66,8 +64,19 @@ rs$reset()
 \subsection{Constructor}{
 
 \code{new(RunningStats, na_rm)}\cr
-Returns an object of class \code{RunningStats}. The \code{na_rm} argument
-defaults to \code{TRUE} if omitted.
+\code{na_rm} is a logical value, \code{TRUE} to remove \code{NA} from the input data (the
+default) or \code{FALSE} to retain \code{NA}.
+Returns an object of class \code{RunningStats}.
+}
+
+\subsection{Read/write fields (per-object settings)}{
+
+\code{$returnCountAsInteger64}
+A logical value specifying whether to return the count of values currently
+in the data stream as \code{bit64::integer64} type. The default is \code{FALSE} in
+which case the count is returned as R \code{numeric} (i.e., \code{double}). Can be set
+to \code{TRUE} to support very large counts without loss of precision (returning
+the internal \code{int64_t} counter without a cast to \code{double}).
 }
 
 \subsection{Methods}{
@@ -78,7 +87,9 @@ Updates the \code{RunningStats} object with a numeric vector of \code{newvalues}
 for side effects.
 
 \code{$get_count()}\cr
-Returns the count of values received from the data stream.
+Returns the count of values received from the data stream. Returns a
+\code{numeric} value (i.e., \code{double}) unless \code{returnCountAsInteger64 = TRUE} in
+which case the count is returned as \code{bit64::integer64} (see above).
 
 \code{$get_mean()}\cr
 Returns the mean of values received from the data stream.
@@ -107,7 +118,6 @@ No return value, called for side effects.
 }
 
 \examples{
-set.seed(42)
 (rs <- new(RunningStats, na_rm = TRUE))
 
 chunk <- runif(1000)
@@ -132,9 +142,12 @@ var(chunk)
 rs$get_sd()
 sd(chunk)
 
+# not needed to count this number of values, but for demonstration:
+rs$returnCountAsInteger64 <- TRUE
+
 \donttest{
 ## 10^9 values read in 10,000 chunks
-## should take under 1 minute on most PC hardware
+## should take under 1 minute on typical hardware
 for (i in 1:1e4) {
   chunk <- runif(1e5)
   rs$update(chunk)
@@ -145,4 +158,18 @@ rs$get_var()
 
 object.size(rs)
 }
+
+## large numbers with small differences
+rs$reset()
+rs$get_count()
+
+values <- runif(100000L, min = 100000000, max = 100000000.06)
+rs$update(values)
+
+rs$get_count()
+
+rs$get_mean() |> format(nsmall = 3, scientific = FALSE)
+
+rs$get_var()
+var(values)
 }

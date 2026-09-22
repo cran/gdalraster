@@ -579,7 +579,8 @@ apply_geotransform <- function(col_row, gt) {
 #' raster extent and a warning emitted giving the number points that were
 #' outside. This latter case is equivalent to calling the
 #' \code{$get_pixel_line()} class method on the `GDALRaster` object (see
-#' Examples).
+#' Examples). Points exactly on the raster right or bottom edge are considered
+#' inside as of \pkg{gdalraster} 2.7.0.
 #'
 #' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [inv_geotransform()]
 #'
@@ -1043,7 +1044,7 @@ rvector_to_MEM <- function(data, xsize, ysize, nbands = 1L, gt = NULL,
 
     gt_str <- paste(gt, collapse = "/")
     band_offset <- as.double(xsize) * ysize * dt_size(dt)
-    ptr <- .get_data_ptr(data)
+    ptr <- get_data_ptr(data)
 
     dsn_fmt <- "MEM:::DATAPOINTER=%s,PIXELS=%d,LINES=%d,BANDS=%d,DATATYPE=%s,GEOTRANSFORM=%s,BANDOFFSET=%d"
     dsn <- sprintf(dsn_fmt, ptr, xsize, ysize, nbands, dt, gt_str, band_offset)
@@ -1093,4 +1094,5 @@ progress_bar_clear <- function() {
     cli::cli_progress_cleanup()
     cli::cli_progress_message("")
     .progress_bar_cleanup()
+    cli::cat_line()
 }

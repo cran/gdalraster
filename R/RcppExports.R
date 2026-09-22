@@ -649,7 +649,10 @@ inv_geotransform <- function(gt) {
 }
 
 #' Raster pixel/line from geospatial x,y coordinates
-#' alternate version for GDALRaster input, with bounds checking
+#' alternate version for GDALRaster input, with raster bounds checking
+#' input coordinates exactly on the bottom or right edges are considered inside
+#' matches behavior in https://github.com/OSGeo/gdal/pull/12087
+#' also consistent with GDALRaster::pixel_extract()
 #' @noRd
 .get_pixel_line_ds <- function(xy, ds) {
     .Call(`_gdalraster_get_pixel_line_ds`, xy, ds)
@@ -2913,6 +2916,11 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_point_on_surface <- function(geom, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
+    .Call(`_gdalraster_g_point_on_surface`, geom, as_iso, byte_order, quiet)
+}
+
+#' @noRd
 .g_segmentize <- function(geom, max_length, as_iso, byte_order, quiet) {
     .Call(`_gdalraster_g_segmentize`, geom, max_length, as_iso, byte_order, quiet)
 }
@@ -3188,14 +3196,30 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
     .Call(`_gdalraster_rasterize_polygon`, rasterXsize, rasterYsize, part_sizes, polygonX, polygonY, fnRasterIO, burn_value, attr_value)
 }
 
-#' Get pointer address of R data as a character string
+#' Get pointer address of an R vector as a character string
 #'
-#' @param x Vector of type numeric, integer, raw or complex.
+#' `get_data_ptr()` returns a character string representation of the address
+#' of the first value in the C array underlying a given R vector of `raw`,
+#' `integer`, `double` or `complex`. The returned string is suitable for use
+#' as a DATAPOINTER for a GDAL MEM dataset
+#' (\url{https://gdal.org/en/stable/drivers/raster/mem.html}).
+#' @param x Vector of type `double`, `integer`, `raw` or `complex`.
 #' @returns Character string pointer address with format suitable as
 #' DATAPOINTER for a GDAL MEM dataset.
-#' @noRd
-.get_data_ptr <- function(x) {
+#'
+#' @seealso
+#' [rvector_to_MEM()]
+#'
+#' @examples
+#' v <- sample(0:255, 20, replace = TRUE)
+#' get_data_ptr(v)
+get_data_ptr <- function(x) {
     .Call(`_gdalraster_get_data_ptr`, x)
+}
+
+#' @noRd
+.equal_within_ulps <- function(x, y, n = 4L) {
+    .Call(`_gdalraster_equal_within_ulps_r_`, x, y, n)
 }
 
 #' @noRd
